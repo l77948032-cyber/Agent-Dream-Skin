@@ -1,0 +1,6 @@
+@echo off
+setlocal
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\status-trae-skin-windows.ps1" %*
+set "EXIT_CODE=%ERRORLEVEL%"
+pause
+exit /b %EXIT_CODE%

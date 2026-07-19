@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "neon-portal",
+  "name": "Neon Portal",
+  "description": "深色青绿工作台，使用低明度城市穹顶背景和高对比荧光焦点色。",
+  "image": "background.png",
+  "colors": {
+    "background": "#071216",
+    "panel": "#0D2024",
+    "panelAlt": "#142C30",
+    "accent": "#9BE15D",
+    "accentAlt": "#48D6CF",
+    "secondary": "#EE7D8E",
+    "highlight": "#F2C566",
+    "onAccent": "#071216",
+    "success": "#9BE15D",
+    "warning": "#F2C566",
+    "danger": "#EE7D8E",
+    "info": "#48D6CF",
+    "disabled": "#6F857F",
+    "text": "#F2FBF6",
+    "muted": "#A5BDB6",
+    "line": "rgba(107, 211, 186, 0.30)",
+    "selection": "rgba(72, 214, 207, 0.30)",
+    "terminal": "#071013"
+  },
+  "states": {
+    "surfaceHover": "rgba(72, 214, 207, 0.13)",
+    "surfaceActive": "rgba(155, 225, 93, 0.22)",
+    "focus": "#48D6CF",
+    "tooltipBackground": "#142C30",
+    "tooltipText": "#F2FBF6"
+  },
+  "appearance": {
+    "colorScheme": "dark",
+    "treatment": "midnight-neon",
+    "backgroundPosition": "68% center",
+    "backgroundSize": "cover",
+    "backgroundOpacity": 0.58,
+    "surfaceOpacity": 0.78,
+    "sidebarOpacity": 0.90,
+    "blur": 16,
+    "saturation": 0.88,
+    "radius": 6,
+    "shadow": "soft"
+  }
+}

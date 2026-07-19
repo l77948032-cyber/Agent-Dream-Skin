@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "ember-glass",
+  "name": "Ember Glass",
+  "description": "石墨与珊瑚红的暖色玻璃工作台，以金色和青色保持层次与状态辨识。",
+  "image": "background.png",
+  "colors": {
+    "background": "#171315",
+    "panel": "#251C1E",
+    "panelAlt": "#332326",
+    "accent": "#FF776A",
+    "accentAlt": "#F2C66D",
+    "secondary": "#51C9B6",
+    "highlight": "#F5A65B",
+    "onAccent": "#171315",
+    "success": "#51C9B6",
+    "warning": "#F2C66D",
+    "danger": "#FF776A",
+    "info": "#78C7D0",
+    "disabled": "#7E706C",
+    "text": "#FFF8F2",
+    "muted": "#C8B5AE",
+    "line": "rgba(255, 143, 113, 0.30)",
+    "selection": "rgba(81, 201, 182, 0.27)",
+    "terminal": "#130F10"
+  },
+  "states": {
+    "surfaceHover": "rgba(255, 119, 106, 0.14)",
+    "surfaceActive": "rgba(242, 198, 109, 0.21)",
+    "focus": "#F2C66D",
+    "tooltipBackground": "#392428",
+    "tooltipText": "#FFF8F2"
+  },
+  "appearance": {
+    "colorScheme": "dark",
+    "treatment": "ember-vignette",
+    "backgroundPosition": "76% center",
+    "backgroundSize": "cover",
+    "backgroundOpacity": 0.64,
+    "surfaceOpacity": 0.80,
+    "sidebarOpacity": 0.91,
+    "blur": 12,
+    "saturation": 1.05,
+    "radius": 5,
+    "shadow": "deep"
+  }
+}

@@ -1,0 +1,2722 @@
+/* Shared, reversible surface styling for TRAE SOLO / VS Code workbench roots. */
+:root.trae-dream-skin,
+:root.trae-skin-active,
+:root[data-trae-skin-active="true"] {
+  color-scheme: var(--trae-skin-color-scheme, dark);
+  --trae-skin-bg: #071216;
+  --trae-skin-panel: #0d2024;
+  --trae-skin-panel-alt: #142c30;
+  --trae-skin-accent: #9be15d;
+  --trae-skin-accent-alt: #48d6cf;
+  --trae-skin-secondary: #ee7d8e;
+  --trae-skin-highlight: #f2c566;
+  --trae-skin-text: #f2fbf6;
+  --trae-skin-muted: #a5bdb6;
+  --trae-skin-line: rgba(107, 211, 186, 0.30);
+  --trae-skin-selection: rgba(72, 214, 207, 0.30);
+  --trae-skin-terminal: #071013;
+  --trae-skin-on-accent: #071216;
+  --trae-skin-success: #51c9b6;
+  --trae-skin-warning: #f2c566;
+  --trae-skin-danger: #ee7d8e;
+  --trae-skin-info: #67e8f9;
+  --trae-skin-disabled: #718096;
+  --trae-skin-focus: var(--trae-skin-accent-alt);
+  --trae-skin-surface-hover: color-mix(in srgb, var(--trae-skin-accent-alt) 11%, var(--trae-skin-panel));
+  --trae-skin-surface-active: color-mix(in srgb, var(--trae-skin-accent-alt) 18%, var(--trae-skin-panel));
+  --trae-skin-tooltip-bg: color-mix(in srgb, var(--trae-skin-panel-alt) 92%, var(--trae-skin-bg));
+  --trae-skin-tooltip-text: var(--trae-skin-text);
+  --trae-skin-art: none;
+  --trae-skin-art-position: 68% center;
+  --trae-skin-art-size: cover;
+  --trae-skin-art-opacity: 0.58;
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 0.88)) contrast(1.08) brightness(0.64) hue-rotate(112deg);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(3, 10, 13, 0.82) 0%, rgba(7, 18, 22, 0.55) 52%, rgba(7, 18, 22, 0.22) 100%);
+  --trae-skin-surface-mix: 78%;
+  --trae-skin-sidebar-mix: 90%;
+  --trae-skin-blur: 16px;
+  --trae-skin-radius: 6px;
+  --trae-skin-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+  --trae-skin-ui-font: system-ui, sans-serif;
+}
+
+:root.trae-dream-skin:is(.mac, .platform-mac),
+:root.trae-skin-active:is(.mac, .platform-mac),
+:root[data-trae-skin-active="true"]:is(.mac, .platform-mac) {
+  --trae-skin-ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+
+:root.trae-dream-skin:is(.windows, .platform-windows),
+:root.trae-skin-active:is(.windows, .platform-windows),
+:root[data-trae-skin-active="true"]:is(.windows, .platform-windows) {
+  --trae-skin-ui-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+/* Preset fallbacks also make each treatment deterministic without evaluating
+   arbitrary CSS strings from theme.json. */
+:root:is(.trae-dream-skin, .trae-skin-active)[data-trae-skin-theme="neon-portal"],
+:root[data-trae-skin-active="true"][data-trae-skin-theme="neon-portal"] {
+  --trae-skin-color-scheme: dark;
+  --trae-skin-bg: #071216;
+  --trae-skin-panel: #0d2024;
+  --trae-skin-panel-alt: #142c30;
+  --trae-skin-accent: #9be15d;
+  --trae-skin-accent-alt: #48d6cf;
+  --trae-skin-secondary: #ee7d8e;
+  --trae-skin-highlight: #f2c566;
+  --trae-skin-text: #f2fbf6;
+  --trae-skin-muted: #a5bdb6;
+  --trae-skin-line: rgba(107, 211, 186, 0.30);
+  --trae-skin-selection: rgba(72, 214, 207, 0.30);
+  --trae-skin-terminal: #071013;
+  --trae-skin-on-accent: #071216;
+  --trae-skin-art-position: 68% center;
+  --trae-skin-art-opacity: 0.58;
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 0.88)) contrast(1.08) brightness(0.64) hue-rotate(112deg);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(3, 10, 13, 0.82) 0%, rgba(7, 18, 22, 0.55) 52%, rgba(7, 18, 22, 0.22) 100%);
+  --trae-skin-surface-mix: 78%;
+  --trae-skin-sidebar-mix: 90%;
+  --trae-skin-blur: 16px;
+  --trae-skin-radius: 6px;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active)[data-trae-skin-theme="ember-glass"],
+:root[data-trae-skin-active="true"][data-trae-skin-theme="ember-glass"] {
+  --trae-skin-color-scheme: dark;
+  --trae-skin-bg: #171315;
+  --trae-skin-panel: #251c1e;
+  --trae-skin-panel-alt: #332326;
+  --trae-skin-accent: #ff776a;
+  --trae-skin-accent-alt: #f2c66d;
+  --trae-skin-secondary: #51c9b6;
+  --trae-skin-highlight: #f5a65b;
+  --trae-skin-text: #fff8f2;
+  --trae-skin-muted: #c8b5ae;
+  --trae-skin-line: rgba(255, 143, 113, 0.30);
+  --trae-skin-selection: rgba(81, 201, 182, 0.27);
+  --trae-skin-terminal: #130f10;
+  --trae-skin-on-accent: #171315;
+  --trae-skin-art-position: 76% center;
+  --trae-skin-art-opacity: 0.64;
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 1.05)) contrast(1.10) brightness(0.72);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(20, 14, 16, 0.84) 0%, rgba(31, 19, 21, 0.52) 48%, rgba(38, 19, 20, 0.18) 100%);
+  --trae-skin-surface-mix: 80%;
+  --trae-skin-sidebar-mix: 91%;
+  --trae-skin-blur: 12px;
+  --trae-skin-radius: 5px;
+  --trae-skin-shadow: 0 15px 36px rgba(17, 6, 8, 0.32);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active)[data-trae-skin-theme="paper-aurora"],
+:root[data-trae-skin-active="true"][data-trae-skin-theme="paper-aurora"] {
+  --trae-skin-color-scheme: light;
+  --trae-skin-bg: #f3f6f3;
+  --trae-skin-panel: #fcfdfc;
+  --trae-skin-panel-alt: #e9f0ed;
+  --trae-skin-accent: #c74858;
+  --trae-skin-accent-alt: #247e7a;
+  --trae-skin-secondary: #7b5aa6;
+  --trae-skin-highlight: #b47c22;
+  --trae-skin-text: #1e292e;
+  --trae-skin-muted: #5e6e70;
+  --trae-skin-line: rgba(46, 94, 91, 0.24);
+  --trae-skin-selection: rgba(199, 72, 88, 0.20);
+  --trae-skin-terminal: #243034;
+  --trae-skin-on-accent: #ffffff;
+  --trae-skin-art-position: 62% center;
+  --trae-skin-art-opacity: 0.72;
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 0.72)) contrast(0.92) brightness(1.06);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(245, 248, 246, 0.80) 0%, rgba(242, 247, 244, 0.56) 51%, rgba(241, 246, 244, 0.30) 100%);
+  --trae-skin-surface-mix: 84%;
+  --trae-skin-sidebar-mix: 92%;
+  --trae-skin-blur: 18px;
+  --trae-skin-radius: 6px;
+  --trae-skin-shadow: 0 12px 28px rgba(49, 74, 70, 0.14);
+}
+
+/* Runtime-approved treatment names can be used even when a custom theme id
+   reuses one of the bundled background treatments. */
+:root[data-trae-skin-treatment="midnight-neon"] {
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 0.88)) contrast(1.08) brightness(0.64) hue-rotate(112deg);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(3, 10, 13, 0.82) 0%, rgba(7, 18, 22, 0.55) 52%, rgba(7, 18, 22, 0.22) 100%);
+}
+
+:root[data-trae-skin-treatment="ember-vignette"] {
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 1.05)) contrast(1.10) brightness(0.72);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(20, 14, 16, 0.84) 0%, rgba(31, 19, 21, 0.52) 48%, rgba(38, 19, 20, 0.18) 100%);
+}
+
+:root[data-trae-skin-treatment="paper-wash"] {
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 0.72)) contrast(0.92) brightness(1.06);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(245, 248, 246, 0.80) 0%, rgba(242, 247, 244, 0.56) 51%, rgba(241, 246, 244, 0.30) 100%);
+}
+
+:root[data-trae-skin-treatment="spark-collage"] {
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 1)) contrast(0.98) brightness(1.01);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(255, 249, 236, 0.24) 0%, rgba(255, 249, 236, 0.08) 48%, transparent 76%);
+}
+
+:root[data-trae-skin-treatment="sunlit-immersive"] {
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 0.98)) contrast(0.98) brightness(1.01);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(255, 250, 239, 0.68) 0%, rgba(255, 250, 239, 0.44) 42%, rgba(255, 250, 239, 0.12) 72%, transparent 100%),
+    linear-gradient(0deg, rgba(255, 250, 239, 0.46) 0%, transparent 45%);
+}
+
+:root[data-trae-skin-treatment="violet-rift"] {
+  --trae-skin-art-filter: saturate(var(--trae-skin-saturation, 1.04)) contrast(1.04) brightness(0.82);
+  --trae-skin-overlay:
+    linear-gradient(90deg, rgba(2, 3, 12, 0.84) 0%, rgba(4, 5, 17, 0.64) 39%, rgba(5, 6, 20, 0.34) 72%, rgba(5, 6, 20, 0.10) 100%),
+    linear-gradient(0deg, rgba(3, 4, 14, 0.78) 0%, rgba(3, 4, 14, 0.18) 38%, transparent 66%);
+}
+
+:root[data-trae-skin-shadow="soft"] {
+  --trae-skin-shadow: 0 12px 30px color-mix(in srgb, var(--trae-skin-bg) 24%, transparent);
+}
+
+:root[data-trae-skin-shadow="deep"] {
+  --trae-skin-shadow: 0 15px 36px color-mix(in srgb, var(--trae-skin-bg) 38%, transparent);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) body,
+:root[data-trae-skin-active="true"] body {
+  margin: 0;
+  background: var(--trae-skin-bg) !important;
+  color: var(--trae-skin-text) !important;
+  font-family: var(--trae-skin-ui-font) !important;
+  --vscode-foreground: var(--trae-skin-text) !important;
+  --vscode-descriptionForeground: var(--trae-skin-muted) !important;
+  --vscode-focusBorder: var(--trae-skin-accent) !important;
+  --vscode-input-background: var(--trae-skin-panel-alt) !important;
+  --vscode-input-foreground: var(--trae-skin-text) !important;
+  --vscode-input-border: var(--trae-skin-line) !important;
+  --vscode-input-placeholderForeground: var(--trae-skin-muted) !important;
+  --vscode-icube-colorBg1: transparent !important;
+  --vscode-icube-colorBg2: var(--trae-skin-panel) !important;
+  --vscode-icube-colorBg3: var(--trae-skin-panel-alt) !important;
+  --vscode-icube-colorBgSecondary: var(--trae-skin-panel-alt) !important;
+  --vscode-icube-colorDefaultText: var(--trae-skin-text) !important;
+  --vscode-icube-colorTextDefault: var(--trae-skin-text) !important;
+  --vscode-icube-colorGrayText: var(--trae-skin-muted) !important;
+  --vscode-icube-colorTextGray: var(--trae-skin-muted) !important;
+  --vscode-icube-colorPrimary: var(--trae-skin-accent) !important;
+  --vscode-icube-colorHighlightText: var(--trae-skin-accent-alt) !important;
+  --vscode-icube-colorLine1: var(--trae-skin-line) !important;
+  --vscode-icube-colorLine2: var(--trae-skin-line) !important;
+  --vscode-icube--bg-bg-base-default: transparent !important;
+  --vscode-icube--bg-bg-base-secondary: var(--trae-skin-panel) !important;
+  --vscode-icube--bg-bg-base-tertiary: var(--trae-skin-panel-alt) !important;
+  --vscode-icube--text-text-default: var(--trae-skin-text) !important;
+  --vscode-icube--text-text-secondary: var(--trae-skin-muted) !important;
+  --vscode-icube--text-text-brand: var(--trae-skin-accent-alt) !important;
+  --vscode-icube--border-border-neutral-l1: var(--trae-skin-line) !important;
+  --vscode-icube--border-border-neutral-l2: var(--trae-skin-line) !important;
+  --vscode-icube--brand-brand-default: var(--trae-skin-accent) !important;
+  --text-text-default: var(--trae-skin-text) !important;
+  --text-text-default-hover: var(--trae-skin-text) !important;
+  --text-text-default-active: var(--trae-skin-text) !important;
+  --text-text-secondary: var(--trae-skin-muted) !important;
+  --text-text-secondary-hover: var(--trae-skin-text) !important;
+  --text-text-secondary-active: var(--trae-skin-text) !important;
+  --text-text-tertiary: var(--trae-skin-muted) !important;
+  --text-text-disabled: var(--trae-skin-muted) !important;
+  --text-text-brand: var(--trae-skin-accent-alt) !important;
+  --text-text-brand-hover: var(--trae-skin-accent) !important;
+  --text-text-brand-sub: var(--trae-skin-accent-alt) !important;
+  --text-text-brand-hover-sub: var(--trae-skin-accent) !important;
+  --text-text-onaccent: var(--trae-skin-on-accent) !important;
+  --text-text-onbrand: var(--trae-skin-on-accent) !important;
+  --text-text-preformat-foreground: var(--trae-skin-highlight) !important;
+  --color-text-1: var(--trae-skin-text) !important;
+  --color-text-2: var(--trae-skin-muted) !important;
+  --color-text-3: var(--trae-skin-muted) !important;
+  --color-text-4: var(--trae-skin-line) !important;
+  --bg-bg-base-default: color-mix(in srgb, var(--trae-skin-panel) 90%, transparent) !important;
+  --bg-bg-base-secondary: color-mix(in srgb, var(--trae-skin-panel-alt) 84%, transparent) !important;
+  --bg-bg-base-tertiary: color-mix(in srgb, var(--trae-skin-panel-alt) 68%, transparent) !important;
+  --bg-bg-card: color-mix(in srgb, var(--trae-skin-panel) 78%, transparent) !important;
+  --bg-bg-card-hover: color-mix(in srgb, var(--trae-skin-panel-alt) 86%, transparent) !important;
+  --bg-bg-input: color-mix(in srgb, var(--trae-skin-panel-alt) 88%, transparent) !important;
+  --bg-bg-menu: color-mix(in srgb, var(--trae-skin-panel) 96%, transparent) !important;
+  --bg-bg-tooltip: color-mix(in srgb, var(--trae-skin-panel-alt) 97%, transparent) !important;
+  --bg-bg-overlay-l0: color-mix(in srgb, var(--trae-skin-panel) 4%, transparent) !important;
+  --bg-bg-overlay-l1: color-mix(in srgb, var(--trae-skin-panel) 7%, transparent) !important;
+  --bg-bg-overlay-l2: color-mix(in srgb, var(--trae-skin-panel) 10%, transparent) !important;
+  --bg-bg-overlay-l3: color-mix(in srgb, var(--trae-skin-panel) 14%, transparent) !important;
+  --bg-bg-overlay-l4: color-mix(in srgb, var(--trae-skin-panel) 19%, transparent) !important;
+  --bg-bg-brand: var(--trae-skin-accent) !important;
+  --bg-bg-brand-active: color-mix(in srgb, var(--trae-skin-accent) 82%, #000000) !important;
+  --bg-bg-brand-hover: color-mix(in srgb, var(--trae-skin-accent) 84%, var(--trae-skin-accent-alt)) !important;
+  --bg-bg-brand-sub: var(--trae-skin-accent) !important;
+  --bg-bg-brand-hover-sub: var(--trae-skin-accent-alt) !important;
+  --bg-bg-brand-popup: color-mix(in srgb, var(--trae-skin-accent) 14%, transparent) !important;
+  --bg-bg-brand-popup-sub: color-mix(in srgb, var(--trae-skin-accent-alt) 14%, transparent) !important;
+  --border-border-brand: var(--trae-skin-accent) !important;
+  --border-border-brand-sub: var(--trae-skin-accent-alt) !important;
+  --border-border-neutral-l1: color-mix(in srgb, var(--trae-skin-line) 56%, transparent) !important;
+  --border-border-neutral-l2: color-mix(in srgb, var(--trae-skin-line) 76%, transparent) !important;
+  --border-border-neutral-l3: var(--trae-skin-line) !important;
+  --icon-icon-default: var(--trae-skin-text) !important;
+  --icon-icon-default-active: var(--trae-skin-text) !important;
+  --icon-icon-default-hover: var(--trae-skin-text) !important;
+  --icon-icon-secondary: var(--trae-skin-muted) !important;
+  --icon-icon-secondary-active: var(--trae-skin-text) !important;
+  --icon-icon-secondary-hover: var(--trae-skin-text) !important;
+  --icon-icon-tertiary: color-mix(in srgb, var(--trae-skin-muted) 76%, transparent) !important;
+  --icon-icon-disabled: color-mix(in srgb, var(--trae-skin-muted) 45%, transparent) !important;
+  --icon-icon-brand: var(--trae-skin-accent-alt) !important;
+  --icon-icon-brand-hover: var(--trae-skin-accent) !important;
+  --icon-icon-brand-sub: var(--trae-skin-accent-alt) !important;
+  --icon-icon-brand-hover-sub: var(--trae-skin-accent) !important;
+  --icon-icon-onaccent: var(--trae-skin-on-accent) !important;
+  --icon-icon-onbrand: var(--trae-skin-on-accent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) body:is(.mac, .platform-mac),
+:root[data-trae-skin-active="true"] body:is(.mac, .platform-mac) {
+  --trae-skin-ui-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) body:is(.windows, .platform-windows),
+:root[data-trae-skin-active="true"] body:is(.windows, .platform-windows) {
+  --trae-skin-ui-font: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) body::before,
+:root[data-trae-skin-active="true"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--trae-skin-art);
+  background-position: var(--trae-skin-art-position);
+  background-repeat: no-repeat;
+  background-size: var(--trae-skin-art-size);
+  filter: var(--trae-skin-art-filter);
+  opacity: var(--trae-skin-art-opacity);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) body::after,
+:root[data-trae-skin-active="true"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--trae-skin-overlay);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) body > :is(#root, #app, .monaco-workbench),
+:root[data-trae-skin-active="true"] body > :is(#root, #app, .monaco-workbench) {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(#root, #app) > :first-child,
+:root[data-trae-skin-active="true"] :is(#root, #app) > :first-child {
+  background-color: transparent !important;
+}
+
+/* TRAE SOLO CN 3.x stable surfaces. These selectors are intentionally kept
+   separate from generated CSS-module class names. */
+:root:is(.trae-dream-skin, .trae-skin-active) :is(#solo-lite-root, .solo-lite-layout),
+:root[data-trae-skin-active="true"] :is(#solo-lite-root, .solo-lite-layout) {
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .task-list-panel,
+:root[data-trae-skin-active="true"] .task-list-panel {
+  background: color-mix(in srgb, var(--trae-skin-panel) var(--trae-skin-sidebar-mix), transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.08);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .session-panel,
+:root[data-trae-skin-active="true"] .session-panel {
+  background: color-mix(in srgb, var(--trae-skin-panel) var(--trae-skin-surface-mix), transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.04);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .solo-lite-chat-panel-container,
+  .solo-lite-chat-panel,
+  .solo-lite-chat-container,
+  .ai-chat.chat-session,
+  .virtualized-message-list-view
+),
+:root[data-trae-skin-active="true"] :is(
+  .solo-lite-chat-panel-container,
+  .solo-lite-chat-panel,
+  .solo-lite-chat-container,
+  .ai-chat.chat-session,
+  .virtualized-message-list-view
+) {
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .solo-lite-chat-panel-container,
+:root[data-trae-skin-active="true"] .solo-lite-chat-panel-container {
+  background: color-mix(in srgb, var(--trae-skin-panel) var(--trae-skin-surface-mix), transparent) !important;
+  border-color: var(--trae-skin-line) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.04);
+}
+
+/* Code and Design use a separate home panel instead of the Work session
+   panel. Keep its full-width surface readable, without turning the nested
+   input and suggestion row into another framed page section. */
+:root:is(.trae-dream-skin, .trae-skin-active) #solo-lite-root .panel-content,
+:root[data-trae-skin-active="true"] #solo-lite-root .panel-content {
+  background: color-mix(in srgb, var(--trae-skin-panel) var(--trae-skin-surface-mix), transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.04);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) #solo-lite-root :is(
+  .panel-container,
+  .initial-chat-panel,
+  .initial-chat-panel-content,
+  .showcaseWrapper,
+  .showcase-content-wrapper
+),
+:root[data-trae-skin-active="true"] #solo-lite-root :is(
+  .panel-container,
+  .initial-chat-panel,
+  .initial-chat-panel-content,
+  .showcaseWrapper,
+  .showcase-content-wrapper
+) {
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) #solo-lite-root .showcaseWrapper :is(
+  [class^="chip-"],
+  [class*=" chip-"]
+),
+:root[data-trae-skin-active="true"] #solo-lite-root .showcaseWrapper :is(
+  [class^="chip-"],
+  [class*=" chip-"]
+) {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 92%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) #solo-lite-root .showcaseWrapper :is(
+  [class^="card-"],
+  [class*=" card-"]
+),
+:root[data-trae-skin-active="true"] #solo-lite-root .showcaseWrapper :is(
+  [class^="card-"],
+  [class*=" card-"]
+) {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 94%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) #solo-lite-root .showcaseWrapper :is(
+  [class^="cardTitle-"],
+  [class*=" cardTitle-"]
+),
+:root[data-trae-skin-active="true"] #solo-lite-root .showcaseWrapper :is(
+  [class^="cardTitle-"],
+  [class*=" cardTitle-"]
+) {
+  color: var(--trae-skin-text) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) #solo-lite-root .showcaseWrapper :is(
+  [class^="cardDescription-"],
+  [class*=" cardDescription-"]
+),
+:root[data-trae-skin-active="true"] #solo-lite-root .showcaseWrapper :is(
+  [class^="cardDescription-"],
+  [class*=" cardDescription-"]
+) {
+  color: var(--trae-skin-muted) !important;
+}
+
+/* Design's first-run callout is rendered through a portal outside
+   #solo-lite-root, so it needs its own tightly named theme scope. */
+:root:is(.trae-dream-skin, .trae-skin-active) [class*="__onboardingCard___"],
+:root[data-trae-skin-active="true"] [class*="__onboardingCard___"] {
+  background: var(--trae-skin-panel) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+  box-shadow: var(--trae-skin-shadow) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) [class*="__onboardingTitle___"],
+:root[data-trae-skin-active="true"] [class*="__onboardingTitle___"] {
+  color: var(--trae-skin-text) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) [class*="__onboardingDescription___"],
+:root[data-trae-skin-active="true"] [class*="__onboardingDescription___"] {
+  color: var(--trae-skin-muted) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) [class*="__onboardingButton___"],
+:root[data-trae-skin-active="true"] [class*="__onboardingButton___"] {
+  background: var(--trae-skin-accent) !important;
+  color: var(--trae-skin-on-accent) !important;
+  border-color: transparent !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .turn__user-message,
+:root[data-trae-skin-active="true"] .turn__user-message {
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) [data-trae-skin-role="user-message"],
+:root[data-trae-skin-active="true"] [data-trae-skin-role="user-message"] {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 16%, var(--trae-skin-panel)) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid color-mix(in srgb, var(--trae-skin-accent-alt) 34%, transparent) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--trae-skin-bg) 12%, transparent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .turn__agent-message,
+:root[data-trae-skin-active="true"] .turn__agent-message {
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .session-panel-input,
+  .messageInputContainer,
+  .chat-input-v2-container
+),
+:root[data-trae-skin-active="true"] :is(
+  .session-panel-input,
+  .messageInputContainer,
+  .chat-input-v2-container
+) {
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .session-panel-input,
+  .messageInputContainer,
+  .chat-input-v2-container
+)::before,
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .session-panel-input,
+  .messageInputContainer,
+  .chat-input-v2-container
+)::after,
+:root[data-trae-skin-active="true"] :is(
+  .session-panel-input,
+  .messageInputContainer,
+  .chat-input-v2-container
+)::before,
+:root[data-trae-skin-active="true"] :is(
+  .session-panel-input,
+  .messageInputContainer,
+  .chat-input-v2-container
+)::after {
+  content: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) [data-trae-skin-surface="composer"],
+:root[data-trae-skin-active="true"] [data-trae-skin-surface="composer"] {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 84%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid var(--trae-skin-line) !important;
+  border-radius: max(4px, var(--trae-skin-radius)) !important;
+  box-shadow: var(--trae-skin-shadow) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.04) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) [role="textbox"].chat-input-v2-input-box-editable,
+:root[data-trae-skin-active="true"] [role="textbox"].chat-input-v2-input-box-editable {
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+  caret-color: var(--trae-skin-accent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .chat-input-v2-send-button,
+:root[data-trae-skin-active="true"] .chat-input-v2-send-button {
+  background: var(--trae-skin-accent) !important;
+  color: var(--trae-skin-on-accent) !important;
+  border-color: transparent !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .mode-switcher-btn,
+:root[data-trae-skin-active="true"] .mode-switcher-btn {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 92%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .mode-switcher-btn > [aria-hidden="true"],
+:root[data-trae-skin-active="true"] .mode-switcher-btn > [aria-hidden="true"] {
+  background: var(--trae-skin-accent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .mode-switcher-btn [role="tab"],
+:root[data-trae-skin-active="true"] .mode-switcher-btn [role="tab"] {
+  color: var(--trae-skin-muted) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .mode-switcher-btn [role="tab"][aria-selected="true"],
+:root[data-trae-skin-active="true"] .mode-switcher-btn [role="tab"][aria-selected="true"] {
+  color: var(--trae-skin-on-accent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .task-list-panel button,
+:root[data-trae-skin-active="true"] .task-list-panel button {
+  color: var(--trae-skin-text) !important;
+}
+
+/* Native controls use TRAE's own component tree, but inherit one semantic
+   palette so icons, tooltips and task utilities cannot stay on the old shell. */
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"]
+),
+:root[data-trae-skin-active="true"] :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"]
+) {
+  background: transparent !important;
+  color: var(--trae-skin-muted) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"]
+):not(:disabled):hover,
+:root[data-trae-skin-active="true"] :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"]
+):not(:disabled):hover {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 12%, transparent) !important;
+  color: var(--trae-skin-accent-alt) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"],
+  .inputBarButton,
+  .taskTreeBtnWork,
+  .taskTreeBtnCode,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-heading-action-btn
+) :is(svg, svg *),
+:root[data-trae-skin-active="true"] :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"],
+  .inputBarButton,
+  .taskTreeBtnWork,
+  .taskTreeBtnCode,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-heading-action-btn
+) :is(svg, svg *) {
+  color: currentColor !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .inputBarContainer,
+:root[data-trae-skin-active="true"] .inputBarContainer {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .inputBarButton,
+:root[data-trae-skin-active="true"] .inputBarButton {
+  background: color-mix(in srgb, var(--trae-skin-panel) 48%, transparent) !important;
+  color: var(--trae-skin-muted) !important;
+  border: 1px solid color-mix(in srgb, var(--trae-skin-line) 60%, transparent) !important;
+  border-radius: 6px !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .inputBarButton:hover,
+:root[data-trae-skin-active="true"] .inputBarButton:hover {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 12%, var(--trae-skin-panel)) !important;
+  color: var(--trae-skin-accent-alt) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-accent-alt) 42%, transparent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .taskTreeBtnWork,
+  .taskTreeBtnCode,
+  .taskMoreBtn,
+  .taskIconBtnActive,
+  .task-list-group-new-btn,
+  .task-list-heading-action-btn
+),
+:root[data-trae-skin-active="true"] :is(
+  .taskTreeBtnWork,
+  .taskTreeBtnCode,
+  .taskMoreBtn,
+  .taskIconBtnActive,
+  .task-list-group-new-btn,
+  .task-list-heading-action-btn
+) {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 9%, transparent) !important;
+  color: var(--trae-skin-muted) !important;
+  border: 1px solid color-mix(in srgb, var(--trae-skin-line) 64%, transparent) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .taskTreeBtnWork,
+  .taskTreeBtnCode,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-heading-action-btn
+):hover,
+:root[data-trae-skin-active="true"] :is(
+  .taskTreeBtnWork,
+  .taskTreeBtnCode,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-heading-action-btn
+):hover {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 17%, transparent) !important;
+  color: var(--trae-skin-accent-alt) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .icube-tooltip-text.icube-simple-style,
+:root[data-trae-skin-active="true"] .icube-tooltip-text.icube-simple-style {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 97%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid var(--trae-skin-line) !important;
+  border-radius: 4px !important;
+  box-shadow: var(--trae-skin-shadow) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .icube-tooltip-down-flag,
+  .icube-tooltip-up-flag,
+  .icube-tooltip-left-flag,
+  .icube-tooltip-right-flag
+).icube-simple-style,
+:root[data-trae-skin-active="true"] :is(
+  .icube-tooltip-down-flag,
+  .icube-tooltip-up-flag,
+  .icube-tooltip-left-flag,
+  .icube-tooltip-right-flag
+).icube-simple-style {
+  color: var(--trae-skin-panel-alt) !important;
+}
+
+/* Home is a composition of native controls: a lightweight title, one
+   composer surface, action tabs and local case cards. The wallpaper remains
+   the page background instead of becoming another framed panel. */
+:root[data-trae-skin-route="home"] :is(
+  .initial-chat-panel,
+  .initial-chat-panel-content,
+  .showcaseWrapper,
+  .showcase-content-wrapper
+) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="home-title"] {
+  box-sizing: border-box;
+  justify-content: flex-start !important;
+  padding-inline: clamp(28px, 6vw, 76px) !important;
+  position: relative;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="home-title"] > * {
+  color: var(--trae-skin-text) !important;
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--trae-skin-bg) 68%, transparent);
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="home-title"] [class*="withTraeText-"] {
+  box-sizing: content-box !important;
+  padding-inline-end: 4px !important;
+  overflow: visible !important;
+  letter-spacing: 0 !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="home-title"]::after {
+  content: "";
+  position: absolute;
+  left: clamp(28px, 6vw, 76px);
+  bottom: -12px;
+  width: 56px;
+  height: 2px;
+  background: var(--trae-skin-accent);
+  box-shadow: 20px 0 0 var(--trae-skin-accent-alt);
+  pointer-events: none;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="home-composer"] {
+  position: relative;
+  z-index: 2;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="home-showcase"] {
+  margin-top: 20px !important;
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-tab"] {
+  background: color-mix(in srgb, var(--trae-skin-panel) 58%, transparent) !important;
+  color: var(--trae-skin-muted) !important;
+  border: 1px solid color-mix(in srgb, var(--trae-skin-line) 72%, transparent) !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(var(--trae-skin-blur));
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 140ms ease;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-tab"]:hover {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 14%, var(--trae-skin-panel)) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-accent-alt) 45%, transparent) !important;
+  transform: translateY(-1px);
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-tab"][class*="sceneTabActive"] {
+  background: color-mix(in srgb, var(--trae-skin-accent) 18%, var(--trae-skin-panel)) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-accent) 58%, transparent) !important;
+  box-shadow: inset 0 -2px var(--trae-skin-accent) !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-tab"] :is(
+  [class*="sceneTabIcon"],
+  [class*="sceneTabText"],
+  svg,
+  svg *
+) {
+  color: currentColor !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-panel"] {
+  background: color-mix(in srgb, var(--trae-skin-panel) 72%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid var(--trae-skin-line) !important;
+  border-radius: 8px !important;
+  box-shadow: var(--trae-skin-shadow) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.04) !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-panel"] :is(
+  [class*="casesPanelTitle"],
+  [class*="caseCardTitle"]
+) {
+  color: var(--trae-skin-text) !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-panel"] [class*="casesPanelClose"] {
+  color: var(--trae-skin-muted) !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-card"] [class*="caseCardImage"] {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 84%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--trae-skin-line) 72%, transparent) !important;
+  border-radius: 6px !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-card"] :is(
+  [class*="caseCardAction"],
+  [class*="caseCardViewBtn"]
+) {
+  background: var(--trae-skin-accent) !important;
+  color: var(--trae-skin-on-accent) !important;
+  border-radius: 6px !important;
+}
+
+:root[data-trae-skin-route="home"] [data-trae-skin-role="scene-card"] :is(
+  [class*="caseCardAction"],
+  [class*="caseCardViewBtn"]
+) :is(svg, svg *, span) {
+  color: currentColor !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .todo-progress-divider,
+  [class*="todo-progress-"],
+  [class*="core-reference-summary-card"]
+),
+:root[data-trae-skin-active="true"] :is(
+  .todo-progress-divider,
+  [class*="todo-progress-"],
+  [class*="core-reference-summary-card"]
+) {
+  color: var(--trae-skin-muted) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .todo-progress-divider,
+  [class*="todo-progress-"]
+) :is(svg, svg *),
+:root[data-trae-skin-active="true"] :is(
+  .todo-progress-divider,
+  [class*="todo-progress-"]
+) :is(svg, svg *) {
+  color: var(--trae-skin-accent-alt) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .markdown-renderer :is(strong, b),
+:root[data-trae-skin-active="true"] .markdown-renderer :is(strong, b) {
+  color: var(--trae-skin-text) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .markdown-renderer code,
+:root[data-trae-skin-active="true"] .markdown-renderer code {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 88%, transparent) !important;
+  color: var(--trae-skin-accent-alt) !important;
+  border: 1px solid var(--trae-skin-line);
+  border-radius: 4px;
+}
+
+/* VS Code variables are scoped to the workbench because TRAE sets many of
+   them inline there instead of inheriting them from documentElement. */
+:root:is(.trae-dream-skin, .trae-skin-active) .monaco-workbench,
+:root[data-trae-skin-active="true"] .monaco-workbench {
+  --vscode-foreground: var(--trae-skin-text) !important;
+  --vscode-descriptionForeground: var(--trae-skin-muted) !important;
+  --vscode-focusBorder: var(--trae-skin-accent) !important;
+  --vscode-selection-background: var(--trae-skin-selection) !important;
+  --vscode-editor-background: transparent !important;
+  --vscode-sideBar-background: transparent !important;
+  --vscode-activityBar-background: transparent !important;
+  --vscode-panel-background: transparent !important;
+  --vscode-titleBar-activeBackground: transparent !important;
+  --vscode-statusBar-background: transparent !important;
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .monaco-workbench > .part,
+:root[data-trae-skin-active="true"] .monaco-workbench > .part {
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .monaco-workbench > .part:is(.activitybar, .sidebar, .auxiliarybar),
+:root[data-trae-skin-active="true"] .monaco-workbench > .part:is(.activitybar, .sidebar, .auxiliarybar),
+:root:is(.trae-dream-skin, .trae-skin-active) :is(#root, #app) :is([role="navigation"], [role="complementary"]),
+:root[data-trae-skin-active="true"] :is(#root, #app) :is([role="navigation"], [role="complementary"]) {
+  background: color-mix(in srgb, var(--trae-skin-panel) var(--trae-skin-sidebar-mix), transparent) !important;
+  border-color: var(--trae-skin-line) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.08);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .monaco-workbench > .part:is(.editor, .panel),
+:root[data-trae-skin-active="true"] .monaco-workbench > .part:is(.editor, .panel),
+:root:is(.trae-dream-skin, .trae-skin-active) :is(#root, #app) > :first-child > [role="main"],
+:root[data-trae-skin-active="true"] :is(#root, #app) > :first-child > [role="main"] {
+  background: color-mix(in srgb, var(--trae-skin-panel) var(--trae-skin-surface-mix), transparent) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.04);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .monaco-workbench > .part.titlebar,
+:root[data-trae-skin-active="true"] .monaco-workbench > .part.titlebar {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 92%, transparent) !important;
+  border-bottom: 1px solid var(--trae-skin-line) !important;
+  backdrop-filter: blur(var(--trae-skin-blur));
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .monaco-workbench > .part.statusbar,
+:root[data-trae-skin-active="true"] .monaco-workbench > .part.statusbar {
+  background: color-mix(in srgb, var(--trae-skin-panel) 96%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-top: 1px solid var(--trae-skin-accent) !important;
+}
+
+/* Editors stay quiet and readable over the image-backed shell. */
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .editor-group-container,
+  .editor-instance,
+  .monaco-editor,
+  .monaco-editor-background,
+  .monaco-editor .margin,
+  .diff-editor .editor.modified,
+  .diff-editor .editor.original
+),
+:root[data-trae-skin-active="true"] :is(
+  .editor-group-container,
+  .editor-instance,
+  .monaco-editor,
+  .monaco-editor-background,
+  .monaco-editor .margin,
+  .diff-editor .editor.modified,
+  .diff-editor .editor.original
+) {
+  background-color: transparent !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(.editor-group-container, .terminal-wrapper),
+:root[data-trae-skin-active="true"] :is(.editor-group-container, .terminal-wrapper) {
+  background: color-mix(in srgb, var(--trae-skin-panel) 94%, transparent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(.tabs-container, .editor-actions),
+:root[data-trae-skin-active="true"] :is(.tabs-container, .editor-actions) {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 92%, transparent) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .tabs-container .tab,
+:root[data-trae-skin-active="true"] .tabs-container .tab {
+  background: transparent !important;
+  color: var(--trae-skin-muted) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .tabs-container .tab.active,
+:root[data-trae-skin-active="true"] .tabs-container .tab.active {
+  background: color-mix(in srgb, var(--trae-skin-panel) 94%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  box-shadow: inset 0 2px var(--trae-skin-accent);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(.pane-header, .composite.title, .panel .title),
+:root[data-trae-skin-active="true"] :is(.pane-header, .composite.title, .panel .title) {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 88%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(.monaco-list-row.focused, .monaco-list-row.selected),
+:root[data-trae-skin-active="true"] :is(.monaco-list-row.focused, .monaco-list-row.selected) {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 20%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  box-shadow: inset 2px 0 var(--trae-skin-accent);
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .monaco-list-row:hover,
+:root[data-trae-skin-active="true"] .monaco-list-row:hover {
+  background: color-mix(in srgb, var(--trae-skin-accent) 11%, transparent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(.activitybar .badge-content, .monaco-count-badge),
+:root[data-trae-skin-active="true"] :is(.activitybar .badge-content, .monaco-count-badge) {
+  background: var(--trae-skin-accent) !important;
+  color: var(--trae-skin-on-accent) !important;
+}
+
+/* Floating workbench UI must remain opaque enough to read. */
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  .quick-input-widget,
+  .suggest-widget,
+  .monaco-hover,
+  .monaco-dialog-box,
+  .notifications-center,
+  .notifications-toasts .notification-toast,
+  .context-view .monaco-menu,
+  .monaco-dialog-box,
+  .icd-modal-content,
+  .icd-modal-v2-content,
+  [role="menu"],
+  [role="listbox"]
+),
+:root[data-trae-skin-active="true"] :is(
+  .quick-input-widget,
+  .suggest-widget,
+  .monaco-hover,
+  .monaco-dialog-box,
+  .notifications-center,
+  .notifications-toasts .notification-toast,
+  .context-view .monaco-menu,
+  .monaco-dialog-box,
+  .icd-modal-content,
+  .icd-modal-v2-content,
+  [role="menu"],
+  [role="listbox"]
+) {
+  background: color-mix(in srgb, var(--trae-skin-panel) 97%, var(--trae-skin-bg)) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid var(--trae-skin-line) !important;
+  border-radius: var(--trae-skin-radius) !important;
+  box-shadow: var(--trae-skin-shadow) !important;
+  backdrop-filter: blur(var(--trae-skin-blur));
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  .monaco-inputbox
+),
+:root[data-trae-skin-active="true"] :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  .monaco-inputbox
+) {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 96%, transparent) !important;
+  color: var(--trae-skin-text) !important;
+  border-color: var(--trae-skin-line) !important;
+  caret-color: var(--trae-skin-accent) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(button, a, input, textarea, select, [tabindex]):focus-visible,
+:root[data-trae-skin-active="true"] :is(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--trae-skin-accent) !important;
+  outline-offset: 1px !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) :is(a, .monaco-link),
+:root[data-trae-skin-active="true"] :is(a, .monaco-link) {
+  color: var(--trae-skin-accent-alt) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) .xterm .xterm-viewport,
+:root[data-trae-skin-active="true"] .xterm .xterm-viewport {
+  background-color: var(--trae-skin-terminal) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active) ::selection,
+:root[data-trae-skin-active="true"] ::selection {
+  background: var(--trae-skin-selection) !important;
+}
+
+:root:is(.trae-dream-skin, .trae-skin-active),
+:root:is(.trae-dream-skin, .trae-skin-active) *,
+:root[data-trae-skin-active="true"],
+:root[data-trae-skin-active="true"] * {
+  scrollbar-color: var(--trae-skin-accent-alt) transparent;
+}
+
+/* Sunlit Spark uses the same immersive shell model as Violet Rift, with
+   restrained translucent light surfaces over the full illustrated scene. */
+:root[data-trae-skin-theme="sunlit-spark"] {
+  --trae-skin-on-accent: #ffffff;
+  --trae-skin-shadow: 0 16px 38px rgba(50, 61, 65, 0.16), 0 0 24px rgba(22, 143, 136, 0.06);
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] body::before {
+  opacity: 1 !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] body::after {
+  background: var(--trae-skin-overlay) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] :is(#solo-lite-root, .solo-lite-layout) {
+  background: transparent !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .task-list-panel {
+  background: rgba(255, 253, 248, 0.90) !important;
+  border-right: 1px solid rgba(22, 143, 136, 0.23) !important;
+  box-shadow: 12px 0 34px rgba(54, 71, 73, 0.10) !important;
+  backdrop-filter: blur(16px) saturate(1.02) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .mode-switcher-btn {
+  background: rgba(255, 253, 248, 0.70) !important;
+  border: 1px solid rgba(37, 49, 57, 0.14) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(10px);
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .mode-switcher-btn [role="tab"] {
+  color: var(--trae-skin-muted) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .mode-switcher-btn [role="tab"][aria-selected="true"] {
+  color: #ffffff !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .mode-switcher-btn > [aria-hidden="true"] {
+  background: linear-gradient(135deg, #df5c58, #bd403f) !important;
+  box-shadow: 0 5px 14px rgba(223, 92, 88, 0.18) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .session-panel {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] :is(
+  .solo-lite-chat-panel-container,
+  .solo-lite-chat-panel,
+  .solo-lite-chat-container,
+  .ai-chat.chat-session,
+  .virtualized-message-list-view
+) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] #solo-lite-root .panel-content {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] [data-trae-skin-role="user-message"] {
+  background: rgba(255, 231, 213, 0.76) !important;
+  border: 1px solid rgba(223, 92, 88, 0.24) !important;
+  box-shadow: 0 8px 20px rgba(71, 69, 58, 0.08) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .turn__agent-message {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.88), 0 0 10px rgba(255, 253, 248, 0.72);
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] [data-trae-skin-surface="composer"] {
+  background: rgba(255, 253, 248, 0.82) !important;
+  border: 1px solid rgba(22, 143, 136, 0.34) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 16px 38px rgba(50, 61, 65, 0.16), inset 0 1px rgba(255, 255, 255, 0.64) !important;
+  backdrop-filter: blur(18px) saturate(1.03) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] [role="textbox"].chat-input-v2-input-box-editable {
+  color: #253139 !important;
+  caret-color: #168f88 !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .chat-input-v2-send-button {
+  background: linear-gradient(145deg, #df5c58, #bd403f) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(121, 41, 40, 0.16) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 7px 18px rgba(223, 92, 88, 0.20) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .markdown-renderer code {
+  background: rgba(22, 143, 136, 0.08) !important;
+  color: #08736e !important;
+  border-color: rgba(22, 143, 136, 0.18) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .task-list-panel :is(
+  .taskItemSelected,
+  .taskItemActive,
+  [role="treeitem"][aria-selected="true"]
+) {
+  background: rgba(22, 143, 136, 0.10) !important;
+  box-shadow: inset 2px 0 #168f88 !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] #solo-lite-root .showcaseWrapper :is(
+  [class^="chip-"],
+  [class*=" chip-"]
+) {
+  background: rgba(255, 253, 248, 0.78) !important;
+  border-color: rgba(37, 49, 57, 0.16) !important;
+  color: #253139 !important;
+  box-shadow: 0 8px 20px rgba(50, 61, 65, 0.10) !important;
+  backdrop-filter: blur(10px);
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] #solo-lite-root .showcaseWrapper :is(
+  [class^="card-"],
+  [class*=" card-"]
+) {
+  background: rgba(255, 253, 248, 0.72) !important;
+  border-color: rgba(37, 49, 57, 0.16) !important;
+  color: #253139 !important;
+  box-shadow: 0 14px 30px rgba(50, 61, 65, 0.13) !important;
+  backdrop-filter: blur(12px);
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] [class*="__onboardingCard___"] {
+  background: rgba(255, 253, 248, 0.95) !important;
+  border-color: rgba(22, 143, 136, 0.24) !important;
+  box-shadow: 0 22px 54px rgba(50, 61, 65, 0.20) !important;
+  backdrop-filter: blur(20px);
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .monaco-workbench > .part:is(.activitybar, .sidebar, .auxiliarybar) {
+  background: rgba(255, 253, 248, 0.91) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"][data-trae-skin-shell="dark"] :is(
+  .editor-group-container,
+  .editor-instance,
+  .monaco-editor,
+  .monaco-editor-background,
+  .monaco-editor .margin,
+  .terminal-wrapper
+) {
+  background-color: rgba(32, 41, 50, 0.97) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"][data-trae-skin-shell="light"] :is(
+  .editor-group-container,
+  .editor-instance,
+  .monaco-editor,
+  .monaco-editor-background,
+  .monaco-editor .margin
+) {
+  background-color: rgba(255, 253, 248, 0.96) !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .tabs-container .tab.active {
+  background: rgba(255, 253, 248, 0.94) !important;
+  box-shadow: inset 0 2px #df5c58 !important;
+}
+
+:root[data-trae-skin-theme="sunlit-spark"] .monaco-workbench > .part.statusbar {
+  background: rgba(245, 246, 239, 0.94) !important;
+  border-top: 1px solid rgba(22, 143, 136, 0.28) !important;
+}
+
+@media (max-width: 900px) {
+  :root[data-trae-skin-theme="sunlit-spark"] {
+    --trae-skin-art-position: 66% center !important;
+  }
+
+  :root[data-trae-skin-theme="sunlit-spark"] body::after {
+    background:
+      linear-gradient(90deg, rgba(255, 250, 239, 0.84) 0%, rgba(255, 250, 239, 0.58) 56%, rgba(255, 250, 239, 0.18) 100%),
+      linear-gradient(0deg, rgba(255, 250, 239, 0.56) 0%, transparent 60%) !important;
+  }
+}
+
+/* Violet Rift keeps the wallpaper full-bleed and lets the real application
+   recede into a small set of translucent reading and control layers. */
+:root[data-trae-skin-theme="violet-rift"] {
+  --trae-skin-on-accent: #ffffff;
+  --trae-skin-shadow: 0 18px 46px rgba(0, 0, 0, 0.42), 0 0 28px rgba(92, 74, 190, 0.08);
+}
+
+:root[data-trae-skin-theme="violet-rift"] body::before {
+  opacity: 1 !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] body::after {
+  background: var(--trae-skin-overlay) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] :is(#solo-lite-root, .solo-lite-layout) {
+  background: transparent !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .task-list-panel {
+  background: rgba(5, 6, 17, 0.90) !important;
+  border-right: 1px solid rgba(139, 113, 255, 0.23) !important;
+  box-shadow: 12px 0 38px rgba(0, 0, 0, 0.22) !important;
+  backdrop-filter: blur(18px) saturate(1.06) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .mode-switcher-btn {
+  background: rgba(12, 13, 31, 0.72) !important;
+  border: 1px solid rgba(139, 113, 255, 0.18) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(12px);
+}
+
+:root[data-trae-skin-theme="violet-rift"] .mode-switcher-btn [role="tab"] {
+  color: var(--trae-skin-muted) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .mode-switcher-btn [role="tab"][aria-selected="true"] {
+  color: #ffffff !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .mode-switcher-btn > [aria-hidden="true"] {
+  background: linear-gradient(135deg, #8268ff, #5642b7) !important;
+  box-shadow: 0 0 18px rgba(130, 104, 255, 0.30) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .session-panel {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] :is(
+  .solo-lite-chat-panel-container,
+  .solo-lite-chat-panel,
+  .solo-lite-chat-container,
+  .ai-chat.chat-session,
+  .virtualized-message-list-view
+) {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] #solo-lite-root .panel-content {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] [data-trae-skin-role="user-message"] {
+  background: rgba(86, 66, 183, 0.20) !important;
+  border: 1px solid rgba(139, 113, 255, 0.28) !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.16) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .turn__agent-message {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.94), 0 0 10px rgba(1, 2, 10, 0.76);
+}
+
+:root[data-trae-skin-theme="violet-rift"] [data-trae-skin-surface="composer"] {
+  background: rgba(8, 9, 24, 0.82) !important;
+  border: 1px solid rgba(139, 113, 255, 0.35) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42), inset 0 1px rgba(255, 255, 255, 0.045) !important;
+  backdrop-filter: blur(20px) saturate(1.08) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] [role="textbox"].chat-input-v2-input-box-editable {
+  color: #f4f4ff !important;
+  caret-color: #55d6ff !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .chat-input-v2-send-button {
+  background: linear-gradient(145deg, #8268ff, #5541b5) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(185, 166, 255, 0.32) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 22px rgba(130, 104, 255, 0.28) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .markdown-renderer code {
+  background: rgba(85, 214, 255, 0.08) !important;
+  color: #75ddff !important;
+  border-color: rgba(85, 214, 255, 0.20) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .task-list-panel :is(
+  .taskItemSelected,
+  .taskItemActive,
+  [role="treeitem"][aria-selected="true"]
+) {
+  background: rgba(86, 66, 183, 0.19) !important;
+  box-shadow: inset 2px 0 #8268ff !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] #solo-lite-root .showcaseWrapper :is(
+  [class^="chip-"],
+  [class*=" chip-"]
+) {
+  background: rgba(12, 13, 31, 0.76) !important;
+  border-color: rgba(139, 113, 255, 0.24) !important;
+  color: #f4f4ff !important;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.18) !important;
+  backdrop-filter: blur(12px);
+}
+
+:root[data-trae-skin-theme="violet-rift"] #solo-lite-root .showcaseWrapper :is(
+  [class^="card-"],
+  [class*=" card-"]
+) {
+  background: rgba(9, 10, 27, 0.70) !important;
+  border-color: rgba(139, 113, 255, 0.22) !important;
+  color: #f4f4ff !important;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(14px);
+}
+
+:root[data-trae-skin-theme="violet-rift"] [class*="__onboardingCard___"] {
+  background: rgba(8, 9, 24, 0.95) !important;
+  border-color: rgba(139, 113, 255, 0.30) !important;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.50) !important;
+  backdrop-filter: blur(22px);
+}
+
+:root[data-trae-skin-theme="violet-rift"] .monaco-workbench > .part:is(.activitybar, .sidebar, .auxiliarybar) {
+  background: rgba(5, 6, 17, 0.91) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] :is(
+  .editor-group-container,
+  .editor-instance,
+  .monaco-editor,
+  .monaco-editor-background,
+  .monaco-editor .margin,
+  .terminal-wrapper
+) {
+  background-color: rgba(6, 7, 17, 0.94) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .tabs-container .tab.active {
+  background: rgba(15, 16, 35, 0.94) !important;
+  box-shadow: inset 0 2px #8268ff, 0 0 20px rgba(86, 66, 183, 0.10) !important;
+}
+
+:root[data-trae-skin-theme="violet-rift"] .monaco-workbench > .part.statusbar {
+  background: rgba(7, 8, 20, 0.94) !important;
+  border-top: 1px solid rgba(139, 113, 255, 0.30) !important;
+}
+
+@media (max-width: 900px) {
+  :root[data-trae-skin-theme="violet-rift"] {
+    --trae-skin-art-position: 68% center !important;
+  }
+
+  :root[data-trae-skin-theme="violet-rift"] body::after {
+    background:
+      linear-gradient(90deg, rgba(2, 3, 12, 0.91) 0%, rgba(4, 5, 17, 0.73) 55%, rgba(5, 6, 20, 0.30) 100%),
+      linear-gradient(0deg, rgba(3, 4, 14, 0.82) 0%, transparent 66%) !important;
+  }
+}
+
+/* Spark Atelier is a structural skin: paper layers, indexed mode tabs,
+   notebook surfaces, collage cards and an original illustrated shell. */
+:root[data-trae-skin-theme="spark-atelier"] {
+  --trae-skin-display-font: ui-rounded, "SF Pro Rounded", "Segoe UI Variable Display", system-ui, sans-serif;
+  --trae-skin-on-accent: #ffffff;
+  --trae-skin-shadow: 5px 6px 0 rgba(39, 48, 59, 0.10), 0 14px 30px rgba(39, 48, 59, 0.08);
+  --spark-coral: #e85855;
+  --spark-teal: #168f88;
+  --spark-yellow: #f4c84a;
+  --spark-blue: #4a9fd8;
+  --spark-ink: #27303b;
+  --spark-paper: #fffdf7;
+}
+
+:root[data-trae-skin-theme="spark-atelier"][data-trae-skin-mode="work"] {
+  --trae-skin-art-opacity: 0.28 !important;
+  --trae-skin-art-position: 78% center !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"]:is(
+  [data-trae-skin-mode="code"],
+  [data-trae-skin-mode="design"]
+) {
+  --trae-skin-art-opacity: 0.96 !important;
+  --trae-skin-art-position: center center !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"][data-trae-skin-view="workbench"] {
+  --trae-skin-art-opacity: 0.08 !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] body::after {
+  background: var(--trae-skin-overlay) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] :is(#solo-lite-root, .solo-lite-layout) {
+  background: transparent !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .task-list-panel {
+  position: relative;
+  background-color: rgba(255, 253, 247, 0.94) !important;
+  background-image:
+    radial-gradient(circle at 14px 14px, rgba(22, 143, 136, 0.12) 1.2px, transparent 1.3px) !important;
+  background-size: 22px 22px !important;
+  border-right: 2px dashed rgba(22, 143, 136, 0.30) !important;
+  box-shadow: 7px 0 0 rgba(244, 200, 74, 0.14) !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .task-list-panel::before {
+  content: "";
+  position: absolute;
+  top: 78px;
+  right: -5px;
+  width: 12px;
+  height: 74px;
+  border-radius: 4px;
+  background: var(--spark-coral);
+  box-shadow: 0 82px 0 var(--spark-teal), 0 164px 0 var(--spark-yellow);
+  opacity: 0.82;
+  pointer-events: none;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .mode-switcher-btn {
+  gap: 4px !important;
+  padding: 3px !important;
+  background: rgba(255, 253, 247, 0.82) !important;
+  border: 1px solid rgba(39, 48, 59, 0.14) !important;
+  border-radius: 6px !important;
+  box-shadow: 3px 3px 0 rgba(39, 48, 59, 0.08) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .mode-switcher-btn > [aria-hidden="true"] {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"] {
+  position: relative;
+  min-width: 0;
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
+  color: var(--spark-ink) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"][data-trae-skin-index="0"] {
+  background: rgba(232, 88, 85, 0.12) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"][data-trae-skin-index="1"] {
+  background: rgba(22, 143, 136, 0.12) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"][data-trae-skin-index="2"] {
+  background: rgba(244, 200, 74, 0.20) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"][aria-selected="true"] {
+  color: #ffffff !important;
+  border-color: rgba(39, 48, 59, 0.18) !important;
+  box-shadow: 2px 3px 0 rgba(39, 48, 59, 0.14) !important;
+  transform: translateY(-1px) rotate(-1deg);
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"][data-trae-skin-index="0"][aria-selected="true"] {
+  background: var(--spark-coral) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"][data-trae-skin-index="1"][aria-selected="true"] {
+  background: var(--spark-teal) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="mode-tab"][data-trae-skin-index="2"][aria-selected="true"] {
+  background: #d6a91e !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"][data-trae-skin-mode="work"] .session-panel {
+  background-color: rgba(255, 253, 247, 0.96) !important;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(74, 159, 216, 0.075) 31px, rgba(74, 159, 216, 0.075) 32px) !important;
+  border: 1px solid rgba(39, 48, 59, 0.18) !important;
+  border-left: 4px solid rgba(232, 88, 85, 0.72) !important;
+  border-radius: 6px !important;
+  box-shadow: 6px 7px 0 rgba(22, 143, 136, 0.10) !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] #solo-lite-root .panel-content {
+  background: rgba(255, 253, 247, 0.74) !important;
+  border: 1px solid rgba(39, 48, 59, 0.16) !important;
+  border-radius: 6px !important;
+  box-shadow: 6px 7px 0 rgba(232, 88, 85, 0.08) !important;
+  backdrop-filter: blur(2px) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] :is(
+  .session-panel-input,
+  .messageInputContainer,
+  .chat-input-v2-container
+) {
+  position: relative;
+  overflow: visible !important;
+  background: rgba(255, 253, 247, 0.97) !important;
+  border: 2px solid rgba(22, 143, 136, 0.58) !important;
+  border-radius: 6px !important;
+  outline: 1px solid rgba(39, 48, 59, 0.15);
+  outline-offset: 4px;
+  box-shadow: 6px 8px 0 rgba(39, 48, 59, 0.12) !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] :is(
+  .messageInputContainer,
+  .chat-input-v2-container
+)::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: 48%;
+  width: 78px;
+  height: 14px;
+  background: rgba(244, 200, 74, 0.68);
+  border: 1px solid rgba(201, 145, 22, 0.20);
+  transform: rotate(-2deg);
+  pointer-events: none;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] :is(
+  .messageInputContainer,
+  .chat-input-v2-container
+)::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -5px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--spark-coral) 0 25%, var(--spark-teal) 25% 50%, var(--spark-yellow) 50% 75%, var(--spark-blue) 75% 100%);
+  pointer-events: none;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .chat-input-v2-send-button {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  background: var(--spark-coral) !important;
+  color: #ffffff !important;
+  box-shadow: 3px 3px 0 rgba(39, 48, 59, 0.16) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .turn__user-message {
+  position: relative;
+  background: #fff1b8 !important;
+  border: 1px solid rgba(201, 145, 22, 0.34) !important;
+  border-radius: 4px !important;
+  box-shadow: 3px 4px 0 rgba(39, 48, 59, 0.08) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .turn__user-message::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 18px;
+  width: 46px;
+  height: 10px;
+  background: rgba(74, 159, 216, 0.34);
+  transform: rotate(2deg);
+  pointer-events: none;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .turn__agent-message {
+  background: transparent !important;
+  border-left: 2px solid rgba(22, 143, 136, 0.26) !important;
+  padding-left: 14px;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .markdown-renderer code {
+  background: rgba(22, 143, 136, 0.09) !important;
+  color: #08736e !important;
+  border-color: rgba(22, 143, 136, 0.26) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-chip"] {
+  border: 1px solid rgba(39, 48, 59, 0.18) !important;
+  border-radius: 6px !important;
+  box-shadow: 2px 3px 0 rgba(39, 48, 59, 0.08) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-chip"][data-trae-skin-index="0"] {
+  background: #ffe3dd !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-chip"][data-trae-skin-index="1"] {
+  background: #dff4ee !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-chip"][data-trae-skin-index="2"] {
+  background: #e4f1fb !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-chip"][data-trae-skin-index="3"] {
+  background: #fff1b8 !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"] {
+  position: relative;
+  overflow: visible !important;
+  border: 2px solid rgba(39, 48, 59, 0.18) !important;
+  border-radius: 6px !important;
+  box-shadow: 5px 6px 0 rgba(39, 48, 59, 0.10) !important;
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"]::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: calc(50% - 28px);
+  width: 56px;
+  height: 13px;
+  border: 1px solid rgba(39, 48, 59, 0.10);
+  background: rgba(255, 255, 255, 0.58);
+  transform: rotate(-2deg);
+  pointer-events: none;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"]:hover {
+  transform: translateY(-2px) rotate(-0.35deg);
+  box-shadow: 7px 9px 0 rgba(39, 48, 59, 0.11) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"][data-trae-skin-index="0"] {
+  background: #ffe6df !important;
+  border-top-color: var(--spark-coral) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"][data-trae-skin-index="1"] {
+  background: #dcf2ec !important;
+  border-top-color: var(--spark-teal) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"][data-trae-skin-index="2"] {
+  background: #e3f1fb !important;
+  border-top-color: var(--spark-blue) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"][data-trae-skin-index="3"] {
+  background: #fff0b3 !important;
+  border-top-color: #d6a91e !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] [class*="__onboardingCard___"] {
+  background: #fffaf0 !important;
+  border: 2px solid rgba(39, 48, 59, 0.18) !important;
+  border-top: 8px solid rgba(244, 200, 74, 0.68) !important;
+  border-radius: 6px !important;
+  box-shadow: 8px 9px 0 rgba(39, 48, 59, 0.12) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .monaco-workbench > .part.titlebar {
+  border-bottom: 3px solid transparent !important;
+  border-image: linear-gradient(90deg, var(--spark-coral), var(--spark-teal), var(--spark-yellow), var(--spark-blue)) 1 !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .tabs-container .tab.active {
+  box-shadow: inset 0 3px var(--spark-coral), 3px 0 0 rgba(39, 48, 59, 0.05) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .monaco-workbench > .part.statusbar {
+  border-top: 3px solid var(--spark-teal) !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"][data-trae-skin-view="workbench"][data-trae-skin-shell="dark"] :is(
+  .editor-group-container,
+  .editor-instance,
+  .monaco-editor,
+  .monaco-editor-background,
+  .monaco-editor .margin,
+  .terminal-wrapper
+) {
+  background-color: #202932 !important;
+}
+
+#trae-dream-skin-chrome {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#trae-dream-skin-chrome .trae-skin-chrome-brand,
+#trae-dream-skin-chrome .trae-skin-chrome-status,
+#trae-dream-skin-chrome .trae-skin-chrome-doodles {
+  display: none;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] #trae-dream-skin-chrome .trae-skin-chrome-brand {
+  position: fixed;
+  top: 24px;
+  left: calc(24% + 34px);
+  width: min(330px, 31vw);
+  color: var(--spark-ink);
+  font-family: var(--trae-skin-display-font);
+}
+
+:root[data-trae-skin-theme="spark-atelier"]:is(
+  [data-trae-skin-mode="code"],
+  [data-trae-skin-mode="design"]
+)[data-trae-skin-view="solo"] #trae-dream-skin-chrome .trae-skin-chrome-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-chrome-brand span {
+  padding: 3px 7px;
+  border: 1px solid rgba(39, 48, 59, 0.16);
+  border-radius: 4px;
+  background: rgba(255, 253, 247, 0.76);
+  color: var(--spark-teal);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0;
+  box-shadow: 2px 2px 0 rgba(39, 48, 59, 0.08);
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-chrome-brand strong {
+  margin-top: 7px;
+  color: var(--spark-ink);
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-chrome-brand strong::after {
+  content: "";
+  display: block;
+  width: 72%;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 50%;
+  border-top: 3px solid var(--spark-coral);
+  transform: rotate(-1deg);
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-chrome-brand small {
+  margin-top: 3px;
+  color: var(--spark-teal);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+:root[data-trae-skin-theme="spark-atelier"][data-trae-skin-mode="work"] #trae-dream-skin-chrome .trae-skin-chrome-status {
+  display: flex;
+  position: fixed;
+  left: 18px;
+  bottom: 50px;
+  width: min(252px, calc(24vw - 36px));
+  min-width: 170px;
+  height: 48px;
+  padding: 8px 12px;
+  box-sizing: border-box;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid rgba(39, 48, 59, 0.16);
+  border-left: 6px solid var(--spark-yellow);
+  border-radius: 6px;
+  background: rgba(255, 253, 247, 0.90);
+  color: var(--spark-ink);
+  box-shadow: 4px 5px 0 rgba(39, 48, 59, 0.10);
+  font-family: var(--trae-skin-display-font);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-chrome-status i {
+  display: block;
+  width: 100%;
+  height: 5px;
+  margin-top: 5px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--spark-coral) 0 30%, var(--spark-teal) 30% 62%, var(--spark-yellow) 62% 84%, var(--spark-blue) 84% 100%);
+}
+
+:root[data-trae-skin-theme="spark-atelier"][data-trae-skin-mode="work"] .task-list-body-inner {
+  padding-bottom: 76px !important;
+}
+
+:root[data-trae-skin-theme="spark-atelier"]:is(
+  [data-trae-skin-mode="code"],
+  [data-trae-skin-mode="design"]
+)[data-trae-skin-view="solo"] #trae-dream-skin-chrome .trae-skin-chrome-doodles {
+  display: block;
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-doodle-spark {
+  position: fixed;
+  top: 88px;
+  left: 47%;
+  width: 18px;
+  height: 18px;
+  transform: rotate(12deg);
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-doodle-spark::before,
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-doodle-spark::after {
+  content: "";
+  position: absolute;
+  inset: 8px 0 auto;
+  height: 2px;
+  background: var(--spark-yellow);
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-doodle-spark::after {
+  transform: rotate(90deg);
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-doodle-loop {
+  position: fixed;
+  top: 64px;
+  right: 38%;
+  width: 44px;
+  height: 22px;
+  border-top: 2px dashed var(--spark-teal);
+  border-radius: 50%;
+  transform: rotate(8deg);
+}
+
+:root[data-trae-skin-theme="spark-atelier"] .trae-skin-doodle-tape {
+  position: fixed;
+  top: 16px;
+  right: 28px;
+  width: 72px;
+  height: 18px;
+  background: rgba(232, 88, 85, 0.36);
+  transform: rotate(4deg);
+}
+
+@media (max-width: 1100px) {
+  :root[data-trae-skin-theme="spark-atelier"]:is(
+    [data-trae-skin-mode="code"],
+    [data-trae-skin-mode="design"]
+  ) {
+    --trae-skin-art-position: 66% center !important;
+  }
+
+  :root[data-trae-skin-theme="spark-atelier"] .trae-skin-chrome-brand small {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  :root[data-trae-skin-theme="spark-atelier"] {
+    --trae-skin-art-opacity: 0.20 !important;
+  }
+
+  :root[data-trae-skin-theme="spark-atelier"] #trae-dream-skin-chrome .trae-skin-chrome-brand,
+  :root[data-trae-skin-theme="spark-atelier"] #trae-dream-skin-chrome .trae-skin-chrome-doodles {
+    display: none !important;
+  }
+
+  :root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"] {
+    transform: none !important;
+  }
+}
+
+@media (max-height: 700px) {
+  :root[data-trae-skin-theme="spark-atelier"] #trae-dream-skin-chrome .trae-skin-chrome-status {
+    display: none !important;
+  }
+
+  :root[data-trae-skin-theme="spark-atelier"] .task-list-body-inner {
+    padding-bottom: 0 !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-trae-skin-theme="spark-atelier"] [data-trae-skin-role="showcase-card"] {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Interaction system. TRAE renders many controls and portals through separate
+   component stacks, so every state resolves through the same semantic palette
+   while only the innermost visual owner receives a surface. */
+:root:is(
+  [data-trae-skin-theme="paper-aurora"],
+  [data-trae-skin-theme="sunlit-spark"],
+  [data-trae-skin-theme="spark-atelier"]
+) {
+  --trae-skin-tooltip-bg: #24484a;
+  --trae-skin-tooltip-text: #fffdf8;
+}
+
+:root[data-trae-skin-theme="violet-rift"] {
+  --trae-skin-tooltip-bg: #19172f;
+  --trae-skin-tooltip-text: #f4f4ff;
+}
+
+:root[data-trae-skin-theme="ember-glass"] {
+  --trae-skin-tooltip-bg: #392428;
+  --trae-skin-tooltip-text: #fff8f2;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  body,
+  #root,
+  #app,
+  #solo-lite-root,
+  .solo-lite-layout,
+  .task-list-panel,
+  .session-panel,
+  [role="tooltip"],
+  [role="menu"],
+  [role="listbox"],
+  [role="dialog"],
+  .popup-menu,
+  .popup-menu-tooltip,
+  .core-model-select-portal-content
+) {
+  --bg-bg-base-hover: var(--trae-skin-surface-hover) !important;
+  --bg-bg-base-active: var(--trae-skin-surface-active) !important;
+  --bg-bg-invert: var(--trae-skin-accent) !important;
+  --bg-bg-invert-hover: color-mix(in srgb, var(--trae-skin-accent) 84%, var(--trae-skin-accent-alt)) !important;
+  --bg-bg-invert-active: color-mix(in srgb, var(--trae-skin-accent) 82%, #000000) !important;
+  --bg-bg-invert-disabled: color-mix(in srgb, var(--trae-skin-disabled) 34%, transparent) !important;
+  --bg-bg-brand-disabled: color-mix(in srgb, var(--trae-skin-disabled) 34%, transparent) !important;
+  --bg-bg-menu: color-mix(in srgb, var(--trae-skin-panel) 97%, var(--trae-skin-bg)) !important;
+  --bg-bg-tooltip: var(--trae-skin-tooltip-bg) !important;
+  --text-text-onaccent: var(--trae-skin-on-accent) !important;
+  --text-text-danger: var(--trae-skin-danger) !important;
+  --text-text-success: var(--trae-skin-success) !important;
+  --text-text-warning: var(--trae-skin-warning) !important;
+  --text-text-info: var(--trae-skin-info) !important;
+  --border-border-focus: var(--trae-skin-focus) !important;
+  --status-success-default: var(--trae-skin-success) !important;
+  --status-warning-default: var(--trae-skin-warning) !important;
+  --status-danger-default: var(--trae-skin-danger) !important;
+  --status-error-default: var(--trae-skin-danger) !important;
+  --status-info-default: var(--trae-skin-info) !important;
+  --vscode-icube--bg-bg-base-hover: var(--trae-skin-surface-hover) !important;
+  --vscode-icube--bg-bg-base-active: var(--trae-skin-surface-active) !important;
+  --vscode-icube--bg-bg-menu: color-mix(in srgb, var(--trae-skin-panel) 97%, var(--trae-skin-bg)) !important;
+  --vscode-icube--bg-bg-tooltip: var(--trae-skin-tooltip-bg) !important;
+  --vscode-icube--bg-bg-overlay-l1: color-mix(in srgb, var(--trae-skin-accent-alt) 7%, transparent) !important;
+  --vscode-icube--bg-bg-overlay-l2: color-mix(in srgb, var(--trae-skin-accent-alt) 11%, transparent) !important;
+  --vscode-icube--bg-bg-overlay-l3: color-mix(in srgb, var(--trae-skin-accent-alt) 16%, transparent) !important;
+  --vscode-icube--bg-bg-overlay-l4: color-mix(in srgb, var(--trae-skin-accent-alt) 22%, transparent) !important;
+  --vscode-icube--bg-bg-invert: var(--trae-skin-accent) !important;
+  --vscode-icube--bg-bg-invert-hover: color-mix(in srgb, var(--trae-skin-accent) 84%, var(--trae-skin-accent-alt)) !important;
+  --vscode-icube--bg-bg-invert-active: color-mix(in srgb, var(--trae-skin-accent) 82%, #000000) !important;
+  --vscode-icube--bg-bg-invert-disabled: color-mix(in srgb, var(--trae-skin-disabled) 34%, transparent) !important;
+  --vscode-icube--text-text-default: var(--trae-skin-text) !important;
+  --vscode-icube--text-text-default-hover: var(--trae-skin-text) !important;
+  --vscode-icube--text-text-default-active: var(--trae-skin-text) !important;
+  --vscode-icube--text-text-tertiary: color-mix(in srgb, var(--trae-skin-muted) 78%, transparent) !important;
+  --vscode-icube--text-text-disabled: var(--trae-skin-disabled) !important;
+  --vscode-icube--text-text-onaccent: var(--trae-skin-on-accent) !important;
+  --vscode-icube--icon-icon-default: var(--trae-skin-text) !important;
+  --vscode-icube--icon-icon-default-hover: var(--trae-skin-accent-alt) !important;
+  --vscode-icube--icon-icon-secondary: var(--trae-skin-muted) !important;
+  --vscode-icube--icon-icon-tertiary: color-mix(in srgb, var(--trae-skin-muted) 78%, transparent) !important;
+  --vscode-icube--icon-icon-disabled: var(--trae-skin-disabled) !important;
+  --vscode-icube--icon-icon-onaccent: var(--trae-skin-on-accent) !important;
+  --vscode-icube--border-border-neutral-l3: var(--trae-skin-line) !important;
+  --vscode-icube--brand-brand-default: var(--trae-skin-accent) !important;
+  --vscode-icube--brand-brand-hover: var(--trae-skin-accent-alt) !important;
+  --vscode-icube--brand-brand-bg: color-mix(in srgb, var(--trae-skin-accent) 14%, transparent) !important;
+  --vscode-menu-background: color-mix(in srgb, var(--trae-skin-panel) 97%, var(--trae-skin-bg)) !important;
+  --vscode-menu-foreground: var(--trae-skin-text) !important;
+  --vscode-menu-border: var(--trae-skin-line) !important;
+  --vscode-menu-separatorBackground: var(--trae-skin-line) !important;
+  --vscode-list-hoverBackground: var(--trae-skin-surface-hover) !important;
+  --vscode-list-activeSelectionBackground: var(--trae-skin-surface-active) !important;
+  --vscode-list-activeSelectionForeground: var(--trae-skin-text) !important;
+  --vscode-list-focusBackground: var(--trae-skin-surface-active) !important;
+  --vscode-disabledForeground: var(--trae-skin-disabled) !important;
+  --vscode-dropdown-background: color-mix(in srgb, var(--trae-skin-panel-alt) 96%, var(--trae-skin-bg)) !important;
+  --vscode-dropdown-foreground: var(--trae-skin-text) !important;
+  --vscode-dropdown-border: var(--trae-skin-line) !important;
+  --vscode-checkbox-background: color-mix(in srgb, var(--trae-skin-panel-alt) 94%, transparent) !important;
+  --vscode-checkbox-foreground: var(--trae-skin-text) !important;
+  --vscode-checkbox-border: var(--trae-skin-line) !important;
+  --shadow-elevation-100-tooltip: 0 8px 22px color-mix(in srgb, var(--trae-skin-bg) 30%, transparent) !important;
+  --elevation-100-tooltip: 0 8px 22px color-mix(in srgb, var(--trae-skin-bg) 30%, transparent) !important;
+  --shadow-elevation-200-menu-panel: 0 14px 32px color-mix(in srgb, var(--trae-skin-bg) 34%, transparent) !important;
+  --shadow-elevation-300-modal-panel: 0 22px 54px color-mix(in srgb, var(--trae-skin-bg) 42%, transparent) !important;
+}
+
+/* Sidebar task utilities share one predictable state ladder. */
+:root[data-trae-skin-active="true"] :is(
+  .taskTreeBtn,
+  .taskTreeBtnWork,
+  .taskTreeBtnCode,
+  .taskIconBtn,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-group-more-btn,
+  .task-list-heading-action-btn,
+  .task-list-heading-collapse-btn,
+  .task-list-right-item-btn,
+  .tree-item-icon
+) {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 6%, transparent) !important;
+  color: var(--trae-skin-muted) !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 80ms ease !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .taskTreeBtn,
+  .taskIconBtn,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-group-more-btn,
+  .task-list-heading-action-btn,
+  .task-list-heading-collapse-btn,
+  .task-list-right-item-btn,
+  .tree-item-icon
+):not(:disabled):hover {
+  background: var(--trae-skin-surface-hover) !important;
+  color: var(--trae-skin-accent-alt) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-accent-alt) 34%, transparent) !important;
+  transform: none !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .taskTreeBtn,
+  .taskIconBtn,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-group-more-btn,
+  .task-list-heading-action-btn,
+  .task-list-heading-collapse-btn,
+  .task-list-right-item-btn,
+  .tree-item-icon
+):not(:disabled):active {
+  background: var(--trae-skin-surface-active) !important;
+  color: var(--trae-skin-accent-alt) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-accent-alt) 52%, transparent) !important;
+  transform: translateY(1px) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .taskIconBtnActive,
+  .task-list-group-more-btn-active,
+  .task-list-right-item-active,
+  .taskTreeBtn[aria-pressed="true"],
+  .taskIconBtn[aria-pressed="true"],
+  .taskIconBtn[data-state="open"]
+) {
+  background: var(--trae-skin-surface-active) !important;
+  color: var(--trae-skin-accent-alt) !important;
+  border: 1px solid color-mix(in srgb, var(--trae-skin-accent-alt) 48%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--trae-skin-accent-alt) 8%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .taskTreeBtn,
+  .taskIconBtn,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-group-more-btn,
+  .task-list-heading-action-btn,
+  .task-list-heading-collapse-btn,
+  .task-list-right-item-btn,
+  .tree-item-icon
+):focus-visible {
+  outline: 2px solid var(--trae-skin-focus) !important;
+  outline-offset: 2px !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .taskTreeBtn,
+  .taskIconBtn,
+  .taskMoreBtn,
+  .task-list-group-new-btn,
+  .task-list-group-more-btn,
+  .task-list-heading-action-btn,
+  .task-list-heading-collapse-btn,
+  .task-list-right-item-btn
+):is(:disabled, [aria-disabled="true"]) {
+  background: transparent !important;
+  color: var(--trae-skin-disabled) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  opacity: 0.62 !important;
+}
+
+/* Composer and model controls need open/pressed/disabled states in addition
+   to their default and hover treatment. */
+:root[data-trae-skin-active="true"] :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"]
+):not(:disabled):is(:active, [aria-pressed="true"], [data-state="open"], [data-state="checked"]) {
+  background: var(--trae-skin-surface-active) !important;
+  color: var(--trae-skin-accent-alt) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-accent-alt) 42%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"]
+):focus-visible {
+  outline: 2px solid var(--trae-skin-focus) !important;
+  outline-offset: 2px !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .messageInputToolbarIconBtn,
+  .core-model-select-trigger,
+  .rtcVoicePluginButton,
+  .voiceCallButton,
+  [class*="toggleButton-"]
+):is(:disabled, [aria-disabled="true"], .core-model-select-disabled) {
+  background: transparent !important;
+  color: var(--trae-skin-disabled) !important;
+  opacity: 0.58 !important;
+}
+
+/* New Solo tooltips are body portals and use an inverse token; legacy iCube
+   tooltips use border triangles. Both are intentionally one dark local layer. */
+:root[data-trae-skin-active="true"] [role="tooltip"] {
+  --bg-bg-invert: var(--trae-skin-tooltip-bg) !important;
+  --text-text-onaccent: var(--trae-skin-tooltip-text) !important;
+  --icon-icon-onaccent: var(--trae-skin-tooltip-text) !important;
+  color: var(--trae-skin-tooltip-text) !important;
+}
+
+:root[data-trae-skin-active="true"] [role="tooltip"] > [class*="container-"] {
+  background: var(--trae-skin-tooltip-bg) !important;
+  color: var(--trae-skin-tooltip-text) !important;
+  border: 1px solid color-mix(in srgb, var(--trae-skin-accent-alt) 30%, transparent) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--trae-skin-bg) 30%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] [role="tooltip"] :is(
+  [class*="text-"],
+  svg,
+  svg *
+) {
+  color: var(--trae-skin-tooltip-text) !important;
+}
+
+:root[data-trae-skin-active="true"] [role="tooltip"] [class*="arrow-"] path {
+  fill: var(--trae-skin-tooltip-bg) !important;
+  stroke: color-mix(in srgb, var(--trae-skin-accent-alt) 30%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] .icube-tooltip-text.icube-simple-style {
+  background: var(--trae-skin-tooltip-bg) !important;
+  color: var(--trae-skin-tooltip-text) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-accent-alt) 30%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] .icube-tooltip-container.icube-simple-style .icube-tooltip-down-flag {
+  border-top-color: var(--trae-skin-tooltip-bg) !important;
+}
+
+:root[data-trae-skin-active="true"] .icube-tooltip-container.icube-simple-style .icube-tooltip-up-flag {
+  border-bottom-color: var(--trae-skin-tooltip-bg) !important;
+}
+
+:root[data-trae-skin-active="true"] .icube-tooltip-container.icube-simple-style .icube-tooltip-left-flag {
+  border-left-color: var(--trae-skin-tooltip-bg) !important;
+}
+
+:root[data-trae-skin-active="true"] .icube-tooltip-container.icube-simple-style .icube-tooltip-right-flag {
+  border-right-color: var(--trae-skin-tooltip-bg) !important;
+}
+
+:root[data-trae-skin-active="true"] .popup-menu-tooltip {
+  --tooltip-bg: var(--trae-skin-tooltip-bg) !important;
+  --tooltip-text: var(--trae-skin-tooltip-text) !important;
+  --tooltip-text-secondary: color-mix(in srgb, var(--trae-skin-tooltip-text) 72%, transparent) !important;
+  --tooltip-border: color-mix(in srgb, var(--trae-skin-accent-alt) 30%, transparent) !important;
+  --tooltip-item-bg: color-mix(in srgb, var(--trae-skin-accent-alt) 16%, transparent) !important;
+  --tooltip-separator: color-mix(in srgb, var(--trae-skin-tooltip-text) 18%, transparent) !important;
+}
+
+/* Popover portals stay transparent; their inner menu/dialog is the only
+   visual owner, preventing the double-frame visible in native wrappers. */
+:root[data-trae-skin-active="true"] :is(
+  [class^="popover-"][role="dialog"],
+  [class*=" popover-"][role="dialog"]
+) {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .taskMenu,
+  .task-list-menu,
+  .headerViewMenu,
+  .popup-menu,
+  .icd-dropdown-menu,
+  .core-model-select-portal-content,
+  .task-list-rename-popover,
+  .source-ref-popover,
+  [class*="fileTreeMenu-"],
+  [class*="ralphLoopPopover-"]
+) {
+  background: color-mix(in srgb, var(--trae-skin-panel) 97%, var(--trae-skin-bg)) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid var(--trae-skin-line) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--trae-skin-bg) 34%, transparent) !important;
+  backdrop-filter: blur(var(--trae-skin-blur)) saturate(1.04) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  [role="menu"],
+  [role="listbox"],
+  .taskMenu,
+  .task-list-menu,
+  .headerViewMenu,
+  .popup-menu,
+  .icd-dropdown-menu,
+  .core-model-select-portal-content
+) :is(
+  [role="menuitem"],
+  [role="option"],
+  .popup-menu-item,
+  .core-model-select-model-item,
+  .core-model-select-auto-mode-item,
+  .core-model-select-footer-action,
+  [class*="menuItem-"]
+) {
+  background: transparent !important;
+  color: var(--trae-skin-text) !important;
+  border-color: transparent !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  [role="menu"],
+  [role="listbox"],
+  .taskMenu,
+  .task-list-menu,
+  .headerViewMenu,
+  .popup-menu,
+  .icd-dropdown-menu,
+  .core-model-select-portal-content
+) :is(
+  [role="menuitem"],
+  [role="option"],
+  .popup-menu-item,
+  .core-model-select-model-item,
+  .core-model-select-auto-mode-item,
+  .core-model-select-footer-action,
+  [class*="menuItem-"]
+):not(:disabled):is(:hover, :active, .highlighted, .selected, .active, [data-highlighted], [data-state="checked"], [aria-selected="true"]) {
+  background: var(--trae-skin-surface-hover) !important;
+  color: var(--trae-skin-accent-alt) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  [role="menu"],
+  [role="listbox"],
+  .taskMenu,
+  .task-list-menu,
+  .headerViewMenu,
+  .popup-menu,
+  .icd-dropdown-menu,
+  .core-model-select-portal-content
+) :is(
+  [role="menuitem"],
+  [role="option"],
+  .popup-menu-item,
+  .core-model-select-model-item,
+  .core-model-select-auto-mode-item,
+  .core-model-select-footer-action,
+  [class*="menuItem-"]
+):is(:disabled, .disabled, [aria-disabled="true"]) {
+  color: var(--trae-skin-disabled) !important;
+  background: transparent !important;
+  opacity: 0.62 !important;
+}
+
+:root[data-trae-skin-active="true"] .headerViewMenu__item--active {
+  background: color-mix(in srgb, var(--trae-skin-accent-alt) 9%, transparent) !important;
+  color: var(--trae-skin-accent-alt) !important;
+}
+
+:root[data-trae-skin-active="true"] .headerViewMenu__item--active :is(
+  .headerViewMenu__itemCheck,
+  svg,
+  svg *
+) {
+  color: var(--trae-skin-accent-alt) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  [role="menu"],
+  [role="listbox"],
+  .taskMenu,
+  .task-list-menu,
+  .headerViewMenu,
+  .popup-menu,
+  .icd-dropdown-menu,
+  .core-model-select-portal-content
+) :is(.danger, [data-variant="danger"]) {
+  color: var(--trae-skin-danger) !important;
+}
+
+/* Text fields retain native layout while every interaction state is legible. */
+:root[data-trae-skin-active="true"] :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  .monaco-inputbox
+)::placeholder {
+  color: var(--trae-skin-muted) !important;
+  opacity: 0.82 !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  .monaco-inputbox
+):not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--trae-skin-accent-alt) 44%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  .monaco-inputbox
+):not(:disabled):is(:focus, :focus-within) {
+  border-color: var(--trae-skin-focus) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--trae-skin-focus) 18%, transparent) !important;
+  outline: none !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  textarea,
+  select,
+  .monaco-inputbox
+):is(:disabled, [aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--trae-skin-disabled) 10%, transparent) !important;
+  color: var(--trae-skin-disabled) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-line) 48%, transparent) !important;
+  opacity: 0.72 !important;
+}
+
+:root[data-trae-skin-active="true"] :is(input, textarea, .monaco-inputbox)[aria-invalid="true"] {
+  border-color: var(--trae-skin-danger) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--trae-skin-danger) 16%, transparent) !important;
+}
+
+/* Checkbox, radio and toggle implementations from Arco, iCube, chat and
+   Monaco all share the same checked/disabled semantics. */
+:root[data-trae-skin-active="true"] :is(.arco-checkbox-mask, .arco-radio-mask, .monaco-checkbox) {
+  background: color-mix(in srgb, var(--trae-skin-panel-alt) 94%, transparent) !important;
+  border-color: var(--trae-skin-line) !important;
+  color: var(--trae-skin-on-accent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(.arco-checkbox, .arco-radio):not(.arco-checkbox-disabled, .arco-radio-disabled):hover :is(.arco-checkbox-mask, .arco-radio-mask) {
+  border-color: var(--trae-skin-accent-alt) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .arco-checkbox-checked,
+  .arco-checkbox-indeterminate,
+  .arco-radio-checked
+) :is(.arco-checkbox-mask, .arco-radio-mask),
+:root[data-trae-skin-active="true"] :is(
+  .icd-ask-user-question-option-checkbox,
+  .icd-ask-user-question-option-radio,
+  [class*="ask-user-question-checkbox-item-"]
+)[aria-checked="true"] {
+  background: var(--trae-skin-accent) !important;
+  border-color: var(--trae-skin-accent) !important;
+  color: var(--trae-skin-on-accent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .arco-checkbox-disabled,
+  .arco-radio-disabled,
+  .monaco-checkbox.disabled
+) {
+  color: var(--trae-skin-disabled) !important;
+  opacity: 0.58 !important;
+}
+
+:root[data-trae-skin-active="true"] :is(.monaco-custom-toggle, .icube-switch, [class*="modeToggle-"]) {
+  background: color-mix(in srgb, var(--trae-skin-disabled) 22%, transparent) !important;
+  color: var(--trae-skin-muted) !important;
+  border-color: var(--trae-skin-line) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .monaco-custom-toggle.checked,
+  .icube-switch.icube-switch-checked,
+  [class*="modeToggleBtnActive-"]
+) {
+  background: var(--trae-skin-success) !important;
+  color: var(--trae-skin-on-accent) !important;
+  border-color: var(--trae-skin-success) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .monaco-custom-toggle.disabled,
+  .icube-switch.icube-switch-disabled,
+  [class*="modeToggle-"][aria-disabled="true"]
+) {
+  background: color-mix(in srgb, var(--trae-skin-disabled) 14%, transparent) !important;
+  color: var(--trae-skin-disabled) !important;
+  opacity: 0.58 !important;
+}
+
+/* Primary actions have an explicit state ladder instead of inheriting gray
+   native fallbacks. */
+:root[data-trae-skin-active="true"] :is(
+  .chat-input-v2-send-button,
+  [class*="__onboardingButton___"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardAction"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardViewBtn"]
+):not(:disabled):hover {
+  filter: brightness(1.05) saturate(1.04) !important;
+  transform: translateY(-1px) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .chat-input-v2-send-button,
+  [class*="__onboardingButton___"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardAction"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardViewBtn"]
+):not(:disabled):active {
+  filter: brightness(0.93) !important;
+  transform: translateY(0) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .chat-input-v2-send-button,
+  [class*="__onboardingButton___"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardAction"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardViewBtn"]
+):focus-visible {
+  outline: 2px solid var(--trae-skin-focus) !important;
+  outline-offset: 2px !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .chat-input-v2-send-button,
+  [class*="__onboardingButton___"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardAction"],
+  [data-trae-skin-role="scene-card"] [class*="caseCardViewBtn"]
+):is(:disabled, [aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--trae-skin-disabled) 30%, transparent) !important;
+  color: var(--trae-skin-disabled) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  opacity: 0.66 !important;
+}
+
+/* Toasts and modals are local opaque reading layers; masks remain separate. */
+:root[data-trae-skin-active="true"] :is(
+  [class*="toast-module__toast___"],
+  .toast-NHviDu,
+  .notifications-toasts .notification-toast,
+  .card-puik4q
+) {
+  background: color-mix(in srgb, var(--trae-skin-panel) 97%, var(--trae-skin-bg)) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid var(--trae-skin-line) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--trae-skin-bg) 34%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .overlay-scYMtG,
+  .icd-modal-overlay,
+  .icd-modal-v2-overlay,
+  .mention-info-modal-mask
+) {
+  background: color-mix(in srgb, var(--trae-skin-bg) 58%, transparent) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(
+  .dialog-Di86XR,
+  .monaco-dialog-box,
+  .icd-modal-content,
+  .icd-modal-v2-content
+) {
+  background: color-mix(in srgb, var(--trae-skin-panel) 98%, var(--trae-skin-bg)) !important;
+  color: var(--trae-skin-text) !important;
+  border: 1px solid var(--trae-skin-line) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 22px 54px color-mix(in srgb, var(--trae-skin-bg) 42%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(.status-badge--success, [data-status="success"]) {
+  color: var(--trae-skin-success) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-success) 34%, transparent) !important;
+  background: color-mix(in srgb, var(--trae-skin-success) 12%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(.status-badge--error, [data-status="error"], [data-status="danger"]) {
+  color: var(--trae-skin-danger) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-danger) 34%, transparent) !important;
+  background: color-mix(in srgb, var(--trae-skin-danger) 12%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(.status-badge--info, [data-status="info"]) {
+  color: var(--trae-skin-info) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-info) 34%, transparent) !important;
+  background: color-mix(in srgb, var(--trae-skin-info) 12%, transparent) !important;
+}
+
+:root[data-trae-skin-active="true"] :is(.status-badge--warning, [data-status="warning"]) {
+  color: var(--trae-skin-warning) !important;
+  border-color: color-mix(in srgb, var(--trae-skin-warning) 34%, transparent) !important;
+  background: color-mix(in srgb, var(--trae-skin-warning) 12%, transparent) !important;
+}
+
+@media (forced-colors: active) {
+  :root:is(.trae-dream-skin, .trae-skin-active) body::before,
+  :root:is(.trae-dream-skin, .trae-skin-active) body::after,
+  :root[data-trae-skin-active="true"] body::before,
+  :root[data-trae-skin-active="true"] body::after {
+    display: none;
+  }
+
+  #trae-dream-skin-chrome {
+    display: none !important;
+  }
+
+  :root:is(.trae-dream-skin, .trae-skin-active) *,
+  :root[data-trae-skin-active="true"] * {
+    forced-color-adjust: auto;
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "sunlit-spark",
+  "name": "Sunlit Spark",
+  "description": "暖白彩色创作场景中的原创人物主视觉，以通透浅色层与 Trae 内容自然融合。",
+  "layout": "classic",
+  "image": "background.png",
+  "colors": {
+    "background": "#FFF9EC",
+    "panel": "#FFFDF8",
+    "panelAlt": "#F5F6EF",
+    "accent": "#DF5C58",
+    "accentAlt": "#168F88",
+    "secondary": "#419ACF",
+    "highlight": "#B98514",
+    "onAccent": "#FFFFFF",
+    "success": "#168F88",
+    "warning": "#B98514",
+    "danger": "#DF5C58",
+    "info": "#419ACF",
+    "disabled": "#9AA4A5",
+    "text": "#253139",
+    "muted": "#617076",
+    "line": "rgba(37, 49, 57, 0.20)",
+    "selection": "rgba(22, 143, 136, 0.18)",
+    "terminal": "#202932"
+  },
+  "states": {
+    "surfaceHover": "rgba(22, 143, 136, 0.11)",
+    "surfaceActive": "rgba(223, 92, 88, 0.17)",
+    "focus": "#168F88",
+    "tooltipBackground": "#24484A",
+    "tooltipText": "#FFFDF8"
+  },
+  "appearance": {
+    "colorScheme": "light",
+    "treatment": "sunlit-immersive",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOpacity": 1,
+    "surfaceOpacity": 0.58,
+    "sidebarOpacity": 0.90,
+    "blur": 12,
+    "saturation": 0.98,
+    "radius": 4,
+    "shadow": "soft"
+  }
+}

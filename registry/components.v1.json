@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "registryVersion": "1.0.0",
+  "target": "Trae SOLO",
+  "description": "Stable semantic component names exposed to agents. Selectors remain an internal runtime detail.",
+  "components": [
+    {
+      "id": "shell.workspace",
+      "description": "Main Trae workspace and background art plane.",
+      "modes": ["work", "code", "design"],
+      "states": ["default"],
+      "selectors": ["#solo-lite-root", ".monaco-workbench"]
+    },
+    {
+      "id": "sidebar.task",
+      "description": "Task navigation rows and selected task.",
+      "modes": ["work"],
+      "states": ["default", "hover", "active", "focus", "disabled"],
+      "selectors": [".task-list-panel"]
+    },
+    {
+      "id": "sidebar.utility",
+      "description": "Sidebar utility buttons such as file management and overflow.",
+      "modes": ["work"],
+      "states": ["default", "hover", "active", "focus", "disabled"],
+      "selectors": [".taskIconBtn", "[data-trae-skin-role=sidebar-utility]"]
+    },
+    {
+      "id": "composer.surface",
+      "description": "Prompt composer, its controls, and focus ring.",
+      "modes": ["work", "code"],
+      "states": ["default", "hover", "focus", "disabled"],
+      "selectors": [".messageInputContainer", ".chat-input-v2-container"]
+    },
+    {
+      "id": "message.user",
+      "description": "User message content without an extra nested bubble.",
+      "modes": ["work", "code"],
+      "states": ["default", "hover"],
+      "selectors": [".turn__user-message .user-message__text-box"]
+    },
+    {
+      "id": "tooltip.surface",
+      "description": "Tooltip portal, label, and arrow.",
+      "modes": ["work", "code", "design"],
+      "states": ["default"],
+      "selectors": ["[role=tooltip]"]
+    },
+    {
+      "id": "menu.surface",
+      "description": "Menus, select portals, and popovers.",
+      "modes": ["work", "code", "design"],
+      "states": ["default"],
+      "selectors": ["[role=menu]", "[role=listbox]", "[class*=popover-][role=dialog]"]
+    },
+    {
+      "id": "menu.item",
+      "description": "Interactive menu and select options.",
+      "modes": ["work", "code", "design"],
+      "states": ["default", "hover", "active", "focus", "disabled"],
+      "selectors": ["[role=menuitem]", "[role=option]"]
+    },
+    {
+      "id": "dialog.surface",
+      "description": "Modal and non-modal dialog surfaces.",
+      "modes": ["work", "code", "design"],
+      "states": ["default"],
+      "selectors": ["[role=dialog]"]
+    },
+    {
+      "id": "home.title",
+      "description": "New-task homepage title treatment.",
+      "modes": ["work"],
+      "states": ["default"],
+      "selectors": [".welcomeTitleWrapper"]
+    },
+    {
+      "id": "home.showcase",
+      "description": "New-task homepage quick actions and showcase cards.",
+      "modes": ["work"],
+      "states": ["default", "hover", "active", "focus"],
+      "selectors": [".showcase-content-wrapper", "[data-trae-skin-role=showcase-card]"]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "paper-aurora",
+  "name": "Paper Aurora",
+  "description": "清亮纸白工作台，搭配莓红、墨青和黄铜色，适合明亮环境。",
+  "image": "background.png",
+  "colors": {
+    "background": "#F3F6F3",
+    "panel": "#FCFDFC",
+    "panelAlt": "#E9F0ED",
+    "accent": "#C74858",
+    "accentAlt": "#247E7A",
+    "secondary": "#7B5AA6",
+    "highlight": "#B47C22",
+    "onAccent": "#FFFFFF",
+    "success": "#247E7A",
+    "warning": "#B47C22",
+    "danger": "#C74858",
+    "info": "#6A5A9C",
+    "disabled": "#98A3A3",
+    "text": "#1E292E",
+    "muted": "#5E6E70",
+    "line": "rgba(46, 94, 91, 0.24)",
+    "selection": "rgba(199, 72, 88, 0.20)",
+    "terminal": "#243034"
+  },
+  "states": {
+    "surfaceHover": "rgba(36, 126, 122, 0.11)",
+    "surfaceActive": "rgba(199, 72, 88, 0.16)",
+    "focus": "#247E7A",
+    "tooltipBackground": "#264244",
+    "tooltipText": "#FCFDFC"
+  },
+  "appearance": {
+    "colorScheme": "light",
+    "treatment": "paper-wash",
+    "backgroundPosition": "62% center",
+    "backgroundSize": "cover",
+    "backgroundOpacity": 0.72,
+    "surfaceOpacity": 0.84,
+    "sidebarOpacity": 0.92,
+    "blur": 18,
+    "saturation": 0.72,
+    "radius": 6,
+    "shadow": "soft"
+  }
+}

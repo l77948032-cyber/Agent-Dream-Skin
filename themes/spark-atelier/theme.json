@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "spark-atelier",
+  "name": "Spark Atelier",
+  "description": "明亮的手帐拼贴创作台，使用原创人物主视觉、纸张层次、手绘标记和四色功能模块。",
+  "layout": "studio-collage",
+  "brandSubtitle": "SPARK ATELIER",
+  "tagline": "MAKE THE IDEA REAL",
+  "statusText": "FLOW 100%",
+  "quote": "SPARK / SHAPE / SHIP",
+  "image": "background.png",
+  "colors": {
+    "background": "#FFF9EC",
+    "panel": "#FFFDF7",
+    "panelAlt": "#F1F6EF",
+    "accent": "#E85855",
+    "accentAlt": "#168F88",
+    "secondary": "#4A9FD8",
+    "highlight": "#C99116",
+    "onAccent": "#FFFFFF",
+    "success": "#168F88",
+    "warning": "#C99116",
+    "danger": "#E85855",
+    "info": "#4A9FD8",
+    "disabled": "#9CA5A6",
+    "text": "#27303B",
+    "muted": "#667277",
+    "line": "rgba(39, 48, 59, 0.20)",
+    "selection": "rgba(22, 143, 136, 0.20)",
+    "terminal": "#202932"
+  },
+  "states": {
+    "surfaceHover": "rgba(22, 143, 136, 0.11)",
+    "surfaceActive": "rgba(232, 88, 85, 0.17)",
+    "focus": "#168F88",
+    "tooltipBackground": "#24484A",
+    "tooltipText": "#FFFDF7"
+  },
+  "appearance": {
+    "colorScheme": "light",
+    "treatment": "spark-collage",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOpacity": 0.96,
+    "surfaceOpacity": 0.90,
+    "sidebarOpacity": 0.97,
+    "blur": 4,
+    "saturation": 1,
+    "radius": 6,
+    "shadow": "soft"
+  }
+}

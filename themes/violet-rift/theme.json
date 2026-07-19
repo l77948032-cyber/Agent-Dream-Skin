@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "violet-rift",
+  "name": "Violet Rift",
+  "description": "深靛风暴中的原创哨兵主视觉，以通透暗层让人物、背景和 Trae 工作区融为一体。",
+  "layout": "classic",
+  "image": "background.png",
+  "colors": {
+    "background": "#050611",
+    "panel": "#0B0D1C",
+    "panelAlt": "#141326",
+    "accent": "#8268FF",
+    "accentAlt": "#55D6FF",
+    "secondary": "#E65787",
+    "highlight": "#B9A6FF",
+    "onAccent": "#FFFFFF",
+    "success": "#5BD7B8",
+    "warning": "#E3B65C",
+    "danger": "#E65787",
+    "info": "#55D6FF",
+    "disabled": "#6E6D87",
+    "text": "#F4F4FF",
+    "muted": "#AAA8C4",
+    "line": "rgba(139, 113, 255, 0.28)",
+    "selection": "rgba(85, 214, 255, 0.24)",
+    "terminal": "#060711"
+  },
+  "states": {
+    "surfaceHover": "rgba(85, 214, 255, 0.10)",
+    "surfaceActive": "rgba(130, 104, 255, 0.20)",
+    "focus": "#55D6FF",
+    "tooltipBackground": "#19172F",
+    "tooltipText": "#F4F4FF"
+  },
+  "appearance": {
+    "colorScheme": "dark",
+    "treatment": "violet-rift",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOpacity": 1,
+    "surfaceOpacity": 0.54,
+    "sidebarOpacity": 0.90,
+    "blur": 14,
+    "saturation": 1.04,
+    "radius": 4,
+    "shadow": "deep"
+  }
+}
