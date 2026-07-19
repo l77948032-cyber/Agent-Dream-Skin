@@ -141,6 +141,7 @@ try {
     traeRunning = $appRunning
     recordedTraeAlive = $recordedTraeAlive
     themeId = if ($null -ne $state) { "$($state.themeId)" } else { $null }
+    themeRevision = if ($null -ne $state -and $state.themeRevision) { "$($state.themeRevision)" } else { $null }
     port = if ($null -ne $state) { [int]$state.port } else { $null }
     injectorAlive = $injectorAlive
     endpointVerified = $endpointVerified

@@ -1,10 +1,14 @@
 # This lifecycle is statically checked on macOS; release it only after a real Windows Trae smoke test.
-$Script:TraeSkinVersion = '0.1.0'
+$Script:TraeSkinVersion = '0.2.0'
 $Script:TraeSkinDefaultPort = 9342
 $Script:TraeSkinDefaultTheme = 'neon-portal'
 $Script:TraeSkinProjectRoot = Split-Path -Parent $PSScriptRoot
 $Script:TraeSkinInjector = Join-Path $PSScriptRoot 'injector.mjs'
-$Script:TraeSkinThemesRoot = Join-Path $Script:TraeSkinProjectRoot 'themes'
+$Script:TraeSkinThemesRoot = if ($env:TRAE_DREAM_SKIN_THEMES_ROOT) {
+  [System.IO.Path]::GetFullPath($env:TRAE_DREAM_SKIN_THEMES_ROOT)
+} else {
+  Join-Path $Script:TraeSkinProjectRoot 'themes'
+}
 $Script:TraeSkinStateRoot = if ($env:TRAE_DREAM_SKIN_HOME) {
   [System.IO.Path]::GetFullPath($env:TRAE_DREAM_SKIN_HOME)
 } else {
@@ -399,6 +403,9 @@ function Read-TraeSkinState {
     }
     if (-not $state.themeId -or "$($state.themeId)" -notmatch '^[a-z0-9][a-z0-9_-]{0,63}$') {
       throw 'State theme ID is invalid.'
+    }
+    if ($state.themeRevision -and "$($state.themeRevision)" -notmatch '^[a-f0-9]{64}$') {
+      throw 'State theme revision is invalid.'
     }
     return $state
   } catch {

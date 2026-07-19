@@ -1,24 +1,22 @@
 ---
 name: trae-dream-skin
-description: Use when an agent needs to inspect, create, edit, validate, preview, apply, verify, or remove a Trae desktop skin through the Trae-Dream-Skin MCP tools or JSON CLI. This skill covers structured theme work and reversible local Trae skin operations on macOS and Windows.
+description: Use when an agent needs to inspect, create, edit, or validate a Trae theme through DreamSkin Tool. Studio owns preview, apply, verify, and restore as explicit user actions.
 ---
 
 # Trae-Dream-Skin
 
-Use the shared Agent Tool rather than editing Trae, generated CSS, runtime state, or CDP settings directly. Prefer MCP tools. Use the JSON CLI only when MCP is unavailable or while debugging the tool itself.
+Use the single `dreamskin_theme` Tool rather than editing Trae, generated CSS,
+runtime state, or CDP settings directly. MCP may be used internally as a
+compatibility transport, but it is not part of this workflow.
 
 ## Workflow
 
-1. Call `inspect` before changing anything. Read runtime status, the semantic component registry, theme schema, and available revisions.
-2. Call `theme_read` for the source or target theme. Keep its `revision` for optimistic concurrency.
-3. Express changes only through documented theme fields: content, semantic colors, interaction `states`, and `appearance`.
-4. Call `theme_write` with `dryRun: true` and `expectedRevision` before committing.
-5. Commit with `theme_write`, then call `theme_validate` for the written theme.
-6. Call `preview`. It applies, verifies, optionally captures a screenshot, and restores the previous theme or native state automatically.
-7. Call `apply` only after preview passes. Finish with `verify`.
-8. Call `restore` when the user wants the skin off. It is idempotent.
-
-If a committed theme edit is wrong, call `theme_write` with `operation: "rollback"` and the returned `transactionId`.
+1. Call `dreamskin_theme` with `action: "inspect"` before changing anything. Read the semantic component registry, each component's `visualSlots`, the theme schema, and available revisions.
+2. Call it with `action: "read"` and `themeId` for the selected theme. Keep its `revision` for optimistic concurrency.
+3. Express changes only through documented theme fields: content, semantic colors, interaction `states`, structured `visual` recipes, and `appearance`.
+4. Call it with `action: "update"`, `themeId`, `themePatch`, `dryRun: true`, and `expectedRevision` before committing.
+5. Commit with `action: "update"`, then call `action: "validate"` for the written theme.
+6. Summarize the visible change. Studio handles preview, apply, restore, and version rollback outside the Agent Tool.
 
 ## Guardrails
 
@@ -26,6 +24,6 @@ If a committed theme edit is wrong, call `theme_write` with `operation: "rollbac
 - Never connect CDP to a non-loopback host or reuse an endpoint the runtime has not verified as the owned Trae session.
 - Do not bypass a revision conflict. Read the theme again and reconcile the intended change.
 - Treat a missing semantic component as a registry/runtime enhancement, not permission to inject an ad hoc selector.
-- On preview or verification failure, leave the user on the restored prior state and report the structured error.
+- Never attempt runtime actions through another tool or the shell; Studio owns those actions.
 
 Read [references/tool-api.md](references/tool-api.md) for inputs, CLI equivalents, transaction behavior, and error codes.

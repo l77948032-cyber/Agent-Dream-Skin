@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { ToolError } from "./errors.mjs";
-import { SCRIPTS_ROOT } from "./paths.mjs";
+import { SCRIPTS_ROOT, THEMES_ROOT } from "./paths.mjs";
 
 function parseJsonOutput(stdout, label) {
   const text = String(stdout || "").trim();
@@ -35,9 +35,15 @@ function defaultRunner(file, args, options) {
 }
 
 export class PlatformRuntime {
-  constructor({ platform = process.platform, scriptsRoot = SCRIPTS_ROOT, runner = defaultRunner } = {}) {
+  constructor({
+    platform = process.platform,
+    scriptsRoot = SCRIPTS_ROOT,
+    themesRoot = THEMES_ROOT,
+    runner = defaultRunner,
+  } = {}) {
     this.platform = platform;
     this.scriptsRoot = path.resolve(scriptsRoot);
+    this.themesRoot = path.resolve(themesRoot);
     this.runner = runner;
   }
 
@@ -51,7 +57,11 @@ export class PlatformRuntime {
     };
   }
 
-  command(operation, { themeId, screenshotPath } = {}) {
+  command(operation, { themeId, themeRevision, screenshotPath } = {}) {
+    if (themeRevision !== undefined && themeRevision !== null
+      && (typeof themeRevision !== "string" || !/^[a-f0-9]{64}$/.test(themeRevision))) {
+      throw new ToolError("INVALID_ARGUMENT", "Runtime theme revision must be a SHA-256 digest.");
+    }
     if (this.platform === "darwin") {
       const files = {
         status: "status-trae-skin-macos.sh",
@@ -60,7 +70,10 @@ export class PlatformRuntime {
         restore: "stop-trae-skin-macos.sh",
       };
       const args = [path.join(this.scriptsRoot, files[operation])];
-      if (operation === "apply") args.push("--theme", themeId);
+      if (operation === "apply") {
+        args.push("--theme", themeId);
+        if (themeRevision) args.push("--revision", themeRevision);
+      }
       if (operation === "verify" && screenshotPath) args.push("--screenshot", screenshotPath);
       return { file: "/bin/bash", args };
     }
@@ -75,7 +88,10 @@ export class PlatformRuntime {
         "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
         "-File", path.join(this.scriptsRoot, files[operation]),
       ];
-      if (operation === "apply") args.push("-Theme", themeId);
+      if (operation === "apply") {
+        args.push("-Theme", themeId);
+        if (themeRevision) args.push("-Revision", themeRevision);
+      }
       if (operation === "verify" && screenshotPath) args.push("-ScreenshotPath", screenshotPath);
       return { file: "powershell.exe", args };
     }
@@ -89,6 +105,10 @@ export class PlatformRuntime {
     try {
       const result = await this.runner(command.file, command.args, {
         cwd: path.dirname(this.scriptsRoot),
+        env: {
+          ...process.env,
+          TRAE_DREAM_SKIN_THEMES_ROOT: this.themesRoot,
+        },
         encoding: "utf8",
         timeout: operation === "status" ? 60000 : 180000,
         maxBuffer: 8 * 1024 * 1024,
@@ -114,9 +134,15 @@ export class PlatformRuntime {
     return { ...parseJsonOutput(result.stdout, "status"), diagnostics: result.stderr || undefined };
   }
 
-  async apply(themeId) {
-    const result = await this.execute("apply", { themeId });
-    return { applied: true, themeId, message: result.stdout, diagnostics: result.stderr || undefined };
+  async apply(themeId, { revision } = {}) {
+    const result = await this.execute("apply", { themeId, themeRevision: revision });
+    return {
+      applied: true,
+      themeId,
+      revision: revision || null,
+      message: result.stdout,
+      diagnostics: result.stderr || undefined,
+    };
   }
 
   async verify({ screenshotPath } = {}) {

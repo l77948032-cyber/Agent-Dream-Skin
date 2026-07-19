@@ -3,4 +3,10 @@ node_modules/
 .trae-dream-skin/
 .runtime*/
 artifacts/
+studio/dist/
+studio/vite.config.js
+studio/vite.config.d.ts
+*.tsbuildinfo
+build/
+dist-desktop/
 *.log

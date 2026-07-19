@@ -1,22 +1,92 @@
 {
   "name": "trae-dream-skin",
   "version": "0.2.0",
+  "description": "DreamSkin Studio and its local Agent Tool for designing and applying reversible desktop themes.",
+  "author": "DreamSkin Contributors",
+  "license": "MIT",
   "private": true,
   "type": "module",
+  "main": "desktop/main.mjs",
   "bin": {
     "trae-dream-skin": "./bin/trae-dream-skin.mjs"
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check scripts/injector.mjs && node --check assets/renderer-inject.js && node --check src/cli.mjs && node --check src/mcp-server.mjs",
+    "check": "node --check scripts/injector.mjs && node --check scripts/studio-dev.mjs && node --check scripts/build-desktop-resources.mjs && node --check scripts/after-pack.mjs && node --check scripts/verify-packaged-desktop.mjs && node --check scripts/verify-macos-release.mjs && node --check assets/renderer-inject.js && node --check src/cli.mjs && node --check src/mcp-server.mjs && node --check src/studio-server.mjs && node --check desktop/main.mjs && node --check desktop/process-lifecycle.mjs && node --check desktop/shell.mjs && node --check desktop/protocol-router.mjs",
     "cli": "node ./bin/trae-dream-skin.mjs",
-    "mcp": "node ./src/mcp-server.mjs"
+    "mcp": "node ./src/mcp-server.mjs",
+    "mcp:legacy": "node ./src/mcp-server.mjs --profile legacy-v1",
+    "studio:dev": "node ./scripts/studio-dev.mjs",
+    "studio:web": "npm --prefix studio run dev",
+    "studio:build": "npm --prefix studio run build",
+    "studio:server": "node ./src/studio-server.mjs",
+    "studio:start": "npm run studio:build && npm run studio:server",
+    "desktop:resources": "npm run studio:build && node ./scripts/build-desktop-resources.mjs",
+    "desktop:dev": "npm run studio:build && electron .",
+    "desktop:pack": "npm run desktop:resources && electron-builder --dir",
+    "desktop:verify:packaged": "node ./scripts/verify-packaged-desktop.mjs",
+    "desktop:dist": "npm run desktop:resources && electron-builder",
+    "desktop:dist:mac": "npm run desktop:resources && electron-builder --mac --arm64",
+    "desktop:verify:mac": "node ./scripts/verify-macos-release.mjs",
+    "desktop:release:mac": "npm run desktop:resources && electron-builder --mac --arm64 --config.forceCodeSigning=true --config.mac.notarize=true && npm run desktop:verify:packaged -- --skip-agent && npm run desktop:verify:mac"
   },
   "engines": {
-    "node": ">=20.10"
+    "node": ">=22.12"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "^1.2.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@agentclientprotocol/codex-acp": "^1.1.4",
+    "@electron/fuses": "^2.1.3",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3",
+    "ws": "^8.21.1"
+  },
+  "build": {
+    "appId": "com.dreamskin.studio",
+    "productName": "DreamSkin Studio",
+    "asar": true,
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "desktop/**/*",
+      "src/**/*",
+      "plugins/trae/plugin.mjs",
+      "plugins/trae/catalog.mjs",
+      "LICENSE",
+      "NOTICE.md",
+      "THIRD_PARTY_NOTICES.md",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/desktop-resources",
+        "to": "dreamskin"
+      }
+    ],
+    "artifactName": "DreamSkin-Studio-${version}-${os}-${arch}.${ext}",
+    "afterPack": "scripts/after-pack.mjs",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "desktop/assets/icon.icns",
+      "minimumSystemVersion": "12.0",
+      "hardenedRuntime": true,
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "desktop/assets/icon.png",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

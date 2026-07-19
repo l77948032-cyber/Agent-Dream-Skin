@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { ToolError } from "./errors.mjs";
 import { PlatformRuntime } from "./platform.mjs";
-import { REGISTRY_PATH, SCHEMA_PATH, TOOL_DATA_ROOT } from "./paths.mjs";
+import { REGISTRY_PATH, RUNTIME_MAPPING_PATH, SCHEMA_PATH, TOOL_DATA_ROOT } from "./paths.mjs";
 import { ThemeRepository } from "./theme-repository.mjs";
 
 export const AGENT_TOOL_VERSION = "0.2.0";
@@ -22,35 +22,86 @@ function publicRegistry(registry) {
   };
 }
 
+function publicRepository(repository) {
+  return {
+    count: repository.count,
+    themes: repository.themes,
+  };
+}
+
 export class TraeDreamSkinService {
   constructor({
     repository = new ThemeRepository(),
     runtime = new PlatformRuntime(),
     registryPath = REGISTRY_PATH,
+    runtimeMappingPath = RUNTIME_MAPPING_PATH,
     schemaPath = SCHEMA_PATH,
     dataRoot = TOOL_DATA_ROOT,
+    catalogRepository,
   } = {}) {
     this.repository = repository;
     this.runtime = runtime;
     this.registryPath = registryPath;
+    this.runtimeMappingPath = runtimeMappingPath;
     this.schemaPath = schemaPath;
     this.dataRoot = dataRoot;
+    this.catalogRepository = catalogRepository;
+    this.runtimeQueue = Promise.resolve();
   }
 
-  async inspect() {
-    const [registry, schema, themes] = await Promise.all([
+  runtimeOperation(action) {
+    const operation = this.runtimeQueue.then(action, action);
+    this.runtimeQueue = operation.catch(() => {});
+    return operation;
+  }
+
+  repositoryOperation(action) {
+    if (typeof this.repository.withLock === "function") return this.repository.withLock(action);
+    return action();
+  }
+
+  async runtimeStatus() {
+    if (!this.runtime.descriptor().supported) return { available: false, session: "unsupported" };
+    try {
+      return await this.runtime.status();
+    } catch (error) {
+      return { available: false, error: { code: error.code || "RUNTIME_UNAVAILABLE", message: error.message } };
+    }
+  }
+
+  async toolInspect() {
+    const [registry, runtimeMapping, schema, themes] = await Promise.all([
       readJson(this.registryPath),
+      readJson(this.runtimeMappingPath),
       readJson(this.schemaPath),
       this.repository.list(),
     ]);
-    let status;
-    if (this.runtime.descriptor().supported) {
-      try {
-        status = await this.runtime.status();
-      } catch (error) {
-        status = { available: false, error: { code: error.code || "RUNTIME_UNAVAILABLE", message: error.message } };
-      }
-    } else status = { available: false, session: "unsupported" };
+    return {
+      product: "DreamSkin Tool",
+      target: { id: "trae", name: "Trae" },
+      agentToolVersion: AGENT_TOOL_VERSION,
+      protocolVersion: 1,
+      repository: publicRepository(themes),
+      registry: publicRegistry(registry),
+      runtimeMapping,
+      themeSchema: schema,
+      safety: {
+        structuredThemesOnly: true,
+        arbitraryCssWrites: false,
+        arbitraryPathReads: false,
+        runtimeActionsExposedToAgent: false,
+      },
+    };
+  }
+
+  async inspect() {
+    const [registry, runtimeMapping, schema, themes] = await Promise.all([
+      readJson(this.registryPath),
+      readJson(this.runtimeMappingPath),
+      readJson(this.schemaPath),
+      this.repository.list(),
+    ]);
+    const status = await this.runtimeStatus();
     return {
       product: "Trae-Dream-Skin",
       agentToolVersion: AGENT_TOOL_VERSION,
@@ -59,6 +110,7 @@ export class TraeDreamSkinService {
       status,
       repository: themes,
       registry: publicRegistry(registry),
+      runtimeMapping,
       themeSchema: schema,
       safety: {
         structuredThemesOnly: true,
@@ -86,13 +138,15 @@ export class TraeDreamSkinService {
   }
 
   async apply(id) {
-    await this.repository.read(id);
-    const applied = await this.runtime.apply(id);
-    const status = await this.runtime.status();
-    return { ...applied, status };
+    return this.runtimeOperation(() => this.repositoryOperation(async () => {
+      const theme = await this.repository.read(id);
+      const applied = await this.runtime.apply(id, { revision: theme.revision });
+      const status = await this.runtime.status();
+      return { ...applied, revision: theme.revision, status };
+    }));
   }
 
-  async verify({ screenshot = false, screenshotPath } = {}) {
+  async verifyUnlocked({ screenshot = false, screenshotPath } = {}) {
     let outputPath = screenshotPath;
     if (screenshot && !outputPath) {
       const stamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
@@ -102,46 +156,81 @@ export class TraeDreamSkinService {
     return { ...result, requestedScreenshotPath: outputPath ? path.resolve(outputPath) : null };
   }
 
+  verify(options = {}) {
+    return this.runtimeOperation(() => this.verifyUnlocked(options));
+  }
+
   async restore() {
-    const before = await this.runtime.status().catch(() => ({ session: "unknown" }));
-    const restored = await this.runtime.restore();
-    const after = await this.runtime.status();
-    return { ...restored, before, after };
+    return this.runtimeOperation(async () => {
+      const before = await this.runtime.status().catch(() => ({ session: "unknown" }));
+      const restored = await this.runtime.restore();
+      const after = await this.runtime.status();
+      return { ...restored, before, after };
+    });
   }
 
   async preview(id, { screenshot = true, screenshotPath } = {}) {
-    await this.repository.read(id);
-    const before = await this.runtime.status();
-    const previousThemeId = before?.session === "active" ? before.themeId : null;
-    let previewResult;
-    let restoration;
-    try {
-      await this.runtime.apply(id);
-      previewResult = await this.verify({ screenshot, screenshotPath });
-    } catch (error) {
-      previewResult = { pass: false, error: { code: error.code || "PREVIEW_FAILED", message: error.message } };
-    } finally {
-      try {
-        if (previousThemeId) {
-          await this.runtime.apply(previousThemeId);
-          restoration = { mode: "theme", themeId: previousThemeId, status: await this.runtime.status() };
-        } else {
-          await this.runtime.restore();
-          restoration = { mode: "native", status: await this.runtime.status() };
+    return this.runtimeOperation(() => this.repositoryOperation(async () => {
+      const candidate = await this.repository.read(id);
+      const before = await this.runtime.status();
+      const previousThemeId = before?.session === "active" ? before.themeId : null;
+      let previousTheme = null;
+      if (previousThemeId) {
+        if (typeof before.themeRevision !== "string" || !/^[a-f0-9]{64}$/.test(before.themeRevision)) {
+          throw new ToolError(
+            "PREVIEW_STATE_UNRESTORABLE",
+            "The active theme predates revision tracking. Reapply or restore it before previewing another theme.",
+            { themeId: previousThemeId },
+          );
         }
+        previousTheme = await this.repository.read(previousThemeId);
+        if (previousTheme.revision !== before.themeRevision) {
+          throw new ToolError(
+            "PREVIEW_STATE_UNRESTORABLE",
+            "The active theme revision differs from the repository. Reapply or restore it before previewing another theme.",
+            {
+              themeId: previousThemeId,
+              activeRevision: before.themeRevision,
+              repositoryRevision: previousTheme.revision,
+            },
+          );
+        }
+      }
+      let previewResult;
+      let restoration;
+      try {
+        await this.runtime.apply(id, { revision: candidate.revision });
+        previewResult = await this.verifyUnlocked({ screenshot, screenshotPath });
       } catch (error) {
-        throw new ToolError("PREVIEW_RESTORE_FAILED", "Preview finished, but the previous Trae state could not be restored.", {
+        previewResult = { pass: false, error: { code: error.code || "PREVIEW_FAILED", message: error.message } };
+      } finally {
+        try {
+          if (previousTheme) {
+            await this.runtime.apply(previousTheme.id, { revision: previousTheme.revision });
+            restoration = {
+              mode: "theme",
+              themeId: previousTheme.id,
+              revision: previousTheme.revision,
+              status: await this.runtime.status(),
+            };
+          } else {
+            await this.runtime.restore();
+            restoration = { mode: "native", status: await this.runtime.status() };
+          }
+        } catch (error) {
+          throw new ToolError("PREVIEW_RESTORE_FAILED", "Preview finished, but the previous Trae state could not be restored.", {
+            preview: previewResult,
+            restoreError: { code: error.code || "RUNTIME_COMMAND_FAILED", message: error.message },
+          });
+        }
+      }
+      if (previewResult?.pass === false) {
+        throw new ToolError("PREVIEW_FAILED", "The preview did not pass verification.", {
           preview: previewResult,
-          restoreError: { code: error.code || "RUNTIME_COMMAND_FAILED", message: error.message },
+          restoration,
         });
       }
-    }
-    if (previewResult?.pass === false) {
-      throw new ToolError("PREVIEW_FAILED", "The preview did not pass verification.", {
-        preview: previewResult,
-        restoration,
-      });
-    }
-    return { id, preview: previewResult, restoration };
+      return { id, revision: candidate.revision, preview: previewResult, restoration };
+    }));
   }
 }

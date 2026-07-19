@@ -1,4 +1,4 @@
 interface:
   display_name: "Trae-Dream-Skin"
   short_description: "Create and manage reversible structured Trae skins"
-  default_prompt: "Use Trae-Dream-Skin to inspect the current setup, make structured theme changes, validate and preview them, then apply only after verification."
+  default_prompt: "Use dreamskin_theme to inspect the selected theme, make revision-checked structured changes, validate them, and summarize the visible result. Leave preview and runtime actions to DreamSkin Studio."

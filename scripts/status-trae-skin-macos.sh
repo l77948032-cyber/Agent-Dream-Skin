@@ -25,6 +25,7 @@ fi
 
 PORT="$(state_field port)"
 THEME_ID="$(state_field themeId)"
+THEME_REVISION="$(state_field themeRevision)"
 BROWSER_ID="$(state_field browserId)"
 INJECTOR_PID="$(state_field injectorPid)"
 INJECTOR_STARTED_AT="$(state_field injectorStartedAt)"
@@ -38,5 +39,9 @@ if verified_cdp_endpoint "$PORT"; then
   fi
 fi
 
-printf '{"session":"%s","themeId":"%s","port":%s,"injectorAlive":%s,"cdpOk":%s}\n' \
-  "$(state_field session)" "$THEME_ID" "$PORT" "$INJECTOR_ALIVE" "$CDP_OK"
+THEME_REVISION_JSON="null"
+if [[ "$THEME_REVISION" =~ ^[0-9a-f]{64}$ ]]; then
+  THEME_REVISION_JSON="\"$THEME_REVISION\""
+fi
+printf '{"session":"%s","themeId":"%s","themeRevision":%s,"port":%s,"injectorAlive":%s,"cdpOk":%s}\n' \
+  "$(state_field session)" "$THEME_ID" "$THEME_REVISION_JSON" "$PORT" "$INJECTOR_ALIVE" "$CDP_OK"

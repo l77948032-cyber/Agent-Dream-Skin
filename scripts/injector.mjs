@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  MAX_CONFIG_BYTES,
   MAX_CSS_BYTES,
   THEME_VARIABLES,
   matchesImageSignature,
@@ -14,8 +15,16 @@ export { loadTheme } from "../src/core/theme-loader.mjs";
 const filename = fileURLToPath(import.meta.url);
 const here = path.dirname(filename);
 const root = path.resolve(here, "..");
+const VISUAL_ATTRIBUTE_NAMES = Object.freeze([
+  "data-trae-skin-motif",
+  "data-trae-skin-icon-treatment",
+  "data-trae-skin-surface-treatment",
+  "data-trae-skin-accent-placement",
+  "data-trae-skin-card-treatment",
+  "data-trae-skin-ornament",
+]);
 
-export const SKIN_VERSION = "0.1.0";
+export const SKIN_VERSION = "0.2.0";
 export const DEFAULT_PORT = 9342;
 
 const DEFAULT_THEME_DIR = path.join(root, "themes", "neon-portal");
@@ -524,18 +533,24 @@ async function readSizedFile(filePath, maximum, label) {
 }
 
 export async function loadPayload(themeDir = DEFAULT_THEME_DIR) {
-  const [templateBuffer, loaded] = await Promise.all([
+  const [templateBuffer, runtimeMappingBuffer, componentRegistryBuffer, loaded] = await Promise.all([
     readSizedFile(path.join(root, "assets", "renderer-inject.js"), MAX_CSS_BYTES, "Renderer template"),
+    readSizedFile(path.join(root, "registry", "theme-runtime.v1.json"), MAX_CONFIG_BYTES, "Theme runtime mapping"),
+    readSizedFile(path.join(root, "registry", "components.v1.json"), MAX_CONFIG_BYTES, "Component registry"),
     loadTheme(themeDir),
   ]);
   const template = templateBuffer.toString("utf8");
+  const runtimeMapping = JSON.parse(runtimeMappingBuffer.toString("utf8"));
+  const componentRegistry = JSON.parse(componentRegistryBuffer.toString("utf8"));
   const artDataUrl = `data:${loaded.mime};base64,${loaded.image.toString("base64")}`;
   const payload = template
     .replaceAll("__TRAE_SKIN_CSS_JSON__", JSON.stringify(loaded.css))
     .replaceAll("__TRAE_SKIN_ART_JSON__", JSON.stringify(artDataUrl))
     .replaceAll("__TRAE_SKIN_THEME_JSON__", JSON.stringify(loaded.theme))
+    .replaceAll("__TRAE_SKIN_RUNTIME_MAP_JSON__", JSON.stringify(runtimeMapping))
+    .replaceAll("__TRAE_SKIN_COMPONENT_REGISTRY_JSON__", JSON.stringify(componentRegistry))
     .replaceAll("__TRAE_SKIN_VERSION_JSON__", JSON.stringify(SKIN_VERSION));
-  if (/__TRAE_SKIN_(?:CSS|ART|THEME|VERSION)_JSON__/.test(payload)) {
+  if (/__TRAE_SKIN_(?:CSS|ART|THEME|RUNTIME_MAP|COMPONENT_REGISTRY|VERSION)_JSON__/.test(payload)) {
     throw new Error("Renderer payload contains an unresolved placeholder");
   }
   return {
@@ -563,10 +578,12 @@ export async function removeFromSession(session) {
     root?.removeAttribute('data-trae-skin-theme');
     root?.removeAttribute('data-trae-skin-shell');
     root?.removeAttribute('data-trae-skin-treatment');
+    root?.removeAttribute('data-trae-skin-layout');
     root?.removeAttribute('data-trae-skin-shadow');
     root?.removeAttribute('data-trae-skin-mode');
     root?.removeAttribute('data-trae-skin-view');
     root?.removeAttribute('data-trae-skin-route');
+    for (const attribute of ${JSON.stringify(VISUAL_ATTRIBUTE_NAMES)}) root?.removeAttribute(attribute);
     root?.removeAttribute('data-trae-skin-active');
     document.querySelectorAll('[data-trae-skin-surface]').forEach((node) =>
       node.removeAttribute('data-trae-skin-surface'));
@@ -574,6 +591,8 @@ export async function removeFromSession(session) {
       node.removeAttribute('data-trae-skin-role');
       node.removeAttribute('data-trae-skin-index');
     });
+    document.querySelectorAll('[data-trae-skin-component]').forEach((node) =>
+      node.removeAttribute('data-trae-skin-component'));
     for (const name of ${JSON.stringify(THEME_VARIABLES)}) root?.style.removeProperty(name);
     document.getElementById('trae-dream-skin-style')?.remove();
     document.getElementById('trae-dream-skin-chrome')?.remove();
@@ -592,13 +611,16 @@ export async function verifyRemovedSession(session) {
       !root?.hasAttribute('data-trae-skin-active') &&
       !root?.hasAttribute('data-trae-skin-theme') &&
       !root?.hasAttribute('data-trae-skin-treatment') &&
+      !root?.hasAttribute('data-trae-skin-layout') &&
       !root?.hasAttribute('data-trae-skin-shadow') &&
       !root?.hasAttribute('data-trae-skin-mode') &&
       !root?.hasAttribute('data-trae-skin-view') &&
       !root?.hasAttribute('data-trae-skin-route') &&
+      ${JSON.stringify(VISUAL_ATTRIBUTE_NAMES)}.every((attribute) => !root?.hasAttribute(attribute)) &&
       themeVariablesRemoved &&
       !document.querySelector('[data-trae-skin-surface]') &&
       !document.querySelector('[data-trae-skin-role]') &&
+      !document.querySelector('[data-trae-skin-component]') &&
       !document.getElementById('trae-dream-skin-style') &&
       !document.getElementById('trae-dream-skin-chrome') &&
       !window.__TRAE_DREAM_SKIN_STATE__;

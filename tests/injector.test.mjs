@@ -337,7 +337,7 @@ test("all bundled themes build complete renderer payloads", async () => {
     assert.ok(loaded.imageBytes > 100);
     assert.ok(loaded.cssBytes > 1000);
     assert.ok(loaded.payloadBytes > loaded.imageBytes);
-    assert.doesNotMatch(loaded.payload, /__TRAE_SKIN_(?:CSS|ART|THEME|VERSION)_JSON__/);
+    assert.doesNotMatch(loaded.payload, /__TRAE_SKIN_(?:CSS|ART|THEME|RUNTIME_MAP|COMPONENT_REGISTRY|VERSION)_JSON__/);
     assert.match(loaded.payload, /__TRAE_DREAM_SKIN_STATE__/);
     assert.match(loaded.payload, new RegExp(`\\"id\\":\\"${id}\\"`));
   }
@@ -570,8 +570,15 @@ test("renderer injection is reentrant and remove restores every owned DOM change
   assert.equal(document.documentElement.getAttribute("data-trae-skin-mode"), "work");
   assert.equal(document.documentElement.getAttribute("data-trae-skin-view"), "solo");
   assert.equal(document.documentElement.getAttribute("data-trae-skin-route"), "thread");
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-motif"), "circuit");
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-icon-treatment"), "outline");
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-layout"), "studio-collage");
+  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-art-blend"), "normal");
+  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-overlay"), "rgba(4, 8, 18, 0.28)");
   assert.equal(document.querySelector(".chat-input-v2-editor-part")
     .getAttribute("data-trae-skin-surface"), "composer");
+  assert.match(document.querySelector(".messageInputContainer")
+    .getAttribute("data-trae-skin-component"), /composer\.surface/);
   assert.equal(document.querySelector(".chat-input-v2-container")
     .getAttribute("data-trae-skin-surface"), null);
   assert.equal(document.querySelector(".messageInputContainer")
@@ -600,6 +607,14 @@ test("renderer injection is reentrant and remove restores every owned DOM change
   vm.runInContext("window.__TRAE_DREAM_SKIN_STATE__.ensure()", context);
   assert.equal(document.documentElement.getAttribute("data-trae-skin-route"), "thread");
 
+  const codeDesignHome = addNode(document, document.body, { classes: ["panel-content"] });
+  vm.runInContext("window.__TRAE_DREAM_SKIN_STATE__.ensure()", context);
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-route"), "home");
+  assert.equal(codeDesignHome.getAttribute("data-trae-skin-surface"), "home");
+  codeDesignHome.remove();
+  vm.runInContext("window.__TRAE_DREAM_SKIN_STATE__.ensure()", context);
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-route"), "thread");
+
   const second = vm.runInContext(payload, context);
   assert.equal(second.installed, true);
   assert.equal(document.querySelectorAll("#trae-dream-skin-style").length, 1);
@@ -611,10 +626,28 @@ test("renderer injection is reentrant and remove restores every owned DOM change
   assert.equal(await verifyRemovedSession(session), true);
   assert.equal(document.documentElement.classList.contains("trae-dream-skin"), false);
   assert.equal(document.querySelector("[data-trae-skin-surface]"), null);
+  assert.equal(document.querySelector("[data-trae-skin-component]"), null);
   assert.equal(document.getElementById("trae-dream-skin-style"), null);
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-motif"), null);
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-layout"), null);
+  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-art-blend"), "");
+  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-overlay"), "");
   assert.equal(document.getElementById("trae-dream-skin-chrome"), null);
   for (const variableName of Object.values(SEMANTIC_COLOR_VARIABLES)) {
     assert.equal(document.documentElement.style.getPropertyValue(variableName), "");
   }
   assert.equal(revoked.length, 2);
+});
+
+test("fallback removal clears the layout marker when renderer state is unavailable", async () => {
+  const { context, document } = createRendererContext();
+  document.documentElement.classList.add("trae-dream-skin");
+  document.documentElement.setAttribute("data-trae-skin-layout", "studio-collage");
+  document.documentElement.setAttribute("data-trae-skin-theme", "copied-theme-id");
+
+  const session = { evaluate: async (expression) => vm.runInContext(expression, context) };
+  assert.equal(await verifyRemovedSession(session), false);
+  assert.equal(await removeFromSession(session), true);
+  assert.equal(await verifyRemovedSession(session), true);
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-layout"), null);
 });

@@ -1,9 +1,11 @@
-((cssText, artDataUrl, themeConfig) => {
+((cssText, artDataUrl, themeConfig, runtimeMapping, componentRegistry) => {
   const STATE_KEY = "__TRAE_DREAM_SKIN_STATE__";
   const DISABLED_KEY = "__TRAE_DREAM_SKIN_DISABLED__";
   const STYLE_ID = "trae-dream-skin-style";
   const VERSION = __TRAE_SKIN_VERSION_JSON__;
   const THEME = themeConfig && typeof themeConfig === "object" ? themeConfig : {};
+  const RUNTIME_MAPPING = runtimeMapping && typeof runtimeMapping === "object" ? runtimeMapping : {};
+  const COMPONENT_REGISTRY = componentRegistry && typeof componentRegistry === "object" ? componentRegistry : {};
   const THEME_VARIABLES = [
     "--trae-skin-art",
     "--trae-skin-bg",
@@ -33,6 +35,8 @@
     "--trae-skin-art-position",
     "--trae-skin-art-size",
     "--trae-skin-art-opacity",
+    "--trae-skin-art-blend",
+    "--trae-skin-overlay",
     "--trae-skin-surface-mix",
     "--trae-skin-sidebar-mix",
     "--trae-skin-blur",
@@ -46,6 +50,7 @@
     [".task-list-panel", "tasks"],
     [".solo-lite-chat-panel-container", "chat"],
     [".initial-chat-panel", "home"],
+    ["#solo-lite-root .panel-content, .panel-content", "home"],
     [".session-panel", "session"],
   ];
   const ROLE_SELECTORS = [
@@ -79,6 +84,15 @@
   const setVariable = (root, name, value) => {
     if (value !== undefined && value !== null && String(value).length) {
       root.style.setProperty(name, String(value));
+    }
+  };
+
+  const applyVisualAttributes = (root) => {
+    for (const [key, attribute] of Object.entries(RUNTIME_MAPPING.visualAttributes || {})) {
+      const value = THEME.visual?.[key];
+      if (value !== undefined && value !== null && String(value).length) {
+        root.setAttribute(attribute, String(value));
+      } else root.removeAttribute(attribute);
     }
   };
 
@@ -128,7 +142,9 @@
 
   const detectRoute = () => {
     if (document.querySelector(".monaco-workbench")) return "workbench";
-    if (document.querySelector(".initial-chat-panel")) return "home";
+    const alternativeHome = document.querySelector("#solo-lite-root .panel-content, .panel-content");
+    if (document.querySelector(".initial-chat-panel") ||
+      (alternativeHome && !alternativeHome.closest?.(".session-panel"))) return "home";
     if (document.querySelector(
       ".session-panel .virtualized-message-list-view, .session-panel .turn__user-message, .session-panel .turn__agent-message",
     )) return "thread";
@@ -140,35 +156,22 @@
     const colors = THEME.colors || {};
     const states = THEME.states || {};
     const appearance = THEME.appearance || {};
-    const colorVariables = {
-      "--trae-skin-bg": colors.background,
-      "--trae-skin-panel": colors.panel,
-      "--trae-skin-panel-alt": colors.panelAlt,
-      "--trae-skin-accent": colors.accent,
-      "--trae-skin-accent-alt": colors.accentAlt,
-      "--trae-skin-secondary": colors.secondary,
-      "--trae-skin-highlight": colors.highlight,
-      "--trae-skin-on-accent": colors.onAccent,
-      "--trae-skin-success": colors.success,
-      "--trae-skin-warning": colors.warning,
-      "--trae-skin-danger": colors.danger,
-      "--trae-skin-info": colors.info,
-      "--trae-skin-disabled": colors.disabled,
-      "--trae-skin-text": colors.text,
-      "--trae-skin-muted": colors.muted,
-      "--trae-skin-line": colors.line,
-      "--trae-skin-selection": colors.selection,
-      "--trae-skin-terminal": colors.terminal,
-    };
-    for (const [name, value] of Object.entries(colorVariables)) setVariable(root, name, value);
-    const stateVariables = {
-      "--trae-skin-focus": states.focus,
-      "--trae-skin-surface-hover": states.surfaceHover,
-      "--trae-skin-surface-active": states.surfaceActive,
-      "--trae-skin-tooltip-bg": states.tooltipBackground,
-      "--trae-skin-tooltip-text": states.tooltipText,
-    };
-    for (const [name, value] of Object.entries(stateVariables)) setVariable(root, name, value);
+    for (const [key, name] of Object.entries(RUNTIME_MAPPING.colors || {})) {
+      setVariable(root, name, colors[key]);
+    }
+    for (const [key, name] of Object.entries(RUNTIME_MAPPING.states || {})) {
+      setVariable(root, name, states[key]);
+    }
+    for (const [key, descriptor] of Object.entries(RUNTIME_MAPPING.appearance || {})) {
+      const raw = appearance[key];
+      if (raw === undefined || raw === null) continue;
+      const value = descriptor.format === "percent"
+        ? `${Math.round(Number(raw) * 10000) / 100}%`
+        : descriptor.format === "px"
+          ? `${Number(raw)}px`
+          : raw;
+      setVariable(root, descriptor.variable, value);
+    }
 
     const shell = appearance.colorScheme === "system" ? detectShellMode() : appearance.colorScheme;
     const shadow = appearance.shadow === "deep"
@@ -177,14 +180,6 @@
         ? "none"
         : "0 12px 30px rgba(0, 0, 0, 0.22)";
     setVariable(root, "--trae-skin-color-scheme", shell || detectShellMode());
-    setVariable(root, "--trae-skin-art-position", appearance.backgroundPosition);
-    setVariable(root, "--trae-skin-art-size", appearance.backgroundSize);
-    setVariable(root, "--trae-skin-art-opacity", appearance.backgroundOpacity);
-    setVariable(root, "--trae-skin-surface-mix", `${Math.round(Number(appearance.surfaceOpacity) * 10000) / 100}%`);
-    setVariable(root, "--trae-skin-sidebar-mix", `${Math.round(Number(appearance.sidebarOpacity) * 10000) / 100}%`);
-    setVariable(root, "--trae-skin-blur", `${Number(appearance.blur)}px`);
-    setVariable(root, "--trae-skin-saturation", appearance.saturation);
-    setVariable(root, "--trae-skin-radius", `${Number(appearance.radius)}px`);
     setVariable(root, "--trae-skin-shadow", shadow);
   };
 
@@ -230,6 +225,32 @@
       }
     }
     return marked.size;
+  };
+
+  const markComponents = () => {
+    const assignments = new Map();
+    for (const component of COMPONENT_REGISTRY.components || []) {
+      if (!component?.id || !Array.isArray(component.selectors)) continue;
+      for (const selector of component.selectors) {
+        let nodes = [];
+        try { nodes = document.querySelectorAll(selector); } catch {}
+        for (const node of nodes) {
+          const ids = assignments.get(node) || new Set();
+          ids.add(component.id);
+          assignments.set(node, ids);
+        }
+      }
+    }
+    for (const node of document.querySelectorAll("[data-trae-skin-component]")) {
+      if (!assignments.has(node)) node.removeAttribute("data-trae-skin-component");
+    }
+    for (const [node, ids] of assignments) {
+      node.setAttribute("data-trae-skin-component", [...ids].join(" "));
+    }
+    return {
+      componentCount: new Set([...assignments.values()].flatMap((ids) => [...ids])).size,
+      componentNodeCount: assignments.size,
+    };
   };
 
   const ensureChrome = () => {
@@ -295,12 +316,16 @@
     document.body?.classList.remove("trae-dream-skin-body");
     root?.removeAttribute("data-trae-skin-active");
     root?.removeAttribute("data-trae-skin-theme");
+    root?.removeAttribute("data-trae-skin-layout");
     root?.removeAttribute("data-trae-skin-treatment");
     root?.removeAttribute("data-trae-skin-shadow");
     root?.removeAttribute("data-trae-skin-shell");
     root?.removeAttribute("data-trae-skin-mode");
     root?.removeAttribute("data-trae-skin-view");
     root?.removeAttribute("data-trae-skin-route");
+    for (const attribute of Object.values(RUNTIME_MAPPING.visualAttributes || {})) {
+      root?.removeAttribute(attribute);
+    }
     for (const name of THEME_VARIABLES) root?.style.removeProperty(name);
     document.querySelectorAll("[data-trae-skin-surface]").forEach((node) =>
       node.removeAttribute("data-trae-skin-surface"));
@@ -308,6 +333,8 @@
       node.removeAttribute("data-trae-skin-role");
       node.removeAttribute("data-trae-skin-index");
     });
+    document.querySelectorAll("[data-trae-skin-component]").forEach((node) =>
+      node.removeAttribute("data-trae-skin-component"));
     document.getElementById(STYLE_ID)?.remove();
     document.getElementById("trae-dream-skin-chrome")?.remove();
   };
@@ -322,12 +349,14 @@
     body.classList.add("trae-dream-skin-body");
     root.setAttribute("data-trae-skin-active", "true");
     root.setAttribute("data-trae-skin-theme", THEME.id || "custom");
+    root.setAttribute("data-trae-skin-layout", THEME.layout || "classic");
     root.setAttribute("data-trae-skin-treatment", THEME.appearance?.treatment || "midnight-neon");
     root.setAttribute("data-trae-skin-shadow", THEME.appearance?.shadow || "soft");
     root.setAttribute("data-trae-skin-shell", detectShellMode());
     root.setAttribute("data-trae-skin-mode", detectMode());
     root.setAttribute("data-trae-skin-view", detectView());
     root.setAttribute("data-trae-skin-route", detectRoute());
+    applyVisualAttributes(root);
     root.style.setProperty("--trae-skin-art", `url("${artUrl}")`);
     applyTheme(root);
 
@@ -343,9 +372,11 @@
     }
     ensureChrome();
     markRoles();
+    const components = markComponents();
     return {
       installed: true,
       surfaceCount: markSurfaces(),
+      ...components,
       mode: detectMode(),
       view: detectView(),
       route: detectRoute(),
@@ -421,5 +452,7 @@
     view: result.view,
     route: result.route,
     surfaceCount: result.surfaceCount,
+    componentCount: result.componentCount,
+    componentNodeCount: result.componentNodeCount,
   };
-})(__TRAE_SKIN_CSS_JSON__, __TRAE_SKIN_ART_JSON__, __TRAE_SKIN_THEME_JSON__)
+})(__TRAE_SKIN_CSS_JSON__, __TRAE_SKIN_ART_JSON__, __TRAE_SKIN_THEME_JSON__, __TRAE_SKIN_RUNTIME_MAP_JSON__, __TRAE_SKIN_COMPONENT_REGISTRY_JSON__)

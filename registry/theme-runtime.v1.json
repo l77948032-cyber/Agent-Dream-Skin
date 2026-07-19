@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "colors": {
+    "background": "--trae-skin-bg",
+    "panel": "--trae-skin-panel",
+    "panelAlt": "--trae-skin-panel-alt",
+    "accent": "--trae-skin-accent",
+    "accentAlt": "--trae-skin-accent-alt",
+    "secondary": "--trae-skin-secondary",
+    "highlight": "--trae-skin-highlight",
+    "onAccent": "--trae-skin-on-accent",
+    "success": "--trae-skin-success",
+    "warning": "--trae-skin-warning",
+    "danger": "--trae-skin-danger",
+    "info": "--trae-skin-info",
+    "disabled": "--trae-skin-disabled",
+    "text": "--trae-skin-text",
+    "muted": "--trae-skin-muted",
+    "line": "--trae-skin-line",
+    "selection": "--trae-skin-selection",
+    "terminal": "--trae-skin-terminal"
+  },
+  "states": {
+    "focus": "--trae-skin-focus",
+    "surfaceHover": "--trae-skin-surface-hover",
+    "surfaceActive": "--trae-skin-surface-active",
+    "tooltipBackground": "--trae-skin-tooltip-bg",
+    "tooltipText": "--trae-skin-tooltip-text"
+  },
+  "appearance": {
+    "backgroundPosition": { "variable": "--trae-skin-art-position", "format": "raw" },
+    "backgroundSize": { "variable": "--trae-skin-art-size", "format": "raw" },
+    "backgroundOpacity": { "variable": "--trae-skin-art-opacity", "format": "raw" },
+    "backgroundOverlay": { "variable": "--trae-skin-overlay", "format": "raw" },
+    "backgroundBlendMode": { "variable": "--trae-skin-art-blend", "format": "raw" },
+    "surfaceOpacity": { "variable": "--trae-skin-surface-mix", "format": "percent" },
+    "sidebarOpacity": { "variable": "--trae-skin-sidebar-mix", "format": "percent" },
+    "blur": { "variable": "--trae-skin-blur", "format": "px" },
+    "saturation": { "variable": "--trae-skin-saturation", "format": "raw" },
+    "radius": { "variable": "--trae-skin-radius", "format": "px" }
+  },
+  "visualAttributes": {
+    "motif": "data-trae-skin-motif",
+    "iconTreatment": "data-trae-skin-icon-treatment",
+    "surfaceTreatment": "data-trae-skin-surface-treatment",
+    "accentPlacement": "data-trae-skin-accent-placement",
+    "cardTreatment": "data-trae-skin-card-treatment",
+    "ornament": "data-trae-skin-ornament"
+  }
+}

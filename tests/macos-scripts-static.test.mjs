@@ -105,6 +105,7 @@ test("Finder entry points expose start, switch, and stop without patching the ap
 
   const install = await source("scripts/install-macos-runtime.sh");
   assert.match(install, /ditto --noextattr --noqtn/);
+  assert.match(install, /PROJECT_ROOT\/registry/);
   assert.match(install, /TraeDreamSkin\/runtime/);
   assert.match(install, /PROJECT_ROOT\/src\/core/);
 
@@ -112,4 +113,25 @@ test("Finder entry points expose start, switch, and stop without patching the ap
     .filter((name) => name.endsWith(".sh"))
     .map((name) => source(path.join("scripts", name))));
   assert.doesNotMatch(allScripts.join("\n"), /app\.asar|asar\s+(?:extract|pack)|codesign\s+--force/);
+});
+
+test("host launchers persist and report the exact applied theme revision", async () => {
+  const [macStart, macCommon, macStatus, windowsStart, windowsCommon, windowsStatus] = await Promise.all([
+    source("scripts/start-trae-skin-macos.sh"),
+    source("scripts/common-macos.sh"),
+    source("scripts/status-trae-skin-macos.sh"),
+    source("scripts/start-trae-skin-windows.ps1"),
+    source("scripts/common-windows.ps1"),
+    source("scripts/status-trae-skin-windows.ps1"),
+  ]);
+
+  assert.match(macStart, /--revision\) THEME_REVISION=/);
+  assert.match(macStart, /\^\[0-9a-f\]\{64\}\$/);
+  assert.match(macCommon, /themeRevision: themeRevision \|\| null/);
+  assert.match(macStatus, /"themeRevision":%s/);
+
+  assert.match(windowsStart, /\[string\]\$Revision/);
+  assert.match(windowsStart, /themeRevision = if \(\$Revision\)/);
+  assert.match(windowsCommon, /State theme revision is invalid/);
+  assert.match(windowsStatus, /themeRevision = if/);
 });

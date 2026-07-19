@@ -2,20 +2,40 @@
 
 ## Boundary
 
-Trae-Dream-Skin is the single local tool layer used by coding agents now and by a standalone user application later. It owns structured theme data, validation, semantic Trae component mapping, the reversible injection runtime, and lifecycle verification. Consumers do not reimplement those behaviors.
+Trae-Dream-Skin is the single local tool layer used by coding agents and
+DreamSkin Studio. It owns structured theme data, validation, semantic Trae
+component mapping, the reversible injection runtime, and lifecycle
+verification. Consumers do not reimplement those behaviors.
 
-Version 1 intentionally excludes the standalone application, marketplace, cloud sync, embedded model, and arbitrary CSS editing.
+DreamSkin is a Tool product, not an MCP product. Its stable boundary is the
+structured Tool contract and shared domain service. MCP is only a compatibility
+adapter for agent hosts that cannot yet provide DreamSkin Tool through a native
+tool callback.
+
+Version 1 intentionally excludes the marketplace, cloud sync, embedded model,
+and arbitrary CSS editing.
 
 ## Interfaces
 
-The primary agent interface is the stdio MCP server:
+Studio and in-process integrations call the shared service directly. The
+universal and debugging adapter is the JSON CLI:
+
+```bash
+npm run cli -- inspect
+```
+
+Agent hosts expose one `dreamskin_theme` tool. Its structured `action` is one
+of `inspect`, `list`, `read`, `create`, `update`, or `validate`. Runtime
+operations are deliberately excluded from the Agent Tool and remain owned by
+Studio. For hosts that currently require MCP, the project provides this stdio
+compatibility adapter:
 
 ```bash
 node ./src/mcp-server.mjs
 ```
 
 Point an MCP client directly at Node so package-manager banners cannot corrupt
-the stdio protocol. A generic client entry is:
+the stdio protocol. A generic compatibility entry is:
 
 ```json
 {
@@ -29,31 +49,28 @@ the stdio protocol. A generic client entry is:
 }
 ```
 
-The universal and debugging interface is the JSON CLI:
-
-```bash
-npm run cli -- inspect
-```
-
-Both expose the same nine operations: `inspect`, `theme_list`, `theme_read`, `theme_write`, `theme_validate`, `preview`, `apply`, `verify`, and `restore`.
+The default compatibility profile exposes only `dreamskin_theme`. Existing
+integrations that still need the original nine-tool surface can run
+`npm run mcp:legacy`; this profile is not used by Studio.
 
 ## Ownership
 
 - `src/core/`: shared domain logic and platform orchestration
-- `src/mcp-server.mjs`: thin MCP adapter
+- `src/mcp-server.mjs`: thin MCP compatibility adapter
 - `src/cli.mjs`: thin JSON CLI adapter
-- `schemas/theme-v1.schema.json`: public structured theme contract
-- `registry/components.v1.json`: semantic components mapped to internal Trae selectors
+- `plugins/trae/`: self-contained Trae target entry, catalog, schema, component registry, and runtime mapping
 - `skills/trae-dream-skin/`: thin agent workflow adapter
 - `scripts/` and `assets/`: existing macOS/Windows runtime and renderer
 
 ## Transactions
 
-`theme_write` stages a complete theme beside the live repository, validates config and image content, checks `expectedRevision`, and atomically replaces the theme. Existing data is copied into `.trae-dream-skin/backups/<transactionId>/` before commit. Rollback validates the backup revision before restoring it and is idempotent.
+`dreamskin_theme` actions `create` and `update` stage a complete theme beside the live repository, validate config and image content, check `expectedRevision`, and atomically replace the theme. Existing data is copied into the managed backup directory before commit. Host-only rollback validates the backup revision before restoring it and is idempotent.
 
 No normal Agent Tool operation accepts raw CSS. Existing legacy `skin.css` files are preserved for compatibility but cannot be edited through v1.
 
-`preview` snapshots the current runtime state, applies and verifies the requested theme, captures an optional screenshot, then restores the previous active theme or native Trae in `finally`.
+The optional structured `visual` profile gives each theme its own component language. The renderer marks live Trae nodes with semantic component ids from the registry, then applies validated icon, surface, accent, card, motif, and ornament recipes. Studio loads the same registry, mapping, theme data, and runtime CSS instead of maintaining a second preview-only design.
+
+Studio's host-only preview records the current runtime theme id and exact revision, holds the repository lock while it applies and verifies the requested theme, captures an optional screenshot, then restores that exact active revision or native Trae in `finally`. If the recorded runtime revision has diverged from the repository, preview fails before switching instead of restoring different content under the same theme id.
 
 ## Safety
 
@@ -73,7 +90,7 @@ CLI success:
 { "ok": true, "result": {} }
 ```
 
-CLI or MCP operation error:
+DreamSkin Tool operation error (including CLI and compatibility adapters):
 
 ```json
 {

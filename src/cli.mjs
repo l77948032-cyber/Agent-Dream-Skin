@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 
+import { createTraeApplicationContext } from "./core/application-context.mjs";
 import { errorEnvelope, ToolError } from "./core/errors.mjs";
-import { TraeDreamSkinService } from "./core/service.mjs";
 
 function optionValue(argv, index, flag) {
   const value = argv[index + 1];
@@ -88,11 +88,12 @@ async function readStdin() {
 
 export async function runCli(
   argv = process.argv.slice(2),
-  service = new TraeDreamSkinService(),
+  service,
   io = { stdout: process.stdout, stderr: process.stderr, stdin: readStdin },
 ) {
   try {
-    const result = await dispatchCli(argv, service, io);
+    const adapter = service || (await createTraeApplicationContext()).legacyService;
+    const result = await dispatchCli(argv, adapter, io);
     io.stdout.write(`${JSON.stringify({ ok: true, result }, null, 2)}\n`);
     return 0;
   } catch (error) {

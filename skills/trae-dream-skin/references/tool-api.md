@@ -1,46 +1,32 @@
 # Trae-Dream-Skin Tool API v1
 
-## MCP Tools
+## DreamSkin Tool
 
-| Tool | Main input | Result |
-| --- | --- | --- |
-| `inspect` | `{}` | Runtime, status, repository, registry, schema, safety flags |
-| `theme_list` | `{}` | Theme summaries and revisions |
-| `theme_read` | `{ "id": "violet-rift" }` | Raw and normalized theme, asset metadata, revision |
-| `theme_write` | Write or rollback input | Transaction id and before/after revisions |
-| `theme_validate` | Exactly one of `id` or `theme` | Normalized theme and warnings |
-| `preview` | `id`, optional screenshot fields | Verification plus restored previous state |
-| `apply` | `id` | Applied theme and current runtime status |
-| `verify` | Optional screenshot fields | Renderer and layout verification |
-| `restore` | `{}` | Native-state restoration and final status |
+The Agent receives one `dreamskin_theme` Tool. `action` is one of `inspect`,
+`list`, `read`, `create`, `update`, or `validate`. Studio owns preview and all
+runtime actions.
 
 ### Write Input
 
 ```json
 {
-  "operation": "write",
-  "id": "violet-rift",
+  "action": "update",
+  "themeId": "violet-rift",
   "themePatch": {
     "states": { "tooltipBackground": "#19172F" },
+    "visual": { "motif": "prism", "iconTreatment": "tile", "ornament": "facets" },
     "appearance": { "surfaceOpacity": 0.56 }
   },
-  "expectedRevision": "revision from theme_read",
+  "expectedRevision": "revision from action read",
   "dryRun": true
 }
 ```
 
-Set `imagePath` to a local PNG, JPEG, or WebP when replacing the background. New themes require an image. The tool validates size, extension, signature, and the complete staged theme before mutation.
+The Agent Tool never accepts arbitrary local paths. Studio imports reference
+images and background assets into its managed asset store before a theme action
+can refer to them.
 
-Rollback:
-
-```json
-{
-  "operation": "rollback",
-  "transactionId": "transaction id from theme_write"
-}
-```
-
-## JSON CLI
+## Host JSON CLI
 
 Run from the Trae-Dream-Skin project root. Every command writes one JSON envelope to stdout and uses a nonzero exit code on error.
 
@@ -57,13 +43,18 @@ npm run cli -- restore
 ```
 
 Use `--input -` to read JSON from stdin. Direct JSON text is also accepted.
+These runtime commands are host/debugging operations and are not exposed to an
+Agent session.
 
 ## Theme Fields
 
 - Content: `name`, `description`, `layout`, `brandSubtitle`, `tagline`, `statusText`, `quote`, `image`
 - Semantic colors: `background`, `panel`, `panelAlt`, `accent`, `accentAlt`, `secondary`, `highlight`, `onAccent`, `success`, `warning`, `danger`, `info`, `disabled`, `text`, `muted`, `line`, `selection`, `terminal`
 - Interaction states: `surfaceHover`, `surfaceActive`, `focus`, `tooltipBackground`, `tooltipText`
+- Visual recipes: `motif`, `iconTreatment`, `surfaceTreatment`, `accentPlacement`, `cardTreatment`, `ornament`
 - Appearance: treatment, background positioning/blending/opacity, surface/sidebar opacity, blur, saturation, radius, shadow, and color scheme
+
+`inspect.registry.components[*].visualSlots` describes the exact creative opportunities for each semantic component. For example, `sidebar.task` exposes `sectionDivider`, `rowIcon`, and `selectionMarker`, while `home.showcase` exposes `iconBadge`, `cornerLabel`, and `cta`. Select only the validated recipe enums from `themeSchema`; raw selectors and CSS are never accepted.
 
 ## Common Errors
 

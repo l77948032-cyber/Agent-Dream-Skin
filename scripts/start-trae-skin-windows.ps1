@@ -2,6 +2,7 @@
 param(
   [int]$Port = 9342,
   [string]$Theme,
+  [string]$Revision,
   [switch]$RestartExisting
 )
 
@@ -9,13 +10,6 @@ $ErrorActionPreference = 'Stop'
 $PortExplicit = $PSBoundParameters.ContainsKey('Port')
 . (Join-Path $PSScriptRoot 'common-windows.ps1')
 
-$Script:TraeSkinPublicThemeIds = @(
-  'neon-portal',
-  'ember-glass',
-  'paper-aurora',
-  'sunlit-spark',
-  'violet-rift'
-)
 $Script:TraeSkinLastThemePath = Join-Path $Script:TraeSkinStateRoot 'last-theme'
 
 function Read-TraeSkinLastTheme {
@@ -25,7 +19,7 @@ function Read-TraeSkinLastTheme {
       $Script:TraeSkinLastThemePath,
       [System.Text.Encoding]::UTF8
     ).Trim()
-    if ($savedTheme -notin $Script:TraeSkinPublicThemeIds) { return $null }
+    if ($savedTheme -notmatch '^[a-z0-9][a-z0-9_-]{0,63}$') { return $null }
     if (-not (Test-Path -LiteralPath (Join-Path $Script:TraeSkinThemesRoot "$savedTheme\theme.json") `
       -PathType Leaf)) { return $null }
     return $savedTheme
@@ -36,7 +30,7 @@ function Read-TraeSkinLastTheme {
 
 function Write-TraeSkinLastTheme {
   param([Parameter(Mandatory = $true)][string]$ThemeId)
-  if ($ThemeId -notin $Script:TraeSkinPublicThemeIds) { return }
+  if ($ThemeId -notmatch '^[a-z0-9][a-z0-9_-]{0,63}$') { return }
   try {
     Write-TraeSkinUtf8FileAtomically -Path $Script:TraeSkinLastThemePath -Content ($ThemeId + "`r`n")
   } catch {
@@ -48,6 +42,9 @@ $operationLock = $null
 try {
   Assert-TraeSkinWindows
   Assert-TraeSkinPort -Port $Port
+  if ($Revision -and $Revision -notmatch '^[a-f0-9]{64}$') {
+    Fail-TraeSkin 'Invalid theme revision.'
+  }
   $operationLock = Enter-TraeSkinOperationLock
   Ensure-TraeSkinStateRoot
 
@@ -215,6 +212,7 @@ try {
       projectRoot = $Script:TraeSkinProjectRoot
       themeId = $themeInfo.Id
       themeDir = $themeInfo.Directory
+      themeRevision = if ($Revision) { $Revision } else { $null }
       createdAt = $createdAt
       updatedAt = $now
     }

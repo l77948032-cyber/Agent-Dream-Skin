@@ -41,6 +41,24 @@ export const STATE_DEFAULTS = Object.freeze({
   tooltipText: "#f8fafc",
 });
 
+export const VISUAL_DEFAULTS = Object.freeze({
+  motif: "circuit",
+  iconTreatment: "outline",
+  surfaceTreatment: "quiet",
+  accentPlacement: "rail",
+  cardTreatment: "quiet",
+  ornament: "none",
+});
+
+const VISUAL_OPTIONS = Object.freeze({
+  motif: new Set(["circuit", "forge", "editorial", "collage", "sketch", "prism"]),
+  iconTreatment: new Set(["outline", "tile", "medallion", "stamp"]),
+  surfaceTreatment: new Set(["quiet", "glass", "paper", "layered"]),
+  accentPlacement: new Set(["rail", "corner", "underline", "glow"]),
+  cardTreatment: new Set(["quiet", "badge", "split", "poster"]),
+  ornament: new Set(["none", "nodes", "sparks", "rules", "tape", "strokes", "facets"]),
+});
+
 export const APPEARANCE_DEFAULTS = Object.freeze({
   treatment: "midnight-neon",
   backgroundPosition: "center center",
@@ -86,6 +104,8 @@ export const THEME_VARIABLES = Object.freeze([
   "--trae-skin-art-position",
   "--trae-skin-art-size",
   "--trae-skin-art-opacity",
+  "--trae-skin-art-blend",
+  "--trae-skin-overlay",
   "--trae-skin-surface-mix",
   "--trae-skin-sidebar-mix",
   "--trae-skin-blur",
@@ -164,6 +184,11 @@ export function normalizeTheme(raw, source = "theme.json") {
   for (const [name, fallback] of Object.entries(STATE_DEFAULTS)) {
     states[name] = validColor(raw.states?.[name], fallback);
   }
+  const visual = {};
+  for (const [name, fallback] of Object.entries(VISUAL_DEFAULTS)) {
+    const requested = typeof raw.visual?.[name] === "string" ? raw.visual[name].trim() : "";
+    visual[name] = VISUAL_OPTIONS[name].has(requested) ? requested : fallback;
+  }
   const blends = new Set([
     "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge",
     "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue",
@@ -172,7 +197,7 @@ export function normalizeTheme(raw, source = "theme.json") {
   const colorSchemes = new Set(["dark", "light", "system"]);
   const treatments = new Set([
     "midnight-neon", "ember-vignette", "paper-wash", "spark-collage",
-    "sunlit-immersive", "violet-rift",
+    "sunlit-immersive", "violet-rift", "neutral",
   ]);
   const layouts = new Set(["classic", "studio-collage"]);
   const requestedBlend = typeof raw.appearance?.backgroundBlendMode === "string"
@@ -213,6 +238,7 @@ export function normalizeTheme(raw, source = "theme.json") {
     image: raw.image,
     colors,
     states,
+    visual,
     appearance,
   };
 }

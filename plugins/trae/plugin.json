@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "dreamskin.trae",
+  "name": "Trae DreamSkin",
+  "version": "0.2.0",
+  "description": "First-party DreamSkin target plugin for Trae.",
+  "entry": "plugin.mjs",
+  "catalog": {
+    "root": "catalog"
+  },
+  "target": {
+    "id": "trae",
+    "name": "Trae",
+    "platforms": ["darwin", "win32"]
+  },
+  "theme": {
+    "schemaPath": "resources/theme-v1.schema.json",
+    "registryPath": "resources/components.v1.json",
+    "runtimeMappingPath": "resources/theme-runtime.v1.json"
+  },
+  "themeTool": {
+    "name": "dreamskin_theme",
+    "actions": ["inspect", "list", "read", "create", "update", "validate"]
+  },
+  "capabilities": {
+    "preview": {
+      "supported": true,
+      "screenshot": true,
+      "restoresPreviousState": true
+    },
+    "runtime": {
+      "supported": true,
+      "actions": ["apply", "verify", "restore"]
+    }
+  }
+}

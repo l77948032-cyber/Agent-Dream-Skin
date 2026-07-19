@@ -6,12 +6,13 @@ set -euo pipefail
 PORT="$DEFAULT_PORT"
 PORT_EXPLICIT="false"
 THEME_ID=""
+THEME_REVISION=""
 LAST_THEME_PATH="$STATE_ROOT/last-theme"
 
-is_public_theme_id() {
+is_rememberable_theme_id() {
   case "$1" in
-    neon-portal|ember-glass|paper-aurora|sunlit-spark|violet-rift) return 0 ;;
-    *) return 1 ;;
+    ''|*[!a-z0-9_-]*) return 1 ;;
+    *) return 0 ;;
   esac
 }
 
@@ -19,7 +20,7 @@ read_last_theme() {
   local saved_theme=""
   [ -f "$LAST_THEME_PATH" ] || return 0
   IFS= read -r saved_theme < "$LAST_THEME_PATH" || true
-  is_public_theme_id "$saved_theme" || return 0
+  is_rememberable_theme_id "$saved_theme" || return 0
   [ -f "$THEMES_ROOT/$saved_theme/theme.json" ] || return 0
   printf '%s' "$saved_theme"
 }
@@ -27,7 +28,7 @@ read_last_theme() {
 write_last_theme() {
   local theme_id="$1"
   local temporary="$LAST_THEME_PATH.$$"
-  is_public_theme_id "$theme_id" || return 0
+  is_rememberable_theme_id "$theme_id" || return 0
   if ! (umask 077; printf '%s\n' "$theme_id" > "$temporary"); then
     /bin/rm -f "$temporary"
     return 1
@@ -42,6 +43,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --port) PORT="${2:-}"; PORT_EXPLICIT="true"; shift 2 ;;
     --theme) THEME_ID="${2:-}"; shift 2 ;;
+    --revision) THEME_REVISION="${2:-}"; shift 2 ;;
     *) fail "Unknown start argument: $1" ;;
   esac
 done
@@ -70,6 +72,9 @@ fi
 case "$PORT" in ''|*[!0-9]*) fail "Invalid saved port: $PORT" ;; esac
 [ "$PORT" -ge 1024 ] && [ "$PORT" -le 65535 ] || fail "Saved port must be between 1024 and 65535."
 [ -n "$THEME_ID" ] || THEME_ID="$DEFAULT_THEME_ID"
+if [ -n "$THEME_REVISION" ] && [[ ! "$THEME_REVISION" =~ ^[0-9a-f]{64}$ ]]; then
+  fail "Invalid theme revision."
+fi
 resolve_theme_dir "$THEME_ID"
 
 TRAE_WAS_RUNNING="false"
@@ -257,7 +262,7 @@ session_identity_matches_port \
   || fail "The active CDP listener changed before state could be written."
 if ! write_state "$PORT" "$INJECTOR_PID" "$INJECTOR_STARTED_AT" \
   "$SESSION_TRAE_PID" "$SESSION_TRAE_STARTED_AT" "$BROWSER_ID" \
-  "$SESSION_OWNED" "$STARTED_CDP_HERE"; then
+  "$SESSION_OWNED" "$STARTED_CDP_HERE" "$THEME_REVISION"; then
   fail "The active skin state could not be written."
 fi
 

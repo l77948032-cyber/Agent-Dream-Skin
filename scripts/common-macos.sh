@@ -5,10 +5,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 INJECTOR="$SCRIPT_DIR/injector.mjs"
-THEMES_ROOT="$PROJECT_ROOT/themes"
+THEMES_ROOT="${TRAE_DREAM_SKIN_THEMES_ROOT:-$PROJECT_ROOT/themes}"
 DEFAULT_THEME_ID="neon-portal"
 DEFAULT_PORT="9342"
-SKIN_VERSION="0.1.0"
+SKIN_VERSION="0.2.0"
 
 STATE_ROOT="${TRAE_DREAM_SKIN_HOME:-$HOME/Library/Application Support/TraeDreamSkin}"
 STATE_PATH="$STATE_ROOT/state.json"
@@ -436,9 +436,10 @@ write_state() {
   local browser_id="$6"
   local owns_session="$7"
   local started_cdp_here="$8"
+  local theme_revision="${9:-}"
   run_node -e '
     const fs = require("node:fs");
-    const [file, version, port, browserId, pid, startedAt, injector, nodeVersion, bundle, exe, appVersion, teamId, root, themeId, themeDir, appPid, appStartedAt, ownsSession, startedCdpHere, arch, launchLabel, launchPlist, appLaunchLabel, appLaunchPlist] = process.argv.slice(1);
+    const [file, version, port, browserId, pid, startedAt, injector, nodeVersion, bundle, exe, appVersion, teamId, root, themeId, themeDir, themeRevision, appPid, appStartedAt, ownsSession, startedCdpHere, arch, launchLabel, launchPlist, appLaunchLabel, appLaunchPlist] = process.argv.slice(1);
     const state = {
       schemaVersion: 1,
       platform: `darwin-${arch}`,
@@ -461,6 +462,7 @@ write_state() {
       projectRoot: root,
       themeId,
       themeDir,
+      themeRevision: themeRevision || null,
       launchAgentLabel: launchLabel,
       launchAgentPlist: launchPlist,
       appLaunchAgentLabel: appLaunchLabel,
@@ -470,7 +472,7 @@ write_state() {
     const temporary = `${file}.${process.pid}.tmp`;
     fs.writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
     fs.renameSync(temporary, file);
-  ' "$STATE_PATH" "$SKIN_VERSION" "$port" "$browser_id" "$injector_pid" "$injector_started_at" "$INJECTOR" "$NODE_VERSION" "$TRAE_BUNDLE" "$TRAE_EXE" "$TRAE_VERSION" "$TRAE_TEAM_ID" "$PROJECT_ROOT" "$THEME_ID" "$THEME_DIR" "$trae_pid" "$trae_started_at" "$owns_session" "$started_cdp_here" "$(/usr/bin/uname -m)" "$LAUNCH_AGENT_LABEL" "$LAUNCH_AGENT_PLIST" "$TRAE_LAUNCH_AGENT_LABEL" "$TRAE_LAUNCH_AGENT_PLIST"
+  ' "$STATE_PATH" "$SKIN_VERSION" "$port" "$browser_id" "$injector_pid" "$injector_started_at" "$INJECTOR" "$NODE_VERSION" "$TRAE_BUNDLE" "$TRAE_EXE" "$TRAE_VERSION" "$TRAE_TEAM_ID" "$PROJECT_ROOT" "$THEME_ID" "$THEME_DIR" "$theme_revision" "$trae_pid" "$trae_started_at" "$owns_session" "$started_cdp_here" "$(/usr/bin/uname -m)" "$LAUNCH_AGENT_LABEL" "$LAUNCH_AGENT_PLIST" "$TRAE_LAUNCH_AGENT_LABEL" "$TRAE_LAUNCH_AGENT_PLIST"
 }
 
 trae_launch_agent_output() {
