@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "target": "workbuddy",
-  "sceneVersion": "1.0.0",
+  "sceneVersion": "1.1.0",
   "description": "Canonical WorkBuddy scene coverage for Studio previews and Agent visual audits.",
   "scenes": [
     {
@@ -9,6 +9,12 @@
       "name": "首页",
       "description": "WorkBuddy 欢迎页、场景标签、快捷任务与首页输入框。",
       "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "sidebar.project", "home.hero", "home.quickAction", "composer.surface", "composer.tool", "action.primary", "overlay.tooltip"]
+    },
+    {
+      "id": "assistant",
+      "name": "助理",
+      "description": "WorkBuddy 本地助理连接状态、空白对话画布与专属输入区。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "composer.surface", "composer.tool", "action.primary", "status.badge"]
     },
     {
       "id": "chat",
@@ -24,7 +30,7 @@
     },
     {
       "id": "market",
-      "name": "专家与技能",
+      "name": "专家·技能·连接器",
       "description": "专家、技能、连接器市场的搜索、筛选和卡片状态。",
       "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "market.toolbar", "market.card", "input.field", "selection.control", "action.primary", "loading.skeleton", "empty.state"]
     },
@@ -36,7 +42,7 @@
     },
     {
       "id": "project",
-      "name": "项目与空间",
+      "name": "项目",
       "description": "项目卡、成员、活动与文件树。",
       "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "sidebar.project", "project.card", "result.fileTree", "action.primary", "empty.state"]
     },

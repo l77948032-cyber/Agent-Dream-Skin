@@ -93,12 +93,118 @@
     return match?.[1] || null;
   };
 
+  const routeDetectors = Object.freeze([
+    ["more", ".conversation-list-more-dropdown[role=menu], .conversation-list-tab-button-more[aria-expanded=true]"],
+    ["home", ".wb-home-page, .main-content--welcome"],
+    ["automation", ".main-content--automation, .automation-main-page, .automation-panel"],
+    ["market", ".expert-center-page, .skills-view, .connector-panel, .expert-marketplace, .skills-page, .connector-page"],
+    ["project", ".main-content--projects, .main-content--project, .workbuddy-collab, .project-detail-view, .project-page"],
+    ["assistant", ".claw-workspace"],
+    ["settings", ".settings-page, .settings-view, [data-workbuddy-skin-role=settings-page]"],
+    ["chat", ".chat-container:not(.chat-container--welcome)"],
+  ]);
+
+  const runtimeComponentSelectors = Object.freeze({
+    "project.card": [
+      ".project-grid__card",
+      ".landing-template-card",
+      ".wb-config-card",
+      ".project-plan-panel__board-card",
+      ".task-item",
+      ".project-experts-drawer__card",
+      ".project-skills-drawer__card",
+    ].join(", "),
+    "market.toolbar": ".ec-topbar, .ec-list-tabs-row, .skillhub-filter-bar, .skills-segment-bar",
+    "market.card": ".ec-featured-scene-card, .ec-expert-card, .skill-card, .connector-card",
+    "automation.task": ".atm-task-card, .atm-template-card, .atm-row",
+    "automation.run": ".atm-run-card, .atm-run-item, .atm-run-history-item, .atm-execution-item, .atm-inbox-row",
+    "settings.section": ".settings-card, .settings-section, .preference-section",
+    "overlay.menu": ".conversation-list-more-dropdown[role=menu]",
+    "overlay.dialog": [
+      ".atm-modal",
+      ".atm-detail-modal",
+      ".collab-modal__container",
+      ".create-colleague-modal--drawer",
+      ".project-plan-panel__detail-dialog",
+      ".project-plan-panel__create-dialog",
+    ].join(", "),
+  });
+
+  const runtimeRoleSelectors = Object.freeze({
+    "business.canvas": [
+      ".workbuddy-collab",
+      ".landing",
+      ".project-detail-view",
+      ".claw-workspace",
+      ".claw-trial-experience-page",
+      ".expert-center-page",
+      ".ec-main-content",
+      ".skills-view",
+      ".skills-content",
+      ".connector-panel",
+      ".connector-panel-content",
+      ".automation-main-page",
+      ".automation-panel",
+      ".settings-page",
+      ".settings-view",
+    ].join(", "),
+    "business.toolbar": [
+      ".project-detail-view__top-tabs",
+      ".ec-topbar",
+      ".skills-view > .workbuddy-topbar",
+      ".connector-panel > .workbuddy-topbar",
+      ".automation-panel > .workbuddy-topbar",
+    ].join(", "),
+    "business.card": [
+      ".project-grid__card",
+      ".landing-template-card",
+      ".wb-config-card",
+      ".project-plan-panel__board-card",
+      ".task-item",
+      ".project-experts-drawer__card",
+      ".project-skills-drawer__card",
+      ".claw-assistant-profile-detail__info-card",
+      ".claw-assistant-profile-detail__task-card",
+      ".ec-featured-scene-card",
+      ".ec-expert-card",
+      ".skill-card",
+      ".connector-card",
+      ".atm-task-card",
+      ".atm-template-card",
+      ".atm-row",
+      ".atm-run-card",
+      ".atm-run-item",
+      ".atm-run-history-item",
+      ".atm-execution-item",
+      ".settings-card",
+      ".settings-section",
+    ].join(", "),
+    "business.panel": [
+      ".project-detail-view__panel",
+      ".claw-secondary-sidebar",
+      ".claw-sidebar-drawer",
+      ".project-experts-drawer",
+      ".project-skills-drawer",
+      ".project-instruction-drawer",
+    ].join(", "),
+  });
+
+  const registryComponentGuards = Object.freeze({
+    "market.card": (node) => node.matches(
+      '[data-workbuddy-skin-role="market-card"], .market-card, .skill-card',
+    ),
+    "automation.task": (node) => node.matches(
+      '[data-workbuddy-skin-role="automation-task"], .automation-card, .schedule-card',
+    ),
+    "project.card": (node) => node.matches(
+      '[data-workbuddy-skin-role="project-card"], .project-card, .workspace-card',
+    ),
+  });
+
   const detectRoute = () => {
-    if (query(".wb-home-page")) return "home";
-    if (query(".main-content--automation")) return "automation";
-    if (query(".expert-marketplace, .skills-page, .connector-page")) return "market";
-    if (query(".main-content--project, .project-page")) return "project";
-    if (query(".chat-container:not(.chat-container--welcome)")) return "chat";
+    for (const [route, selector] of routeDetectors) {
+      if (query(selector)) return route;
+    }
     return "workspace";
   };
 
@@ -116,7 +222,18 @@
     for (const node of queryAll(`[${RUNTIME_ROLE_ATTRIBUTE}]`)) node.removeAttribute(RUNTIME_ROLE_ATTRIBUTE);
 
     for (const [component, selector] of Object.entries(componentSelectors)) {
+      const guard = registryComponentGuards[component];
+      for (const node of queryAll(selector)) {
+        if (!guard || guard(node)) assign(componentAssignments, node, component);
+      }
+    }
+
+    for (const [component, selector] of Object.entries(runtimeComponentSelectors)) {
       for (const node of queryAll(selector)) assign(componentAssignments, node, component);
+    }
+
+    for (const [role, selector] of Object.entries(runtimeRoleSelectors)) {
+      for (const node of queryAll(selector)) assign(roleAssignments, node, role);
     }
 
     for (const node of queryAll('[class*="_assistantTextContent_"], [class*="assistantTextContent"]')) {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "registryVersion": "1.0.0",
+  "registryVersion": "1.1.0",
   "target": "WorkBuddy 5.2",
   "description": "Stable WorkBuddy scene and component semantics exposed to DreamSkin agents. Runtime selectors are version guarded and remain plugin-owned.",
   "compatibility": {
@@ -11,15 +11,15 @@
     {
       "id": "shell.workspace",
       "description": "Application background plane and main WorkBuddy workspace.",
-      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project", "settings"],
       "states": ["default"],
       "visualSlots": ["backgroundPlane", "surfaceLayer", "ambientOrnament"],
-      "selectors": ["#root", ".teams-container", ".teams-main-content", ".main-content"]
+      "selectors": ["#root", ".teams-container", ".teams-main-content", ".main-content", ".claw-workspace", ".workbuddy-collab", ".expert-center-page", ".automation-panel"]
     },
     {
       "id": "shell.titlebar",
       "description": "Native-safe draggable title bar, current workspace title and window actions.",
-      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project", "settings"],
       "states": ["default", "hover", "active"],
       "visualSlots": ["title", "dragRegion", "windowAction"],
       "selectors": [".workbuddy-topbar", ".workbuddy-topbar-title", ".workbuddy-topbar-actions"]
@@ -27,7 +27,7 @@
     {
       "id": "sidebar.navigation",
       "description": "Primary navigation, scene tabs and utility actions in the conversation sidebar.",
-      "modes": ["home", "chat", "result", "market", "automation", "project"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project"],
       "states": ["default", "hover", "active", "focus", "disabled"],
       "visualSlots": ["brandMark", "rowIcon", "selectionMarker", "sectionDivider"],
       "selectors": [".conversation-sidebar", ".conversation-list-tabs", ".conversation-list-tab-button", ".sidebar-next-top-button"]
@@ -91,7 +91,7 @@
     {
       "id": "composer.surface",
       "description": "Prompt composer, editable area, model selector and send region.",
-      "modes": ["home", "chat"],
+      "modes": ["home", "assistant", "chat"],
       "states": ["default", "hover", "focus", "disabled", "recording", "sending"],
       "visualSlots": ["inputWell", "focusRing", "modelChip", "sendAction"],
       "selectors": [".wb-home-composer", ".wb-input-footer", "[data-slate-editor=true]", "[data-workbuddy-skin-role=composer]"]
@@ -99,7 +99,7 @@
     {
       "id": "composer.tool",
       "description": "Composer attachment, skill, model, voice and context controls.",
-      "modes": ["home", "chat"],
+      "modes": ["home", "assistant", "chat"],
       "states": ["default", "hover", "active", "focus", "disabled"],
       "visualSlots": ["toolIcon", "chipSurface", "activeDot"],
       "selectors": [".wb-home-composer__chips", ".voice-mic-trigger", "[data-cb-chat-input-toolbar-selector]"]
@@ -107,7 +107,7 @@
     {
       "id": "action.primary",
       "description": "Primary send, run, create, confirm and apply actions.",
-      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project", "settings"],
       "states": ["default", "hover", "active", "focus", "disabled", "loading"],
       "visualSlots": ["fillTreatment", "actionIcon", "progressRing"],
       "selectors": [".wb-button--primary", ".cb-button--primary", "[data-workbuddy-skin-role=primary-action]"]
@@ -150,7 +150,7 @@
       "modes": ["market"],
       "states": ["default", "focus", "filtered"],
       "visualSlots": ["searchField", "categoryTab", "filterChip"],
-      "selectors": ["[data-workbuddy-skin-role=market-toolbar]", "[class*=market-toolbar]", "[class*=marketHeader]"]
+      "selectors": ["[data-workbuddy-skin-role=market-toolbar]", ".ec-topbar", ".ec-list-tabs-row", ".skillhub-filter-bar", ".skills-segment-bar"]
     },
     {
       "id": "market.card",
@@ -158,7 +158,7 @@
       "modes": ["market"],
       "states": ["default", "hover", "active", "installed", "disabled"],
       "visualSlots": ["iconTile", "categoryBadge", "installAction", "trustMark"],
-      "selectors": ["[data-workbuddy-skin-role=market-card]", "[class*=market-card]", "[class*=skill-card]"]
+      "selectors": ["[data-workbuddy-skin-role=market-card]", ".ec-featured-scene-card", ".ec-expert-card", ".skill-card", ".connector-card"]
     },
     {
       "id": "automation.task",
@@ -166,7 +166,7 @@
       "modes": ["automation"],
       "states": ["default", "hover", "active", "enabled", "disabled", "error"],
       "visualSlots": ["scheduleIcon", "statusDot", "enableControl", "nextRun"],
-      "selectors": ["[data-workbuddy-skin-role=automation-task]", "[class*=automation-card]", "[class*=schedule-card]"]
+      "selectors": ["[data-workbuddy-skin-role=automation-task]", ".atm-task-card", ".atm-template-card", ".atm-row"]
     },
     {
       "id": "automation.run",
@@ -174,15 +174,15 @@
       "modes": ["automation"],
       "states": ["queued", "running", "success", "warning", "error"],
       "visualSlots": ["timelineDot", "statusBadge", "duration", "resultAction"],
-      "selectors": ["[data-workbuddy-skin-role=automation-run]", "[class*=run-history]", "[class*=execution-item]"]
+      "selectors": ["[data-workbuddy-skin-role=automation-run]", ".atm-run-card", ".atm-run-item", ".atm-run-history-item", ".atm-execution-item", ".atm-inbox-row"]
     },
     {
       "id": "project.card",
       "description": "Project and workspace summary card with recent activity.",
-      "modes": ["project"],
+      "modes": ["assistant", "project"],
       "states": ["default", "hover", "active", "focus", "archived"],
       "visualSlots": ["projectIcon", "activityStrip", "memberStack", "openAction"],
-      "selectors": ["[data-workbuddy-skin-role=project-card]", "[class*=project-card]", "[class*=workspace-card]"]
+      "selectors": ["[data-workbuddy-skin-role=project-card]", ".project-grid__card", ".landing-template-card", ".wb-config-card", ".project-plan-panel__board-card", ".claw-assistant-profile-detail__info-card", ".claw-assistant-profile-detail__task-card"]
     },
     {
       "id": "settings.section",
@@ -195,7 +195,7 @@
     {
       "id": "input.field",
       "description": "Text, search, select and multiline fields with validation.",
-      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project", "settings"],
       "states": ["default", "hover", "focus", "invalid", "disabled", "readonly"],
       "visualSlots": ["fieldIcon", "focusRing", "validationMark", "clearAction"],
       "selectors": ["input", "textarea", "[role=textbox]", "[role=combobox]"]
@@ -203,7 +203,7 @@
     {
       "id": "selection.control",
       "description": "Checkbox, radio, switch, tabs and segmented selections.",
-      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project", "settings"],
       "states": ["default", "hover", "active", "focus", "disabled", "indeterminate"],
       "visualSlots": ["track", "thumb", "selectionMark", "activeIndicator"],
       "selectors": ["[role=checkbox]", "[role=radio]", "[role=switch]", "[role=tab]"]
@@ -211,18 +211,18 @@
     {
       "id": "overlay.menu",
       "description": "Context menus, dropdowns, list boxes and popovers.",
-      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project", "settings"],
       "states": ["default", "open"],
       "visualSlots": ["surface", "edgeAccent", "sectionDivider", "selectedItem"],
-      "selectors": ["[role=menu]", "[role=listbox]", "[data-floating-ui-portal]"]
+      "selectors": ["[role=menu]", "[role=listbox]", "[data-floating-ui-portal]", ".conversation-list-more-dropdown[role=menu]"]
     },
     {
       "id": "overlay.dialog",
       "description": "Modal dialogs, sheets, confirmations and their backdrop.",
-      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "modes": ["home", "assistant", "chat", "result", "market", "automation", "project", "settings"],
       "states": ["default", "open", "busy"],
       "visualSlots": ["backdrop", "dialogSurface", "titleMark", "actionBar"],
-      "selectors": ["[role=dialog]", "[aria-modal=true]", "[data-workbuddy-skin-role=dialog]"]
+      "selectors": ["[role=dialog]", "[aria-modal=true]", "[data-workbuddy-skin-role=dialog]", ".collab-modal__container", ".atm-modal", ".atm-detail-modal"]
     },
     {
       "id": "overlay.tooltip",

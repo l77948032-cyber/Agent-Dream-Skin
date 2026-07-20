@@ -29,6 +29,9 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
     var(--ds-panel) var(--dreamskin-composer-mix, 68%), transparent);
   --ds-component-surface: color-mix(in srgb, var(--ds-panel) 78%, transparent);
   --ds-component-surface-alt: color-mix(in srgb, var(--ds-panel-alt) 78%, transparent);
+  --ds-business-panel: color-mix(in srgb, var(--ds-panel) 58%, transparent);
+  --ds-form-surface: color-mix(in srgb, var(--ds-panel) 88%, transparent);
+  --ds-overlay-surface: color-mix(in srgb, var(--ds-panel) 96%, transparent);
   --ds-sidebar: color-mix(in srgb,
     var(--ds-panel) var(--dreamskin-sidebar-readable-mix, 64%), transparent);
   --ds-shadow-soft: 0 10px 30px rgba(11, 24, 31, 0.12);
@@ -187,6 +190,10 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --cb-bg-surface-active: var(--ds-active);
   --cb-bg-card: var(--ds-panel);
   --cb-bg-elevated: var(--ds-panel);
+  --cb-bg-color-container: var(--ds-component-surface);
+  --cb-hover-bg: var(--ds-hover);
+  --cb-panel-bg-primary: var(--ds-panel);
+  --cb-panel-border-color: var(--ds-line);
   --cb-content-background: var(--ds-panel);
   --cb-main-area-background: var(--ds-panel);
   --cb-sidebar-background: var(--ds-sidebar);
@@ -207,6 +214,7 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --cb-border-secondary: color-mix(in srgb, var(--ds-line) 76%, transparent);
   --cb-border-focus: var(--ds-focus);
   --cb-focus-border: var(--ds-focus);
+  --cb-focus-outline-color: var(--ds-focus);
   --cb-focus-ring: color-mix(in srgb, var(--ds-focus) 32%, transparent);
   --cb-brand: var(--ds-accent);
   --cb-primary: var(--ds-accent);
@@ -254,6 +262,7 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --cb-skeleton-highlight: color-mix(in srgb, var(--ds-panel) 84%, white);
   --cb-scrollbar-thumb: var(--wb-scrollbar-thumb);
   --cb-scrollbar-thumb-hover: var(--wb-scrollbar-thumb-hover);
+  --cb-gray-color: var(--ds-panel-alt);
 
   /* Monaco and embedded editor shell tokens. */
   --vscode-editor-background: var(--dreamskin-terminal);
@@ -374,6 +383,15 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .conversation-sideba
   background: var(--ds-sidebar);
   box-shadow: 10px 0 28px rgba(10, 28, 34, 0.06);
   backdrop-filter: blur(var(--ds-blur)) saturate(var(--dreamskin-saturation, 1));
+}
+
+/* The sidebar already owns the readable glass layer. WorkBuddy repeats its
+   native surface on inner list containers. That otherwise compounds opacity. */
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .conversation-sidebar .conversation-list,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .conversation-sidebar .conversation-list-content,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .conversation-sidebar .collapsible-section-header {
+  background: transparent !important;
+  backdrop-filter: none !important;
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .conversation-list-logo,
@@ -761,13 +779,123 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="tablist"] [ro
   box-shadow: inset 0 -2px var(--ds-accent);
 }
 
+/* WorkBuddy 5.2 business pages use their own full-canvas surfaces. Keep those
+   structural planes clear so the single teams-container artwork remains visible. */
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="business.canvas"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .workbuddy-collab,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .landing,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .claw-workspace,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .claw-trial-experience-page,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .expert-center-page,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-main-content,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .skills-view,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .skills-content,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .connector-panel,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .connector-panel-content,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .automation-main-page,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .automation-panel,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .settings-page,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .settings-view {
+  --wb-home-bg-primary: transparent;
+  --wb-home-bg-secondary: transparent;
+  --cb-content-background: transparent;
+  --cb-main-area-background: transparent;
+  color: var(--ds-text);
+  background: transparent !important;
+  box-shadow: none;
+  backdrop-filter: none !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="business.toolbar"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view__top-tabs,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-topbar {
+  color: var(--ds-text);
+  border-color: var(--ds-line);
+  background: var(--ds-reading-surface) !important;
+  box-shadow: none;
+  backdrop-filter: blur(calc(var(--ds-blur) * 0.7));
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="business.panel"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view__panel,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .claw-secondary-sidebar,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .claw-sidebar-drawer,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-experts-drawer,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-skills-drawer,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-instruction-drawer {
+  color: var(--ds-text);
+  border-color: var(--ds-line);
+  background: var(--ds-business-panel) !important;
+  box-shadow: var(--ds-shadow-soft);
+  backdrop-filter: blur(var(--ds-blur)) saturate(var(--dreamskin-saturation, 1));
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .automation-panel,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .code-buddy-automation {
+  --atm-surface: var(--ds-component-surface);
+  --atm-surface-muted: var(--ds-reading-surface-alt);
+  --atm-surface-subtle: var(--ds-reading-surface);
+  --atm-surface-soft: var(--ds-reading-surface);
+  --atm-surface-hover: var(--ds-hover);
+  --atm-surface-active: var(--ds-active);
+  --atm-surface-active-hover: var(--ds-hover);
+  --atm-template-card-bg: var(--ds-component-surface);
+  --atm-template-card-bg-hover: color-mix(in srgb, var(--ds-panel) 86%, var(--ds-hover));
+  --atm-template-card-add-bg: var(--ds-selection);
+  --atm-template-card-add-bg-hover: var(--ds-active);
+  --atm-tab-active-bg: var(--ds-form-surface);
+  --atm-tab-active-shadow: var(--wb-shadow-sm);
+  --atm-toolbar-pill-bg: var(--ds-reading-surface-alt);
+  --atm-toolbar-pill-bg-hover: var(--ds-hover);
+  --atm-modal-bg: var(--ds-overlay-surface);
+  --atm-popover-bg: var(--ds-overlay-surface);
+  --atm-border: var(--ds-line);
+  --atm-border-secondary: var(--ds-line);
+  --atm-modal-border: var(--ds-line);
+  --atm-border-soft: color-mix(in srgb, var(--ds-line) 76%, transparent);
+  --atm-border-softest: color-mix(in srgb, var(--ds-line) 56%, transparent);
+  --atm-border-hover: color-mix(in srgb, var(--ds-accent) 42%, var(--ds-line));
+  --atm-border-focus: var(--ds-focus);
+  --atm-border-selected: var(--ds-accent);
+  --atm-text-primary: var(--ds-text);
+  --atm-text-secondary: var(--ds-muted);
+  --atm-text-tertiary: color-mix(in srgb, var(--ds-muted) 82%, transparent);
+  --atm-text-muted: var(--ds-muted);
+  --atm-text-subtle: var(--ds-muted);
+  --atm-text-strong: var(--ds-text);
+  --atm-text-placeholder: color-mix(in srgb, var(--ds-muted) 78%, transparent);
+  --atm-row-dot: var(--ds-accent-alt);
+  --atm-success-dot: var(--dreamskin-success);
+  --atm-failed-dot: var(--dreamskin-danger);
+  --atm-chip-bg: var(--ds-reading-surface-alt);
+  --atm-chip-soft-bg: var(--ds-reading-surface);
+  --atm-chip-border: var(--ds-line);
+  --atm-overlay-bg: color-mix(in srgb, var(--ds-bg) 62%, transparent);
+  --atm-primary-btn-bg: var(--ds-accent);
+  --atm-primary-btn-border: var(--ds-accent);
+  --atm-primary-btn-hover-bg: color-mix(in srgb, var(--ds-accent) 84%, var(--ds-highlight));
+  --atm-primary-btn-hover-border: var(--ds-accent-alt);
+  --atm-primary-btn-text: var(--ds-on-accent);
+  --atm-secondary-btn-bg: var(--ds-form-surface);
+  --atm-secondary-btn-border: var(--ds-line);
+  --atm-secondary-btn-hover-bg: var(--ds-hover);
+  --atm-secondary-btn-text: var(--ds-text);
+  --atm-chat-content-bg: transparent;
+  --atm-chat-main-bg: transparent;
+  --atm-chat-placeholder: var(--ds-muted);
+  --atm-calendar-selected-bg: var(--ds-accent);
+  --atm-calendar-selected-text: var(--ds-on-accent);
+}
+
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="market.card"],
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="market-card"],
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="skill-card"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .market-card,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .skill-card,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="automation.task"],
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="automation-card"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .automation-card,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="project.card"],
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="project-card"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-card,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="business.card"] {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--ds-line);
@@ -778,12 +906,331 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="project-car
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="market.card"]:hover,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="market-card"]:hover,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="skill-card"]:hover,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="project.card"]:hover {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .market-card:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .skill-card:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="project.card"]:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="business.card"]:hover {
   border-color: color-mix(in srgb, var(--ds-accent) 46%, var(--ds-line));
   box-shadow: var(--ds-shadow-soft);
   transform: translateY(-2px);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .project-grid__card-name,
+  .landing-template-text strong,
+  .ec-card-role,
+  .ec-card-subtitle,
+  .skill-card-name,
+  .connector-card-name,
+  .atm-template-name,
+  .atm-template-card-title,
+  .atm-template-compact-title,
+  .atm-row-name,
+  .atm-run-history-item-name,
+  .wb-config-card__title
+) {
+  color: var(--ds-text) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .project-grid__card-desc,
+  .landing-template-text small,
+  .ec-card-desc,
+  .ec-card-tag,
+  .skill-card-desc,
+  .connector-card-desc,
+  .atm-template-content,
+  .atm-template-card-desc,
+  .atm-template-compact-desc,
+  .atm-row-meta,
+  .atm-run-history-item-time,
+  .wb-config-card__desc
+) {
+  color: var(--ds-muted) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .landing-hero {
+  opacity: 0;
+  filter: saturate(var(--dreamskin-saturation, 1));
+  pointer-events: none;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-treatment="sunlit-immersive"] .landing-hero,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-treatment="paper-wash"] .landing-hero {
+  mix-blend-mode: multiply;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-treatment="violet-rift"] .landing-hero {
+  mix-blend-mode: screen;
+}
+
+/* WorkBuddy keeps its native dark-mode marker even when a light DreamSkin is
+   active. Reassert theme colors on controls with hard-coded dark branches. */
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .skills-view {
+  --skills-card-desc-color: var(--ds-muted);
+  --skills-segment-inactive-color: color-mix(in srgb, var(--ds-muted) 78%, transparent);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .skills-segment-item,
+  .skillhub-category-chip,
+  .skillhub-sort-btn,
+  .skillhub-sort-dropdown-btn
+) {
+  color: var(--ds-muted) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .skills-segment-item:hover,
+  .skills-segment-item--active,
+  .skillhub-category-chip:hover,
+  .skillhub-category-chip--active,
+  .skillhub-sort-btn:hover,
+  .skillhub-sort-btn--active,
+  .skillhub-sort-dropdown-btn:hover
+) {
+  color: var(--ds-text) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view :where(
+  .project-detail-view__breadcrumb-domain-icon,
+  .project-detail-view__breadcrumb .wb-breadcrumb__item--current
+) {
+  color: var(--ds-text) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view :where(
+  .project-detail-view__breadcrumb .wb-breadcrumb__item,
+  .project-detail-view__breadcrumb .wb-breadcrumb__link,
+  .project-detail-view__breadcrumb .wb-breadcrumb__separator
+) {
+  color: var(--ds-muted) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view .project-detail-view__breadcrumb .wb-breadcrumb__item--current,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view .project-detail-view__breadcrumb-domain-icon {
+  color: var(--ds-text) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view__panel {
+  box-shadow: none;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view__panel .wb-config-card {
+  border-color: var(--ds-line) !important;
+  background: var(--ds-reading-surface) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-detail-view__content:has(.project-detail-view__activity-panel) {
+  background: var(--ds-reading-surface) !important;
+  backdrop-filter: blur(calc(var(--ds-blur) * 0.55));
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .claw-workspace [class*="topRightSlotStandalone"] {
+  display: none !important;
+}
+
+/* The marketplace retains a native dark marker independently of the active
+   DreamSkin. Rebuild its poster strip and controls from theme-owned tokens. */
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .expert-center-page {
+  --ec-featured-scene-area-bg: transparent;
+  --ec-featured-scene-bg: var(--ds-component-surface);
+  --ec-featured-scene-overlay: linear-gradient(180deg,
+    color-mix(in srgb, var(--ds-panel) 10%, transparent) 0%,
+    color-mix(in srgb, var(--ds-panel) 94%, transparent) 100%);
+  --ec-featured-scene-border: linear-gradient(180deg,
+    color-mix(in srgb, var(--ds-line) 18%, transparent) 0%,
+    var(--ds-line) 100%);
+  --ec-featured-scene-shadow: 0 5px 18px rgba(11, 24, 31, 0.07);
+  --ec-featured-scene-fade-mask: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--ds-panel) 88%, transparent));
+  --ec-featured-scene-row-hover-bg: var(--ds-hover);
+  --ec-featured-scene-tag-bg: var(--ds-selection);
+  --ec-featured-scene-tag-color: var(--ds-accent);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-featured-scene-bg {
+  opacity: 0.24;
+  filter: saturate(var(--dreamskin-saturation, 1));
+  mix-blend-mode: luminosity;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-treatment="sunlit-immersive"] .ec-featured-scene-bg,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-treatment="paper-wash"] .ec-featured-scene-bg {
+  mix-blend-mode: multiply;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-treatment="violet-rift"] .ec-featured-scene-bg {
+  mix-blend-mode: screen;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .ec-section-title,
+  .ec-featured-scene-name,
+  .ec-featured-scene-expert-name
+) {
+  color: var(--ds-text) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-featured-scene-avatar {
+  color: var(--ds-text) !important;
+  border: 1px solid var(--ds-line);
+  background: var(--ds-selection) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-featured-scene-expert:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-featured-scene-expert:focus-visible {
+  background: var(--ds-hover) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-search-wrapper .wb-input-wrapper {
+  color: var(--ds-text) !important;
+  border-color: var(--ds-line) !important;
+  background: var(--ds-form-surface) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-search-wrapper .wb-input__inner,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-search-wrapper .wb-input__prefix {
+  color: var(--ds-text) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-search-wrapper .wb-input__inner::placeholder {
+  color: var(--ds-muted) !important;
+  opacity: 1;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .ec-sort-btn,
+  .ec-category-tab,
+  .ec-list-tab
+) {
+  color: var(--ds-muted) !important;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .ec-sort-btn:hover,
+  .ec-sort-btn.is-active,
+  .ec-category-tab:hover,
+  .ec-category-tab.is-active,
+  .ec-list-tab:hover,
+  .ec-list-tab.is-active
+) {
+  color: var(--ds-text) !important;
+  border-color: var(--ds-line) !important;
+  background: var(--ds-selection) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-sort-group {
+  border: 1px solid var(--ds-line) !important;
+  background: var(--ds-reading-surface-alt) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-category-tabs-next {
+  color: var(--ds-text) !important;
+  border: 1px solid var(--ds-line) !important;
+  background: var(--ds-overlay-surface) !important;
+  box-shadow: var(--wb-shadow-sm);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-category-tabs-next:hover {
+  border-color: color-mix(in srgb, var(--ds-accent) 36%, var(--ds-line)) !important;
+  background: var(--ds-hover) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-topbar .wb-button--grey {
+  color: var(--ds-text) !important;
+  border: 1px solid var(--ds-line) !important;
+  background: var(--ds-form-surface) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ec-topbar .wb-button--grey:hover {
+  background: var(--ds-hover) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .mine-activity-card__chip {
+  color: var(--ds-accent) !important;
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 26%, var(--ds-line));
+  background: var(--ds-selection) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .ec-card-tag,
+  .ec-card-operational-tag,
+  .skill-card-source,
+  .connector-card-status
+) {
+  color: var(--ds-accent);
+  border-color: color-mix(in srgb, var(--ds-accent) 24%, var(--ds-line));
+  background: var(--ds-selection);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] :where(
+  .ec-card-summon-btn,
+  .connector-connect-btn
+) {
+  color: var(--ds-on-accent);
+  border-color: var(--ds-accent);
+  background: var(--ds-accent);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-tabs {
+  border: 1px solid var(--ds-line);
+  background: var(--ds-reading-surface-alt) !important;
+  box-shadow: none;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-tabs .wb-segmented__item--active {
+  color: var(--ds-text);
+  background: var(--ds-form-surface) !important;
+  box-shadow: var(--wb-shadow-sm);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .automation-panel .atm-template-card,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .code-buddy-automation .atm-template-card {
+  color: var(--ds-text) !important;
+  border-color: var(--ds-line) !important;
+  background: var(--ds-component-surface) !important;
+  box-shadow: 0 5px 18px rgba(11, 24, 31, 0.07) !important;
+  backdrop-filter: blur(var(--ds-blur)) saturate(var(--dreamskin-saturation, 1));
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .automation-panel .atm-template-card:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .code-buddy-automation .atm-template-card:hover {
+  border-color: color-mix(in srgb, var(--ds-accent) 46%, var(--ds-line)) !important;
+  background: color-mix(in srgb, var(--ds-panel) 86%, var(--ds-hover)) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-empty-action-btn.wb-button.cb-button {
+  color: var(--ds-on-accent) !important;
+  border-color: var(--ds-accent) !important;
+  background: var(--ds-accent) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-empty-action-btn.wb-button.cb-button:hover:not(:disabled) {
+  border-color: var(--ds-accent-alt) !important;
+  background: color-mix(in srgb, var(--ds-accent) 84%, var(--ds-highlight)) !important;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-row,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-run-history-item {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: none;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-row:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-run-history-item:hover {
+  border-color: color-mix(in srgb, var(--ds-accent) 24%, transparent);
+  background: var(--ds-hover);
+  box-shadow: none;
+  transform: none;
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="poster"] [data-workbuddy-skin-component~="market.card"]::before,
@@ -811,25 +1258,25 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] input,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] textarea,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="textbox"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="textbox"]:not([data-slate-editor="true"]),
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="combobox"] {
   color: var(--ds-text);
   border-color: var(--ds-line);
   border-radius: var(--ds-radius);
   caret-color: var(--ds-accent);
-  background: var(--ds-composer-surface);
+  background: var(--ds-form-surface);
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] input:hover,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] textarea:hover,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="textbox"]:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="textbox"]:not([data-slate-editor="true"]):hover,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="combobox"]:hover {
   border-color: color-mix(in srgb, var(--ds-accent) 44%, var(--ds-line));
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] input:focus,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] textarea:focus,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="textbox"]:focus,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="textbox"]:not([data-slate-editor="true"]):focus,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="combobox"]:focus {
   border-color: var(--ds-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-focus) 20%, transparent);
@@ -842,7 +1289,7 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-floating-ui-po
   color: var(--ds-text);
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius);
-  background: color-mix(in srgb, var(--ds-panel) 94%, transparent);
+  background: var(--ds-overlay-surface);
   box-shadow: var(--ds-shadow-float);
   backdrop-filter: blur(var(--ds-blur));
 }
@@ -854,11 +1301,18 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="option"][aria
   background: var(--ds-hover);
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="dialog"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="dialog"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="overlay.dialog"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-modal,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .atm-detail-modal,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .collab-modal__container,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .create-colleague-modal--drawer,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-plan-panel__detail-dialog,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .project-plan-panel__create-dialog {
   color: var(--ds-text);
   border: 1px solid var(--ds-line);
   border-radius: calc(var(--ds-radius) + 3px);
-  background: color-mix(in srgb, var(--ds-panel) 95%, transparent);
+  background: var(--ds-overlay-surface);
   box-shadow: var(--ds-shadow-float);
   backdrop-filter: blur(var(--ds-blur));
 }
@@ -921,6 +1375,8 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-
   [data-workbuddy-skin-component~="market.card"],
   [data-workbuddy-skin-component~="automation.task"],
   [data-workbuddy-skin-component~="project.card"],
+  [data-workbuddy-skin-runtime-role~="business.panel"],
+  [data-workbuddy-skin-runtime-role~="business.card"],
   [role="menu"],
   [role="listbox"],
   [role="dialog"],
@@ -931,7 +1387,8 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="paper"] .quick-actions__item,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="paper"] [data-workbuddy-skin-component~="market.card"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="paper"] [data-workbuddy-skin-component~="market.card"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="paper"] [data-workbuddy-skin-runtime-role~="business.card"] {
   border-color: color-mix(in srgb, var(--ds-line) 72%, var(--ds-highlight));
   background: var(--ds-panel);
   box-shadow: 2px 3px 0 color-mix(in srgb, var(--ds-line) 58%, transparent);
@@ -942,7 +1399,8 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-motif="prism"] .quick-actions__item,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-motif="prism"] [data-workbuddy-skin-component~="market.card"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-motif="prism"] [data-workbuddy-skin-component~="market.card"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-motif="prism"] [data-workbuddy-skin-runtime-role~="business.card"] {
   border-color: color-mix(in srgb, var(--ds-accent-alt) 30%, var(--ds-line));
   box-shadow: 0 8px 26px color-mix(in srgb, var(--ds-accent) 12%, transparent);
 }

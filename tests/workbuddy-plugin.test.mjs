@@ -147,7 +147,7 @@ test("WorkBuddy component registry and Studio scenes cover every product surface
     component.description && component.states.length > 0 && component.visualSlots.length > 0 && component.selectors.length > 0));
 
   assert.deepEqual(scenes.scenes.map(({ id }) => id), [
-    "home", "chat", "result", "market", "automation", "project", "settings", "overlays",
+    "home", "assistant", "chat", "result", "market", "automation", "project", "settings", "overlays",
   ]);
   const covered = new Set(scenes.scenes.flatMap(({ componentIds: ids }) => ids));
   assert.deepEqual(componentIds.filter((id) => !covered.has(id)), []);
@@ -349,6 +349,87 @@ test("WorkBuddy consumes theme opacity without covering the conversation artwork
   }
   assert.match(renderer, /surfacePercent\s*=\s*Number\(theme\.appearance\.surfaceOpacity\)\s*\*\s*100/);
   assert.match(renderer, /sidebarPercent\s*=\s*Number\(theme\.appearance\.sidebarOpacity\)\s*\*\s*100/);
+});
+
+test("WorkBuddy runtime covers every first-party business module with scoped surfaces", async () => {
+  const [canonical, compatibility, renderer] = await Promise.all([
+    fs.readFile(path.join(WORKBUDDY_PLUGIN_ROOT, "assets", "workbuddy-skin.css"), "utf8"),
+    fs.readFile(path.join(WORKBUDDY_PLUGIN_ROOT, "assets", "trae-skin.css"), "utf8"),
+    fs.readFile(path.join(ROOT, "assets", "workbuddy-renderer-inject.js"), "utf8"),
+  ]);
+  assert.equal(compatibility, canonical);
+
+  for (const [route, selector] of [
+    ["project", ".main-content--projects"],
+    ["assistant", ".claw-workspace"],
+    ["market", ".expert-center-page"],
+    ["market", ".skills-view"],
+    ["market", ".connector-panel"],
+    ["automation", ".automation-main-page"],
+    ["more", ".conversation-list-more-dropdown[role=menu]"],
+  ]) {
+    assert.ok(renderer.includes(`["${route}",`), `${route} must be a detectable WorkBuddy route`);
+    assert.ok(renderer.includes(selector), `${selector} must participate in runtime route detection or marking`);
+  }
+
+  for (const selector of [
+    ".workbuddy-collab",
+    ".landing",
+    ".project-detail-view",
+    ".claw-workspace",
+    ".expert-center-page",
+    ".ec-main-content",
+    ".skills-view",
+    ".connector-panel",
+    ".automation-panel",
+  ]) {
+    const canvasCss = ruleBodiesFor(canonical, selector);
+    assert.match(canvasCss, /background:\s*transparent\s*!important/, `${selector} must reveal the shared artwork`);
+    assert.match(canvasCss, /backdrop-filter:\s*none\s*!important/, `${selector} must not add a full-page glass layer`);
+  }
+
+  for (const selector of [
+    ".project-grid__card",
+    ".landing-template-card",
+    ".wb-config-card",
+    ".ec-expert-card",
+    ".skill-card",
+    ".connector-card",
+    ".atm-template-card",
+    ".atm-run-history-item",
+  ]) {
+    assert.ok(renderer.includes(selector), `${selector} must receive a stable semantic component or role`);
+  }
+  assert.match(renderer, /registryComponentGuards/);
+  assert.match(renderer, /"market\.card":\s*\(node\)\s*=>\s*node\.matches/);
+  assert.doesNotMatch(canonical, /\[class\*="skill-card"\]/,
+    "skill-card descendants must not be promoted into nested themed cards");
+
+  const cardCss = ruleBodiesFor(canonical, 'data-workbuddy-skin-runtime-role~="business.card"');
+  assert.match(cardCss, /background:\s*var\(--ds-component-surface\)/);
+  assert.match(cardCss, /border:\s*1px solid var\(--ds-line\)/);
+
+  const panelCss = ruleBodiesFor(canonical, 'data-workbuddy-skin-runtime-role~="business.panel"');
+  assert.match(panelCss, /background:\s*var\(--ds-business-panel\)\s*!important/);
+  assert.match(panelCss, /backdrop-filter:\s*blur\(var\(--ds-blur\)\)/);
+
+  const automationCss = ruleBodiesFor(canonical, ".automation-panel");
+  assert.match(automationCss, /--atm-template-card-bg:\s*var\(--ds-component-surface\)/);
+  assert.match(automationCss, /--atm-modal-bg:\s*var\(--ds-overlay-surface\)/);
+  assert.match(automationCss, /--atm-text-primary:\s*var\(--ds-text\)/);
+
+  const activityChipCss = ruleBodiesFor(canonical, ".mine-activity-card__chip");
+  assert.match(activityChipCss, /color:\s*var\(--ds-accent\)\s*!important/);
+  assert.match(activityChipCss, /background:\s*var\(--ds-selection\)\s*!important/);
+
+  const marketplaceNextCss = ruleBodiesFor(canonical, ".ec-category-tabs-next");
+  assert.match(marketplaceNextCss, /color:\s*var\(--ds-text\)\s*!important/);
+  assert.match(marketplaceNextCss, /background:\s*var\(--ds-overlay-surface\)\s*!important/);
+
+  assert.match(canonical, /background:\s*var\(--ds-form-surface\)/);
+  assert.match(canonical, /background:\s*var\(--ds-overlay-surface\)/);
+  assert.doesNotMatch(canonical, /\.teams-container\s+\*\s*\{/,
+    "business-page coverage must not use a broad descendant background reset");
 });
 
 test("WorkBuddy blank recipe and factory fail closed on missing host input", async () => {

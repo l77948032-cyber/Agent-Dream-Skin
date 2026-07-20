@@ -68,6 +68,7 @@ test("WorkBuddy preview exposes every product scene", async () => {
   assert.match(app, /workBuddySceneRegistry\.scenes\.map/);
   assert.match(app, /value: `wb-\$\{scene\.id\}`/);
   assert.match(preview, /function homeScene\(\)/);
+  assert.match(preview, /function assistantScene\(\)/);
   assert.match(preview, /function threadScene\(\)/);
   assert.match(preview, /function resultsScene\(\)/);
   assert.match(preview, /function resourcesScene\(\)/);
@@ -139,6 +140,44 @@ test("WorkBuddy preview reuses canonical skin CSS and keeps chat surfaces single
   assert.doesNotMatch(editorCss, /background:\s*(?!transparent)/);
 });
 
+test("WorkBuddy business previews mirror native 5.2 page and card contracts", async () => {
+  const [preview, fixture] = await Promise.all([
+    source("WorkBuddyPreview.tsx"),
+    source("workbuddy-preview-fixture.css"),
+  ]);
+
+  for (const nativeClass of [
+    "claw-workspace",
+    "workbuddy-topbar-claw-connected-info",
+    "workbuddy-topbar-claw-channel-tag",
+    "workbuddy-topbar-claw-settings-icon",
+    "workbuddy-collab",
+    "landing",
+    "project-grid__card",
+    "landing-template-card",
+    "expert-center-page",
+    "ec-main-content",
+    "ec-topbar",
+    "ec-expert-card",
+    "skills-view",
+    "skill-card",
+    "connector-panel",
+    "connector-card",
+    "automation-main-page",
+    "automation-panel",
+    "atm-template-card",
+    "atm-row",
+    "atm-run-history-item",
+  ]) {
+    assert.match(preview, new RegExp(nativeClass.replaceAll("-", "\\-")), `${nativeClass} must be represented by the Studio fixture`);
+  }
+
+  assert.match(preview, /data-workbuddy-skin-runtime-role="business\.canvas"/);
+  assert.match(preview, /data-workbuddy-skin-runtime-role="business\.panel"/);
+  assert.match(fixture, /\.wb-project-page\.workbuddy-collab\.landing\s*\{\s*background:\s*transparent/);
+  assert.doesNotMatch(ruleBodiesFor(fixture, ".wb-market-feature"), /var\(--dreamskin-art\)/);
+});
+
 test("Studio theme identity and API calls are scoped by plugin", async () => {
   const [app, api] = await Promise.all([source("App.tsx"), source("api.ts")]);
   assert.match(app, /return `\$\{item\.pluginId\}::\$\{item\.localId\}`/);
@@ -158,7 +197,7 @@ test("WorkBuddy catalog detail uses WorkBuddy interface semantics", async () => 
   assert.ok(coverage, "coverageForTarget must exist");
   assert.match(coverage, /workBuddySceneRegistry\.scenes\.map\(\(scene\) => scene\.name\)/);
   assert.doesNotMatch(coverage, /\["日常办公", "代码开发", "设计创意"/);
-  assert.deepEqual(workBuddySceneRegistry.scenes.map((scene) => scene.name), ["首页", "对话", "结果与产物", "专家与技能", "自动化", "项目与空间", "设置", "浮层与状态"]);
+  assert.deepEqual(workBuddySceneRegistry.scenes.map((scene) => scene.name), ["首页", "助理", "对话", "结果与产物", "专家·技能·连接器", "自动化", "项目", "设置", "浮层与状态"]);
 });
 
 test("Trae retains its original five preview scenes", async () => {
