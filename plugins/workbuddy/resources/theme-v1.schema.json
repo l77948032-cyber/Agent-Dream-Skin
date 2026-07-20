@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://workbuddy-dream-skin.local/schemas/theme-v1.schema.json",
+  "title": "WorkBuddy DreamSkin Theme v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "name", "image", "colors", "states", "appearance"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "description": { "type": "string", "maxLength": 240 },
+    "layout": { "enum": ["classic", "studio-collage"] },
+    "brandSubtitle": { "type": "string", "maxLength": 80 },
+    "tagline": { "type": "string", "maxLength": 160 },
+    "statusText": { "type": "string", "maxLength": 80 },
+    "quote": { "type": "string", "maxLength": 160 },
+    "image": { "type": "string", "pattern": "^[^/\\\\]+\\.(png|jpe?g|webp)$" },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["background", "panel", "panelAlt", "accent", "accentAlt", "secondary", "highlight", "onAccent", "success", "warning", "danger", "info", "disabled", "text", "muted", "line", "selection", "terminal"],
+      "properties": {
+        "background": { "$ref": "#/$defs/color" },
+        "panel": { "$ref": "#/$defs/color" },
+        "panelAlt": { "$ref": "#/$defs/color" },
+        "accent": { "$ref": "#/$defs/color" },
+        "accentAlt": { "$ref": "#/$defs/color" },
+        "secondary": { "$ref": "#/$defs/color" },
+        "highlight": { "$ref": "#/$defs/color" },
+        "onAccent": { "$ref": "#/$defs/color" },
+        "success": { "$ref": "#/$defs/color" },
+        "warning": { "$ref": "#/$defs/color" },
+        "danger": { "$ref": "#/$defs/color" },
+        "info": { "$ref": "#/$defs/color" },
+        "disabled": { "$ref": "#/$defs/color" },
+        "text": { "$ref": "#/$defs/color" },
+        "muted": { "$ref": "#/$defs/color" },
+        "line": { "$ref": "#/$defs/color" },
+        "selection": { "$ref": "#/$defs/color" },
+        "terminal": { "$ref": "#/$defs/color" }
+      }
+    },
+    "states": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surfaceHover", "surfaceActive", "focus", "tooltipBackground", "tooltipText"],
+      "properties": {
+        "surfaceHover": { "$ref": "#/$defs/color" },
+        "surfaceActive": { "$ref": "#/$defs/color" },
+        "focus": { "$ref": "#/$defs/color" },
+        "tooltipBackground": { "$ref": "#/$defs/color" },
+        "tooltipText": { "$ref": "#/$defs/color" }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["motif", "iconTreatment", "surfaceTreatment", "accentPlacement", "cardTreatment", "ornament"],
+      "properties": {
+        "motif": { "enum": ["circuit", "forge", "editorial", "collage", "sketch", "prism"] },
+        "iconTreatment": { "enum": ["outline", "tile", "medallion", "stamp"] },
+        "surfaceTreatment": { "enum": ["quiet", "glass", "paper", "layered"] },
+        "accentPlacement": { "enum": ["rail", "corner", "underline", "glow"] },
+        "cardTreatment": { "enum": ["quiet", "badge", "split", "poster"] },
+        "ornament": { "enum": ["none", "nodes", "sparks", "rules", "tape", "strokes", "facets"] }
+      }
+    },
+    "appearance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["treatment", "backgroundPosition", "backgroundSize", "backgroundOverlay", "backgroundBlendMode", "backgroundOpacity", "surfaceOpacity", "sidebarOpacity", "blur", "saturation", "radius", "shadow", "colorScheme"],
+      "properties": {
+        "treatment": { "enum": ["midnight-neon", "ember-vignette", "paper-wash", "spark-collage", "sunlit-immersive", "violet-rift", "neutral"] },
+        "backgroundPosition": { "type": "string", "maxLength": 40 },
+        "backgroundSize": { "type": "string", "maxLength": 40 },
+        "backgroundOverlay": { "$ref": "#/$defs/color" },
+        "backgroundBlendMode": { "type": "string", "maxLength": 20 },
+        "backgroundOpacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "surfaceOpacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sidebarOpacity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "blur": { "type": "number", "minimum": 0, "maximum": 48 },
+        "saturation": { "type": "number", "minimum": 0, "maximum": 3 },
+        "radius": { "type": "number", "minimum": 0, "maximum": 32 },
+        "shadow": { "enum": ["soft", "deep", "none"] },
+        "colorScheme": { "enum": ["dark", "light", "system"] }
+      }
+    }
+  },
+  "$defs": {
+    "color": {
+      "type": "string",
+      "pattern": "^(transparent|#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})|(?:rgb|rgba|hsl|hsla)\\([0-9A-Za-z.,%/ +\\-]+\\))$"
+    }
+  }
+}

@@ -25,6 +25,7 @@ export interface AgentConnection {
 
 export interface StudioSettings {
   themesRoot: string;
+  themeRoots?: Record<string, string>;
   autoVerify: boolean;
   motionEnabled: boolean;
 }
@@ -68,6 +69,20 @@ export interface BootstrapResponse {
   settings: StudioSettings;
   inspect: InspectDto;
   runtime: RuntimeStatusDto;
+  targets?: StudioTargetDto[];
+}
+
+export interface StudioTargetDto {
+  pluginId: string;
+  targetId: string;
+  targetName: string;
+  plugin?: PluginDto;
+  catalog: CatalogEntry[];
+  themes: LocalTheme[];
+  inspect?: InspectDto;
+  runtime?: RuntimeStatusDto;
+  components?: unknown[];
+  themesRoot?: string;
 }
 
 export interface AgentConnectionResponse {
@@ -88,7 +103,14 @@ export interface ThemeMessageResponse {
   stopReason: string;
 }
 
-export type CreateThemeInput = { kind: "template"; sourceId: string } | { kind: "blank" };
+export type CreateThemeInput = ({ kind: "template"; sourceId: string } | { kind: "blank" }) & {
+  /** Accepted by both the legacy endpoint and scoped backends during migration. */
+  pluginId?: string;
+};
+
+export interface PluginScope {
+  pluginId?: string;
+}
 
 export interface UpdateThemeInput {
   theme: StudioTheme;
@@ -134,40 +156,40 @@ export class ApiError extends Error {
 
 export interface StudioTransport {
   bootstrap(): Promise<BootstrapResponse>;
-  listThemes(): Promise<LocalTheme[]>;
-  createTheme(input: CreateThemeInput): Promise<LocalTheme>;
-  duplicateTheme(id: string): Promise<LocalTheme>;
-  deleteTheme(id: string, input: DeleteThemeInput): Promise<DeleteThemeResponse>;
-  getTheme(id: string): Promise<LocalTheme>;
-  updateTheme(id: string, input: UpdateThemeInput): Promise<LocalTheme>;
-  applyTheme(id: string): Promise<ApplyThemeResponse>;
-  sendThemeMessage(id: string, input: ThemeMessageInput): Promise<ThemeMessageResponse>;
+  listThemes(pluginId?: string): Promise<LocalTheme[]>;
+  createTheme(input: CreateThemeInput, pluginId?: string): Promise<LocalTheme>;
+  duplicateTheme(id: string, pluginId?: string): Promise<LocalTheme>;
+  deleteTheme(id: string, input: DeleteThemeInput, pluginId?: string): Promise<DeleteThemeResponse>;
+  getTheme(id: string, pluginId?: string): Promise<LocalTheme>;
+  updateTheme(id: string, input: UpdateThemeInput, pluginId?: string): Promise<LocalTheme>;
+  applyTheme(id: string, pluginId?: string): Promise<ApplyThemeResponse>;
+  sendThemeMessage(id: string, input: ThemeMessageInput, pluginId?: string): Promise<ThemeMessageResponse>;
   listAgents(): Promise<AgentDto[]>;
   connectAgent(id: string): Promise<AgentConnectionResponse>;
   updateSettings(settings: Partial<Pick<StudioSettings, "autoVerify" | "motionEnabled">>): Promise<StudioSettings>;
-  verifyRuntime(input?: Record<string, unknown>): Promise<Record<string, unknown>>;
-  restoreRuntime(): Promise<RuntimeRestoreResponse>;
+  verifyRuntime(input?: Record<string, unknown>, pluginId?: string): Promise<Record<string, unknown>>;
+  restoreRuntime(pluginId?: string): Promise<RuntimeRestoreResponse>;
 }
 
 export interface DreamSkinStudioBridge {
   bootstrap(): Promise<BootstrapResponse>;
   listCatalog(): Promise<CatalogEntry[]>;
-  listThemes(): Promise<LocalTheme[]>;
-  createTheme(input: CreateThemeInput): Promise<LocalTheme>;
-  duplicateTheme(id: string): Promise<LocalTheme>;
-  deleteTheme(id: string, input: DeleteThemeInput): Promise<DeleteThemeResponse>;
-  getTheme(id: string): Promise<LocalTheme>;
-  updateTheme(id: string, input: UpdateThemeInput): Promise<LocalTheme>;
-  applyTheme(id: string): Promise<ApplyThemeResponse>;
+  listThemes(pluginId?: string): Promise<LocalTheme[]>;
+  createTheme(input: CreateThemeInput, pluginId?: string): Promise<LocalTheme>;
+  duplicateTheme(id: string, pluginId?: string): Promise<LocalTheme>;
+  deleteTheme(id: string, input: DeleteThemeInput, pluginId?: string): Promise<DeleteThemeResponse>;
+  getTheme(id: string, pluginId?: string): Promise<LocalTheme>;
+  updateTheme(id: string, input: UpdateThemeInput, pluginId?: string): Promise<LocalTheme>;
+  applyTheme(id: string, pluginId?: string): Promise<ApplyThemeResponse>;
   validateTheme(id: string): Promise<unknown>;
   previewTheme(id: string, input?: Record<string, unknown>): Promise<unknown>;
-  sendThemeMessage(id: string, input: ThemeMessageInput): Promise<ThemeMessageResponse>;
+  sendThemeMessage(id: string, input: ThemeMessageInput, pluginId?: string): Promise<ThemeMessageResponse>;
   listAgents(): Promise<AgentDto[]>;
   connectAgent(id: string): Promise<AgentConnectionResponse>;
   getSettings(): Promise<StudioSettings>;
   updateSettings(settings: Partial<Pick<StudioSettings, "autoVerify" | "motionEnabled">>): Promise<StudioSettings>;
-  verifyRuntime(input?: Record<string, unknown>): Promise<unknown>;
-  restoreRuntime(): Promise<unknown>;
+  verifyRuntime(input?: Record<string, unknown>, pluginId?: string): Promise<unknown>;
+  restoreRuntime(pluginId?: string): Promise<unknown>;
 }
 
 export interface DreamSkinDesktopBridge {
@@ -182,6 +204,12 @@ type ApiEnvelope<T> = {
 };
 
 const API_ROOT = "/api/v1";
+
+function pluginApiPath(pluginId: string | undefined, path: string) {
+  return pluginId
+    ? `/plugins/${encodeURIComponent(pluginId)}${path}`
+    : path;
+}
 
 function unwrapEnvelope<T>(payload: unknown, fallbackStatus = 0): T {
   if (payload && typeof payload === "object" && "ok" in payload) {
@@ -248,27 +276,27 @@ async function httpRequest<T>(path: string, init?: RequestInit): Promise<T> {
 export function createHttpStudioTransport(): StudioTransport {
   return {
     bootstrap: () => httpRequest<BootstrapResponse>("/bootstrap"),
-    listThemes: () => httpRequest<LocalTheme[]>("/themes"),
-    createTheme: (input) => httpRequest<LocalTheme>("/themes", {
+    listThemes: (pluginId) => httpRequest<LocalTheme[]>(pluginApiPath(pluginId, "/themes")),
+    createTheme: (input, pluginId) => httpRequest<LocalTheme>(pluginApiPath(pluginId, "/themes"), {
       method: "POST",
-      body: JSON.stringify(input),
+      body: JSON.stringify(pluginId ? { ...input, pluginId } : input),
     }),
-    duplicateTheme: (id) => httpRequest<LocalTheme>(`/themes/${encodeURIComponent(id)}/duplicate`, {
+    duplicateTheme: (id, pluginId) => httpRequest<LocalTheme>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}/duplicate`), {
       method: "POST",
     }),
-    deleteTheme: (id, input) => httpRequest<DeleteThemeResponse>(`/themes/${encodeURIComponent(id)}`, {
+    deleteTheme: (id, input, pluginId) => httpRequest<DeleteThemeResponse>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}`), {
       method: "DELETE",
       body: JSON.stringify(input),
     }),
-    getTheme: (id) => httpRequest<LocalTheme>(`/themes/${encodeURIComponent(id)}`),
-    updateTheme: (id, input) => httpRequest<LocalTheme>(`/themes/${encodeURIComponent(id)}`, {
+    getTheme: (id, pluginId) => httpRequest<LocalTheme>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}`)),
+    updateTheme: (id, input, pluginId) => httpRequest<LocalTheme>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}`), {
       method: "PATCH",
       body: JSON.stringify(input),
     }),
-    applyTheme: (id) => httpRequest<ApplyThemeResponse>(`/themes/${encodeURIComponent(id)}/apply`, {
+    applyTheme: (id, pluginId) => httpRequest<ApplyThemeResponse>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}/apply`), {
       method: "POST",
     }),
-    sendThemeMessage: (id, input) => httpRequest<ThemeMessageResponse>(`/themes/${encodeURIComponent(id)}/messages`, {
+    sendThemeMessage: (id, input, pluginId) => httpRequest<ThemeMessageResponse>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}/messages`), {
       method: "POST",
       body: JSON.stringify(input),
     }),
@@ -280,11 +308,11 @@ export function createHttpStudioTransport(): StudioTransport {
       method: "PATCH",
       body: JSON.stringify(settings),
     }),
-    verifyRuntime: (input = {}) => httpRequest<Record<string, unknown>>("/runtime/verify", {
+    verifyRuntime: (input = {}, pluginId) => httpRequest<Record<string, unknown>>(pluginApiPath(pluginId, "/runtime/verify"), {
       method: "POST",
       body: JSON.stringify(input),
     }),
-    restoreRuntime: () => httpRequest<RuntimeRestoreResponse>("/runtime/restore", {
+    restoreRuntime: (pluginId) => httpRequest<RuntimeRestoreResponse>(pluginApiPath(pluginId, "/runtime/restore"), {
       method: "POST",
     }),
   };
@@ -301,19 +329,19 @@ export function createElectronStudioTransport(bridge: DreamSkinStudioBridge): St
 
   return {
     bootstrap: () => call(() => bridge.bootstrap()),
-    listThemes: () => call(() => bridge.listThemes()),
-    createTheme: (input) => call(() => bridge.createTheme(input)),
-    duplicateTheme: (id) => call(() => bridge.duplicateTheme(id)),
-    deleteTheme: (id, input) => call(() => bridge.deleteTheme(id, input)),
-    getTheme: (id) => call(() => bridge.getTheme(id)),
-    updateTheme: (id, input) => call(() => bridge.updateTheme(id, input)),
-    applyTheme: (id) => call(() => bridge.applyTheme(id)),
-    sendThemeMessage: (id, input) => call(() => bridge.sendThemeMessage(id, input)),
+    listThemes: (pluginId) => call(() => bridge.listThemes(pluginId)),
+    createTheme: (input, pluginId) => call(() => bridge.createTheme(input, pluginId)),
+    duplicateTheme: (id, pluginId) => call(() => bridge.duplicateTheme(id, pluginId)),
+    deleteTheme: (id, input, pluginId) => call(() => bridge.deleteTheme(id, input, pluginId)),
+    getTheme: (id, pluginId) => call(() => bridge.getTheme(id, pluginId)),
+    updateTheme: (id, input, pluginId) => call(() => bridge.updateTheme(id, input, pluginId)),
+    applyTheme: (id, pluginId) => call(() => bridge.applyTheme(id, pluginId)),
+    sendThemeMessage: (id, input, pluginId) => call(() => bridge.sendThemeMessage(id, input, pluginId)),
     listAgents: () => call(() => bridge.listAgents()),
     connectAgent: (id) => call(() => bridge.connectAgent(id)),
     updateSettings: (settings) => call(() => bridge.updateSettings(settings)),
-    verifyRuntime: (input = {}) => call(() => bridge.verifyRuntime(input) as Promise<Record<string, unknown>>),
-    restoreRuntime: () => call(() => bridge.restoreRuntime() as Promise<RuntimeRestoreResponse>),
+    verifyRuntime: (input = {}, pluginId) => call(() => bridge.verifyRuntime(input, pluginId) as Promise<Record<string, unknown>>),
+    restoreRuntime: (pluginId) => call(() => bridge.restoreRuntime(pluginId) as Promise<RuntimeRestoreResponse>),
   };
 }
 
@@ -342,17 +370,17 @@ function transport() {
 
 export const studioApi = {
   bootstrap: () => transport().bootstrap(),
-  listThemes: () => transport().listThemes(),
-  createTheme: (input: CreateThemeInput) => transport().createTheme(input),
-  duplicateTheme: (id: string) => transport().duplicateTheme(id),
-  deleteTheme: (id: string, input: DeleteThemeInput) => transport().deleteTheme(id, input),
-  getTheme: (id: string) => transport().getTheme(id),
-  updateTheme: (id: string, theme: StudioTheme, expectedRevision: string) => transport().updateTheme(id, { theme, expectedRevision }),
-  applyTheme: (id: string) => transport().applyTheme(id),
-  sendThemeMessage: (id: string, input: ThemeMessageInput) => transport().sendThemeMessage(id, input),
+  listThemes: (pluginId?: string) => transport().listThemes(pluginId),
+  createTheme: (input: CreateThemeInput, pluginId?: string) => transport().createTheme(input, pluginId),
+  duplicateTheme: (id: string, pluginId?: string) => transport().duplicateTheme(id, pluginId),
+  deleteTheme: (id: string, input: DeleteThemeInput, pluginId?: string) => transport().deleteTheme(id, input, pluginId),
+  getTheme: (id: string, pluginId?: string) => transport().getTheme(id, pluginId),
+  updateTheme: (id: string, theme: StudioTheme, expectedRevision: string, pluginId?: string) => transport().updateTheme(id, { theme, expectedRevision }, pluginId),
+  applyTheme: (id: string, pluginId?: string) => transport().applyTheme(id, pluginId),
+  sendThemeMessage: (id: string, input: ThemeMessageInput, pluginId?: string) => transport().sendThemeMessage(id, input, pluginId),
   listAgents: () => transport().listAgents(),
   connectAgent: (id: string) => transport().connectAgent(id),
   updateSettings: (settings: Partial<Pick<StudioSettings, "autoVerify" | "motionEnabled">>) => transport().updateSettings(settings),
-  verifyRuntime: (input: Record<string, unknown> = {}) => transport().verifyRuntime(input),
-  restoreRuntime: () => transport().restoreRuntime(),
+  verifyRuntime: (input: Record<string, unknown> = {}, pluginId?: string) => transport().verifyRuntime(input, pluginId),
+  restoreRuntime: (pluginId?: string) => transport().restoreRuntime(pluginId),
 };

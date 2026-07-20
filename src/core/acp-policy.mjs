@@ -34,7 +34,7 @@ function inputArguments(rawInput) {
 function allowedThemeTool(rawInput, policy = {}) {
   if (rawInput?.server !== "dreamskin-tool-compat" || rawInput.tool !== "dreamskin_theme") return false;
   const input = inputArguments(rawInput);
-  const pluginId = input.pluginId || "dreamskin.trae";
+  const pluginId = input.pluginId || policy.pluginId || "dreamskin.trae";
   if (policy.pluginId && pluginId !== policy.pluginId) return false;
   if (READ_ONLY_ACTIONS.has(input.action)) return true;
   if (!policy.themeId || input.themeId !== policy.themeId) return false;

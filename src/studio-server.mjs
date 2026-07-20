@@ -6,11 +6,13 @@ import { fileURLToPath } from "node:url";
 
 import { errorEnvelope, ToolError } from "./core/errors.mjs";
 import { PROJECT_ROOT } from "./core/paths.mjs";
+import { createDreamSkinApplicationContext } from "./core/product-application-context.mjs";
 import { createStudioBackend } from "./core/studio-backend.mjs";
 
 const MAX_JSON_BYTES = 1024 * 1024;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
 const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const PLUGIN_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
 const MIME_TYPES = new Map([
   [".css", "text/css; charset=utf-8"],
@@ -29,7 +31,12 @@ function statusFor(error) {
   const code = error?.code;
   if (code === "INVALID_ORIGIN") return 403;
   if (code === "INVALID_CONTENT_TYPE") return 415;
-  if (code === "THEME_NOT_FOUND" || code === "TEMPLATE_NOT_FOUND" || code === "COMPONENT_NOT_FOUND") return 404;
+  if (
+    code === "THEME_NOT_FOUND"
+    || code === "TEMPLATE_NOT_FOUND"
+    || code === "COMPONENT_NOT_FOUND"
+    || code === "PLUGIN_NOT_FOUND"
+  ) return 404;
   if (code === "REVISION_CONFLICT" || code === "THEME_ACTIVE") return 409;
   if (code === "REPOSITORY_BUSY") return 423;
   if (code === "THEME_INVALID" || code === "INVALID_THEME_PATCH") return 422;
@@ -145,6 +152,33 @@ function requestedAssetRevision(url) {
   return revisions[0] || null;
 }
 
+function studioApiScope(pathname) {
+  const prefix = "/api/v1/plugins/";
+  if (!pathname.startsWith(prefix)) return { pathname, pluginId: undefined };
+  const remainder = pathname.slice(prefix.length);
+  const separator = remainder.indexOf("/");
+  const pluginId = separator === -1 ? remainder : remainder.slice(0, separator);
+  if (!PLUGIN_ID_PATTERN.test(pluginId) || pluginId.length > 128) {
+    throw new ToolError("INVALID_ARGUMENT", "Studio pluginId is invalid.");
+  }
+  return {
+    pluginId,
+    pathname: `/api/v1${separator === -1 ? "" : remainder.slice(separator)}`,
+  };
+}
+
+function routeScopedBody(input, pluginId) {
+  if (!pluginId) return input;
+  if (input.pluginId !== undefined && input.pluginId !== pluginId) {
+    throw new ToolError("INVALID_ARGUMENT", "Body pluginId must match the target selected by the route.", {
+      routePluginId: pluginId,
+      bodyPluginId: input.pluginId,
+    });
+  }
+  const { pluginId: _pluginId, ...body } = input;
+  return body;
+}
+
 function sendAsset(response, asset, method, requestedRevision) {
   if (requestedRevision && requestedRevision !== asset.revision) {
     throw new ToolError("REVISION_CONFLICT", "The requested asset revision is no longer current.", {
@@ -230,49 +264,74 @@ export function createStudioHttpServer({
       const url = new URL(request.url || "/", `http://${request.headers.host}`);
       const pathname = url.pathname;
       if (pathname.startsWith("/api/")) assertMutationRequest(request, method);
+      const apiScope = pathname.startsWith("/api/") ? studioApiScope(pathname) : null;
+      const apiPathname = apiScope?.pathname || pathname;
+      const pluginId = apiScope?.pluginId;
 
-      if (pathname === "/api/v1/bootstrap" && method === "GET") return sendResult(response, await backend.bootstrap());
-      if (pathname === "/api/v1/catalog" && method === "GET") return sendResult(response, await backend.catalog());
-      if (pathname === "/api/v1/themes" && method === "GET") return sendResult(response, await backend.themes());
-      if (pathname === "/api/v1/themes" && method === "POST") return sendResult(response, await backend.createTheme(await readJson(request)), 201);
-      if (pathname === "/api/v1/agents" && method === "GET") return sendResult(response, await backend.agents());
-      if (pathname === "/api/v1/settings" && method === "GET") return sendResult(response, await backend.settings());
-      if (pathname === "/api/v1/settings" && method === "PATCH") return sendResult(response, await backend.updateSettings(await readJson(request)));
-      if (pathname === "/api/v1/runtime/verify" && method === "POST") return sendResult(response, await backend.verify(await readJson(request)));
-      if (pathname === "/api/v1/runtime/restore" && method === "POST") return sendResult(response, await backend.restore());
-
-      let match = pathname.match(/^\/api\/v1\/catalog\/([a-z0-9][a-z0-9_-]{0,63})\/asset$/);
-      if (match && (method === "GET" || method === "HEAD")) {
-        const revision = requestedAssetRevision(url);
-        return sendAsset(response, await backend.asset("catalog", match[1]), method, revision);
+      if (!pluginId && apiPathname === "/api/v1/bootstrap" && method === "GET") return sendResult(response, await backend.bootstrap());
+      if (apiPathname === "/api/v1/catalog" && method === "GET") return sendResult(response, await backend.catalog(pluginId));
+      if (apiPathname === "/api/v1/themes" && method === "GET") return sendResult(response, await backend.themes(pluginId));
+      if (apiPathname === "/api/v1/themes" && method === "POST") {
+        return sendResult(response, await backend.createTheme(
+          routeScopedBody(await readJson(request), pluginId),
+          pluginId,
+        ), 201);
+      }
+      if (!pluginId && apiPathname === "/api/v1/agents" && method === "GET") return sendResult(response, await backend.agents());
+      if (!pluginId && apiPathname === "/api/v1/settings" && method === "GET") return sendResult(response, await backend.settings());
+      if (!pluginId && apiPathname === "/api/v1/settings" && method === "PATCH") return sendResult(response, await backend.updateSettings(await readJson(request)));
+      if (apiPathname === "/api/v1/runtime/verify" && method === "POST") {
+        return sendResult(response, await backend.verify(
+          routeScopedBody(await readJson(request), pluginId),
+          pluginId,
+        ));
+      }
+      if (apiPathname === "/api/v1/runtime/restore" && method === "POST") {
+        return sendResult(response, await backend.restore(pluginId));
       }
 
-      match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/asset$/);
+      let match = apiPathname.match(/^\/api\/v1\/catalog\/([a-z0-9][a-z0-9_-]{0,63})\/asset$/);
       if (match && (method === "GET" || method === "HEAD")) {
         const revision = requestedAssetRevision(url);
-        return sendAsset(response, await backend.asset("theme", match[1]), method, revision);
+        return sendAsset(response, await backend.asset("catalog", match[1], pluginId), method, revision);
       }
 
-      match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})$/);
-      if (match && method === "GET") return sendResult(response, await backend.theme(match[1]));
-      if (match && method === "PATCH") return sendResult(response, await backend.updateTheme(match[1], await readJson(request)));
-      if (match && method === "DELETE") return sendResult(response, await backend.deleteTheme(match[1], await readJson(request)));
+      match = apiPathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/asset$/);
+      if (match && (method === "GET" || method === "HEAD")) {
+        const revision = requestedAssetRevision(url);
+        return sendAsset(response, await backend.asset("theme", match[1], pluginId), method, revision);
+      }
 
-      match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/duplicate$/);
-      if (match && method === "POST") return sendResult(response, await backend.duplicateTheme(match[1]), 201);
+      match = apiPathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})$/);
+      if (match && method === "GET") return sendResult(response, await backend.theme(match[1], pluginId));
+      if (match && method === "PATCH") return sendResult(response, await backend.updateTheme(
+        match[1],
+        routeScopedBody(await readJson(request), pluginId),
+        pluginId,
+      ));
+      if (match && method === "DELETE") return sendResult(response, await backend.deleteTheme(
+        match[1],
+        routeScopedBody(await readJson(request), pluginId),
+        pluginId,
+      ));
 
-      match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/(apply|validate|preview|messages)$/);
+      match = apiPathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/duplicate$/);
+      if (match && method === "POST") return sendResult(response, await backend.duplicateTheme(match[1], pluginId), 201);
+
+      match = apiPathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/(apply|validate|preview|messages)$/);
       if (match && method === "POST") {
         const [, id, operation] = match;
-        const input = operation === "apply" || operation === "validate" ? {} : await readJson(request);
-        if (operation === "apply") return sendResult(response, await backend.applyTheme(id));
-        if (operation === "validate") return sendResult(response, await backend.validateTheme(id));
-        if (operation === "preview") return sendResult(response, await backend.previewTheme(id, input));
-        return sendResult(response, await backend.message(id, input));
+        const input = operation === "apply" || operation === "validate"
+          ? {}
+          : routeScopedBody(await readJson(request), pluginId);
+        if (operation === "apply") return sendResult(response, await backend.applyTheme(id, pluginId));
+        if (operation === "validate") return sendResult(response, await backend.validateTheme(id, pluginId));
+        if (operation === "preview") return sendResult(response, await backend.previewTheme(id, input, pluginId));
+        return sendResult(response, await backend.message(id, input, pluginId));
       }
 
-      match = pathname.match(/^\/api\/v1\/agents\/([a-z0-9_-]+)\/connect$/);
-      if (match && method === "POST") return sendResult(response, await backend.connectAgent(match[1]));
+      match = apiPathname.match(/^\/api\/v1\/agents\/([a-z0-9_-]+)\/connect$/);
+      if (!pluginId && match && method === "POST") return sendResult(response, await backend.connectAgent(match[1]));
 
       if (pathname.startsWith("/api/")) {
         return sendJson(response, 404, errorEnvelope(new ToolError("NOT_FOUND", "API route not found.")));
@@ -294,9 +353,19 @@ export function createStudioHttpServer({
   return server;
 }
 
-export async function startStudioServer({ host = "127.0.0.1", port = 4242, ...options } = {}) {
+export async function startStudioServer({
+  host = "127.0.0.1",
+  port = 4242,
+  firstPartyTargets = false,
+  ...options
+} = {}) {
   if (!LOOPBACK_HOSTS.has(host)) throw new ToolError("INVALID_HOST", "Studio must bind to a loopback address.");
-  const backend = options.backend || await createStudioBackend(options);
+  let backend = options.backend;
+  if (!backend) {
+    const applicationContext = options.applicationContext
+      || (firstPartyTargets ? await createDreamSkinApplicationContext(options) : undefined);
+    backend = await createStudioBackend({ ...options, applicationContext });
+  }
   const server = createStudioHttpServer({ ...options, backend });
   await new Promise((resolve, reject) => {
     server.once("error", reject);
@@ -325,7 +394,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   let server;
   try {
     const options = parseArgs(process.argv.slice(2));
-    server = await startStudioServer(options);
+    server = await startStudioServer({ ...options, firstPartyTargets: true });
     const address = server.address();
     console.log(`DreamSkin Studio: http://${address.address}:${address.port}`);
   } catch (error) {

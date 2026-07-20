@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "target": "workbuddy",
+  "sceneVersion": "1.0.0",
+  "description": "Canonical WorkBuddy scene coverage for Studio previews and Agent visual audits.",
+  "scenes": [
+    {
+      "id": "home",
+      "name": "首页",
+      "description": "WorkBuddy 欢迎页、场景标签、快捷任务与首页输入框。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "sidebar.project", "home.hero", "home.quickAction", "composer.surface", "composer.tool", "action.primary", "overlay.tooltip"]
+    },
+    {
+      "id": "chat",
+      "name": "对话",
+      "description": "用户消息、Agent 流式回复、工具调用、附件与输入区。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "sidebar.project", "chat.timeline", "chat.message.user", "chat.message.agent", "chat.toolCall", "composer.surface", "composer.tool", "action.primary", "status.badge", "status.toast"]
+    },
+    {
+      "id": "result",
+      "name": "结果与产物",
+      "description": "结果标签、产物卡、文件树、编辑器与浏览器容器。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "result.shell", "result.tabs", "result.artifact", "result.fileTree", "action.primary", "loading.skeleton", "empty.state", "status.badge"]
+    },
+    {
+      "id": "market",
+      "name": "专家与技能",
+      "description": "专家、技能、连接器市场的搜索、筛选和卡片状态。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "market.toolbar", "market.card", "input.field", "selection.control", "action.primary", "loading.skeleton", "empty.state"]
+    },
+    {
+      "id": "automation",
+      "name": "自动化",
+      "description": "计划任务、启用状态、下次运行和执行历史。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "automation.task", "automation.run", "selection.control", "action.primary", "status.badge", "empty.state"]
+    },
+    {
+      "id": "project",
+      "name": "项目与空间",
+      "description": "项目卡、成员、活动与文件树。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "sidebar.navigation", "sidebar.project", "project.card", "result.fileTree", "action.primary", "empty.state"]
+    },
+    {
+      "id": "settings",
+      "name": "设置",
+      "description": "设置分组、输入控件、账号区域和危险操作。",
+      "componentIds": ["shell.workspace", "shell.titlebar", "settings.section", "input.field", "selection.control", "action.primary", "overlay.dialog", "status.toast"]
+    },
+    {
+      "id": "overlays",
+      "name": "浮层与状态",
+      "description": "菜单、弹窗、提示、通知和全部语义状态。",
+      "componentIds": ["overlay.menu", "overlay.dialog", "overlay.tooltip", "status.badge", "status.toast", "loading.skeleton", "empty.state", "input.field", "selection.control", "action.primary"]
+    }
+  ]
+}

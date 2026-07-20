@@ -38,6 +38,8 @@ export class TraeDreamSkinService {
     schemaPath = SCHEMA_PATH,
     dataRoot = TOOL_DATA_ROOT,
     catalogRepository,
+    target = { id: "trae", name: "Trae" },
+    product,
   } = {}) {
     this.repository = repository;
     this.runtime = runtime;
@@ -46,6 +48,9 @@ export class TraeDreamSkinService {
     this.schemaPath = schemaPath;
     this.dataRoot = dataRoot;
     this.catalogRepository = catalogRepository;
+    this.target = Object.freeze({ id: target.id, name: target.name });
+    this.product = product || `${target.name}-Dream-Skin`;
+    this.bundleSafetyKey = target.id === "trae" ? "modifiesTraeBundle" : "modifiesWorkBuddyBundle";
     this.runtimeQueue = Promise.resolve();
   }
 
@@ -78,7 +83,7 @@ export class TraeDreamSkinService {
     ]);
     return {
       product: "DreamSkin Tool",
-      target: { id: "trae", name: "Trae" },
+      target: this.target,
       agentToolVersion: AGENT_TOOL_VERSION,
       protocolVersion: 1,
       repository: publicRepository(themes),
@@ -103,7 +108,7 @@ export class TraeDreamSkinService {
     ]);
     const status = await this.runtimeStatus();
     return {
-      product: "Trae-Dream-Skin",
+      product: this.product,
       agentToolVersion: AGENT_TOOL_VERSION,
       protocolVersion: 1,
       runtime: this.runtime.descriptor(),
@@ -116,7 +121,8 @@ export class TraeDreamSkinService {
         structuredThemesOnly: true,
         arbitraryCssWrites: false,
         loopbackCdpOnly: true,
-        modifiesTraeBundle: false,
+        modifiesHostBundle: false,
+        [this.bundleSafetyKey]: false,
       },
     };
   }
@@ -173,7 +179,11 @@ export class TraeDreamSkinService {
     return this.runtimeOperation(() => this.repositoryOperation(async () => {
       const candidate = await this.repository.read(id);
       const before = await this.runtime.status();
-      const previousThemeId = before?.session === "active" ? before.themeId : null;
+      const previousThemeId = (before?.session === "active" || before?.session === "degraded")
+        && typeof before.themeId === "string"
+        && before.themeId
+        ? before.themeId
+        : null;
       let previousTheme = null;
       if (previousThemeId) {
         if (typeof before.themeRevision !== "string" || !/^[a-f0-9]{64}$/.test(before.themeRevision)) {
@@ -218,7 +228,7 @@ export class TraeDreamSkinService {
             restoration = { mode: "native", status: await this.runtime.status() };
           }
         } catch (error) {
-          throw new ToolError("PREVIEW_RESTORE_FAILED", "Preview finished, but the previous Trae state could not be restored.", {
+          throw new ToolError("PREVIEW_RESTORE_FAILED", `Preview finished, but the previous ${this.target.name} state could not be restored.`, {
             preview: previewResult,
             restoreError: { code: error.code || "RUNTIME_COMMAND_FAILED", message: error.message },
           });

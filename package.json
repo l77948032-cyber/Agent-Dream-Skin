@@ -12,7 +12,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check scripts/injector.mjs && node --check scripts/studio-dev.mjs && node --check scripts/build-desktop-resources.mjs && node --check scripts/after-pack.mjs && node --check scripts/verify-packaged-desktop.mjs && node --check scripts/verify-macos-release.mjs && node --check assets/renderer-inject.js && node --check src/cli.mjs && node --check src/mcp-server.mjs && node --check src/studio-server.mjs && node --check desktop/main.mjs && node --check desktop/process-lifecycle.mjs && node --check desktop/shell.mjs && node --check desktop/protocol-router.mjs",
+    "check": "node --check scripts/injector.mjs && node --check scripts/workbuddy-injector.mjs && node --check scripts/studio-dev.mjs && node --check scripts/build-desktop-resources.mjs && node --check scripts/after-pack.mjs && node --check scripts/verify-packaged-desktop.mjs && node --check scripts/verify-macos-release.mjs && node --check assets/renderer-inject.js && node --check assets/workbuddy-renderer-inject.js && node --check plugins/workbuddy/plugin.mjs && node --check plugins/workbuddy/catalog.mjs && node --check src/cli.mjs && node --check src/mcp-server.mjs && node --check src/studio-server.mjs && node --check desktop/main.mjs && node --check desktop/process-lifecycle.mjs && node --check desktop/shell.mjs && node --check desktop/protocol-router.mjs",
     "cli": "node ./bin/trae-dream-skin.mjs",
     "mcp": "node ./src/mcp-server.mjs",
     "mcp:legacy": "node ./src/mcp-server.mjs --profile legacy-v1",
@@ -57,6 +57,8 @@
       "src/**/*",
       "plugins/trae/plugin.mjs",
       "plugins/trae/catalog.mjs",
+      "plugins/workbuddy/plugin.mjs",
+      "plugins/workbuddy/catalog.mjs",
       "LICENSE",
       "NOTICE.md",
       "THIRD_PARTY_NOTICES.md",

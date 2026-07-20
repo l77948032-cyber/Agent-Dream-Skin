@@ -1,0 +1,268 @@
+{
+  "schemaVersion": 1,
+  "registryVersion": "1.0.0",
+  "target": "WorkBuddy 5.2",
+  "description": "Stable WorkBuddy scene and component semantics exposed to DreamSkin agents. Runtime selectors are version guarded and remain plugin-owned.",
+  "compatibility": {
+    "testedVersions": ["5.2.6"],
+    "selectorProfile": "5.2"
+  },
+  "components": [
+    {
+      "id": "shell.workspace",
+      "description": "Application background plane and main WorkBuddy workspace.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default"],
+      "visualSlots": ["backgroundPlane", "surfaceLayer", "ambientOrnament"],
+      "selectors": ["#root", ".teams-container", ".teams-main-content", ".main-content"]
+    },
+    {
+      "id": "shell.titlebar",
+      "description": "Native-safe draggable title bar, current workspace title and window actions.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default", "hover", "active"],
+      "visualSlots": ["title", "dragRegion", "windowAction"],
+      "selectors": [".workbuddy-topbar", ".workbuddy-topbar-title", ".workbuddy-topbar-actions"]
+    },
+    {
+      "id": "sidebar.navigation",
+      "description": "Primary navigation, scene tabs and utility actions in the conversation sidebar.",
+      "modes": ["home", "chat", "result", "market", "automation", "project"],
+      "states": ["default", "hover", "active", "focus", "disabled"],
+      "visualSlots": ["brandMark", "rowIcon", "selectionMarker", "sectionDivider"],
+      "selectors": [".conversation-sidebar", ".conversation-list-tabs", ".conversation-list-tab-button", ".sidebar-next-top-button"]
+    },
+    {
+      "id": "sidebar.project",
+      "description": "Project and conversation groups, cards and collapsed section headers.",
+      "modes": ["home", "chat", "project"],
+      "states": ["default", "hover", "active", "focus", "empty"],
+      "visualSlots": ["groupIcon", "activeRail", "metaBadge", "sectionRule"],
+      "selectors": [".conversation-section", ".collapsible-section", ".conversation-item", ".conversation-agent-card"]
+    },
+    {
+      "id": "home.hero",
+      "description": "WorkBuddy welcome title, subtitle and scene selector.",
+      "modes": ["home"],
+      "states": ["default"],
+      "visualSlots": ["titleMark", "scenePill", "ambientAccent"],
+      "selectors": [".wb-home-page", ".wb-home-header", ".wb-scene-tabs"]
+    },
+    {
+      "id": "home.quickAction",
+      "description": "Home-page task starters and expandable quick-action entries.",
+      "modes": ["home"],
+      "states": ["default", "hover", "active", "focus", "disabled"],
+      "visualSlots": ["iconTile", "cornerMark", "label", "motionFeedback"],
+      "selectors": [".quick-actions__item", ".quick-actions__item-icon", "[data-workbuddy-skin-role=home-quick-action]"]
+    },
+    {
+      "id": "chat.timeline",
+      "description": "Scrollable agent conversation timeline and turn spacing.",
+      "modes": ["chat"],
+      "states": ["default", "loading", "empty"],
+      "visualSlots": ["timelineRail", "turnDivider", "progressMark"],
+      "selectors": [".chat-container", ".wb-cb-chat", "[data-workbuddy-skin-role=chat-timeline]"]
+    },
+    {
+      "id": "chat.message.user",
+      "description": "User message surface and inline attachments.",
+      "modes": ["chat"],
+      "states": ["default", "hover", "selected"],
+      "visualSlots": ["bubble", "attachmentChip", "cornerAccent"],
+      "selectors": ["[data-workbuddy-skin-role=user-message]", "[class*=user-message]", "[class*=userMessage]"]
+    },
+    {
+      "id": "chat.message.agent",
+      "description": "Agent response, reasoning blocks and markdown content.",
+      "modes": ["chat"],
+      "states": ["default", "streaming", "complete", "error"],
+      "visualSlots": ["avatarMark", "responseSurface", "streamIndicator"],
+      "selectors": ["[data-workbuddy-skin-role=agent-message]", "[class*=assistant-message]", "[class*=assistantMessage]"]
+    },
+    {
+      "id": "chat.toolCall",
+      "description": "Expandable tool invocation, approval and execution result rows.",
+      "modes": ["chat"],
+      "states": ["pending", "running", "success", "warning", "error", "collapsed", "expanded"],
+      "visualSlots": ["toolIcon", "statusRail", "resultSurface", "approvalAction"],
+      "selectors": ["[data-workbuddy-skin-role=tool-call]", "[class*=tool-call]", "[class*=toolCall]"]
+    },
+    {
+      "id": "composer.surface",
+      "description": "Prompt composer, editable area, model selector and send region.",
+      "modes": ["home", "chat"],
+      "states": ["default", "hover", "focus", "disabled", "recording", "sending"],
+      "visualSlots": ["inputWell", "focusRing", "modelChip", "sendAction"],
+      "selectors": [".wb-home-composer", ".wb-input-footer", "[data-slate-editor=true]", "[data-workbuddy-skin-role=composer]"]
+    },
+    {
+      "id": "composer.tool",
+      "description": "Composer attachment, skill, model, voice and context controls.",
+      "modes": ["home", "chat"],
+      "states": ["default", "hover", "active", "focus", "disabled"],
+      "visualSlots": ["toolIcon", "chipSurface", "activeDot"],
+      "selectors": [".wb-home-composer__chips", ".voice-mic-trigger", "[data-cb-chat-input-toolbar-selector]"]
+    },
+    {
+      "id": "action.primary",
+      "description": "Primary send, run, create, confirm and apply actions.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default", "hover", "active", "focus", "disabled", "loading"],
+      "visualSlots": ["fillTreatment", "actionIcon", "progressRing"],
+      "selectors": [".wb-button--primary", ".cb-button--primary", "[data-workbuddy-skin-role=primary-action]"]
+    },
+    {
+      "id": "result.shell",
+      "description": "Task result area hosting artifacts, files, editor, browser and preview panes.",
+      "modes": ["result"],
+      "states": ["default", "loading", "empty", "error"],
+      "visualSlots": ["paneSurface", "resizeHandle", "resultHeader"],
+      "selectors": ["[data-workbuddy-skin-role=result-shell]", "[class*=artifact-detail]", "[class*=result-panel]"]
+    },
+    {
+      "id": "result.tabs",
+      "description": "Overview, artifact, file, editor and browser result tabs.",
+      "modes": ["result"],
+      "states": ["default", "hover", "active", "focus", "dirty"],
+      "visualSlots": ["tabIcon", "activeIndicator", "dirtyMark"],
+      "selectors": ["[data-workbuddy-skin-role=result-tabs]", "[class*=file-tabs]", "[role=tablist]"]
+    },
+    {
+      "id": "result.artifact",
+      "description": "Generated document, media and structured artifact cards.",
+      "modes": ["result"],
+      "states": ["default", "hover", "selected", "loading", "error"],
+      "visualSlots": ["fileIcon", "previewSurface", "typeBadge", "openAction"],
+      "selectors": ["[data-workbuddy-skin-role=artifact-card]", "[class*=artifact-card]", "[class*=artifactCard]"]
+    },
+    {
+      "id": "result.fileTree",
+      "description": "Result file tree, changes, diff statuses and selected row.",
+      "modes": ["result", "project"],
+      "states": ["default", "hover", "active", "focus", "added", "modified", "deleted"],
+      "visualSlots": ["indentGuide", "fileIcon", "selectionRail", "changeBadge"],
+      "selectors": ["[data-workbuddy-skin-role=file-tree]", "[role=tree]", "[role=treeitem]"]
+    },
+    {
+      "id": "market.toolbar",
+      "description": "Expert, skill and connector market search, filters and category tabs.",
+      "modes": ["market"],
+      "states": ["default", "focus", "filtered"],
+      "visualSlots": ["searchField", "categoryTab", "filterChip"],
+      "selectors": ["[data-workbuddy-skin-role=market-toolbar]", "[class*=market-toolbar]", "[class*=marketHeader]"]
+    },
+    {
+      "id": "market.card",
+      "description": "Expert, skill and connector discovery card.",
+      "modes": ["market"],
+      "states": ["default", "hover", "active", "installed", "disabled"],
+      "visualSlots": ["iconTile", "categoryBadge", "installAction", "trustMark"],
+      "selectors": ["[data-workbuddy-skin-role=market-card]", "[class*=market-card]", "[class*=skill-card]"]
+    },
+    {
+      "id": "automation.task",
+      "description": "Automation schedule card, trigger information and enable control.",
+      "modes": ["automation"],
+      "states": ["default", "hover", "active", "enabled", "disabled", "error"],
+      "visualSlots": ["scheduleIcon", "statusDot", "enableControl", "nextRun"],
+      "selectors": ["[data-workbuddy-skin-role=automation-task]", "[class*=automation-card]", "[class*=schedule-card]"]
+    },
+    {
+      "id": "automation.run",
+      "description": "Automation run history, duration and execution status.",
+      "modes": ["automation"],
+      "states": ["queued", "running", "success", "warning", "error"],
+      "visualSlots": ["timelineDot", "statusBadge", "duration", "resultAction"],
+      "selectors": ["[data-workbuddy-skin-role=automation-run]", "[class*=run-history]", "[class*=execution-item]"]
+    },
+    {
+      "id": "project.card",
+      "description": "Project and workspace summary card with recent activity.",
+      "modes": ["project"],
+      "states": ["default", "hover", "active", "focus", "archived"],
+      "visualSlots": ["projectIcon", "activityStrip", "memberStack", "openAction"],
+      "selectors": ["[data-workbuddy-skin-role=project-card]", "[class*=project-card]", "[class*=workspace-card]"]
+    },
+    {
+      "id": "settings.section",
+      "description": "Settings groups, preference rows and account panels.",
+      "modes": ["settings"],
+      "states": ["default", "hover", "focus", "disabled"],
+      "visualSlots": ["sectionIcon", "groupSurface", "rowDivider", "control"],
+      "selectors": ["[data-workbuddy-skin-role=settings-section]", "[class*=settings-card]", "[class*=settings-section]"]
+    },
+    {
+      "id": "input.field",
+      "description": "Text, search, select and multiline fields with validation.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default", "hover", "focus", "invalid", "disabled", "readonly"],
+      "visualSlots": ["fieldIcon", "focusRing", "validationMark", "clearAction"],
+      "selectors": ["input", "textarea", "[role=textbox]", "[role=combobox]"]
+    },
+    {
+      "id": "selection.control",
+      "description": "Checkbox, radio, switch, tabs and segmented selections.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default", "hover", "active", "focus", "disabled", "indeterminate"],
+      "visualSlots": ["track", "thumb", "selectionMark", "activeIndicator"],
+      "selectors": ["[role=checkbox]", "[role=radio]", "[role=switch]", "[role=tab]"]
+    },
+    {
+      "id": "overlay.menu",
+      "description": "Context menus, dropdowns, list boxes and popovers.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default", "open"],
+      "visualSlots": ["surface", "edgeAccent", "sectionDivider", "selectedItem"],
+      "selectors": ["[role=menu]", "[role=listbox]", "[data-floating-ui-portal]"]
+    },
+    {
+      "id": "overlay.dialog",
+      "description": "Modal dialogs, sheets, confirmations and their backdrop.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default", "open", "busy"],
+      "visualSlots": ["backdrop", "dialogSurface", "titleMark", "actionBar"],
+      "selectors": ["[role=dialog]", "[aria-modal=true]", "[data-workbuddy-skin-role=dialog]"]
+    },
+    {
+      "id": "overlay.tooltip",
+      "description": "Tooltips and compact hover explanations.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["default"],
+      "visualSlots": ["surface", "arrow", "shortcut"],
+      "selectors": ["[role=tooltip]"]
+    },
+    {
+      "id": "status.badge",
+      "description": "Persistent semantic status chips and counters.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["success", "warning", "error", "info", "neutral"],
+      "visualSlots": ["statusIcon", "statusTint", "count"],
+      "selectors": ["[data-status]", "[class*=status-badge]", "[class*=version-badge]"]
+    },
+    {
+      "id": "status.toast",
+      "description": "Transient success, warning, error and information notifications.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["success", "warning", "error", "info", "loading"],
+      "visualSlots": ["statusIcon", "edgeAccent", "message", "dismissAction"],
+      "selectors": ["[role=status]", "[class*=toast]", "[class*=notification]"]
+    },
+    {
+      "id": "loading.skeleton",
+      "description": "Loading placeholders for cards, lists and result content.",
+      "modes": ["home", "chat", "result", "market", "automation", "project", "settings"],
+      "states": ["loading"],
+      "visualSlots": ["base", "shimmer", "shape"],
+      "selectors": ["[aria-busy=true]", "[class*=skeleton]", "[data-workbuddy-skin-role=skeleton]"]
+    },
+    {
+      "id": "empty.state",
+      "description": "Empty project, conversation, result, search and automation states.",
+      "modes": ["chat", "result", "market", "automation", "project"],
+      "states": ["empty"],
+      "visualSlots": ["illustrationWell", "title", "supportingText", "action"],
+      "selectors": ["[class*=empty-state]", "[class*=emptyState]", "[data-workbuddy-skin-role=empty-state]"]
+    }
+  ]
+}

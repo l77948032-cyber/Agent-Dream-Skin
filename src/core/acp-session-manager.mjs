@@ -72,7 +72,12 @@ export class AcpSessionManager {
     agentRegistry,
     projectRoot = PROJECT_ROOT,
     themesRoot = STUDIO_THEMES_ROOT,
+    themeRoots = {},
+    pluginRoots = {},
     dataRoot = STUDIO_DATA_ROOT,
+    dataRoots = {},
+    backupsRoot,
+    backupRoots = {},
     mcpServerPath,
     mcpServerCommand = process.execPath,
     mcpServerArgs,
@@ -91,7 +96,44 @@ export class AcpSessionManager {
     this.agentRegistry = agentRegistry;
     this.projectRoot = path.resolve(projectRoot);
     this.themesRoot = path.resolve(themesRoot);
+    const configuredThemeRoots = themeRoots instanceof Map
+      ? [...themeRoots.entries()]
+      : Object.entries(themeRoots || {});
+    this.themeRoots = new Map(configuredThemeRoots.map(([pluginId, root]) => {
+      if (typeof pluginId !== "string" || !pluginId || typeof root !== "string" || !root) {
+        throw new ToolError("INVALID_ARGUMENT", "ACP themeRoots must map plugin ids to directory paths.");
+      }
+      return [pluginId, path.resolve(root)];
+    }));
+    const configuredPluginRoots = pluginRoots instanceof Map
+      ? [...pluginRoots.entries()]
+      : Object.entries(pluginRoots || {});
+    this.pluginRoots = new Map(configuredPluginRoots.map(([pluginId, root]) => {
+      if (typeof pluginId !== "string" || !pluginId || typeof root !== "string" || !root) {
+        throw new ToolError("INVALID_ARGUMENT", "ACP pluginRoots must map plugin ids to directory paths.");
+      }
+      return [pluginId, path.resolve(root)];
+    }));
     this.dataRoot = path.resolve(dataRoot);
+    const configuredDataRoots = dataRoots instanceof Map
+      ? [...dataRoots.entries()]
+      : Object.entries(dataRoots || {});
+    this.dataRoots = new Map(configuredDataRoots.map(([pluginId, root]) => {
+      if (typeof pluginId !== "string" || !pluginId || typeof root !== "string" || !root) {
+        throw new ToolError("INVALID_ARGUMENT", "ACP dataRoots must map plugin ids to directory paths.");
+      }
+      return [pluginId, path.resolve(root)];
+    }));
+    this.backupsRoot = path.resolve(backupsRoot || path.join(this.dataRoot, "backups"));
+    const configuredBackupRoots = backupRoots instanceof Map
+      ? [...backupRoots.entries()]
+      : Object.entries(backupRoots || {});
+    this.backupRoots = new Map(configuredBackupRoots.map(([pluginId, root]) => {
+      if (typeof pluginId !== "string" || !pluginId || typeof root !== "string" || !root) {
+        throw new ToolError("INVALID_ARGUMENT", "ACP backupRoots must map plugin ids to directory paths.");
+      }
+      return [pluginId, path.resolve(root)];
+    }));
     this.mcpServerPath = mcpServerPath
       ? path.resolve(this.projectRoot, mcpServerPath)
       : path.join(this.projectRoot, "src", "mcp-server.mjs");
@@ -252,10 +294,17 @@ export class AcpSessionManager {
   }
 
   mcpServer(themeId, pluginId = "dreamskin.trae", expectedRevision = null) {
+    const themesRoot = this.themeRoots.get(pluginId) || this.themesRoot;
+    const pluginRoot = this.pluginRoots.get(pluginId);
+    const dataRoot = this.dataRoots.get(pluginId) || this.dataRoot;
+    const backupsRoot = this.backupRoots.get(pluginId)
+      || (this.dataRoots.has(pluginId) ? path.join(dataRoot, "backups") : this.backupsRoot);
     const requiredEnvironment = [
       { name: "TRAE_DREAM_SKIN_PROJECT_ROOT", value: this.projectRoot },
-      { name: "TRAE_DREAM_SKIN_THEMES_ROOT", value: this.themesRoot },
-      { name: "TRAE_DREAM_SKIN_TOOL_HOME", value: this.dataRoot },
+      { name: "TRAE_DREAM_SKIN_THEMES_ROOT", value: themesRoot },
+      { name: "TRAE_DREAM_SKIN_TOOL_HOME", value: dataRoot },
+      { name: "DREAMSKIN_TOOL_BACKUPS_ROOT", value: backupsRoot },
+      ...(pluginRoot ? [{ name: "DREAMSKIN_TOOL_PLUGIN_ROOT", value: pluginRoot }] : []),
       { name: "DREAMSKIN_TOOL_PLUGIN_ID", value: pluginId },
       { name: "DREAMSKIN_TOOL_THEME_ID", value: themeId },
       ...(expectedRevision ? [{ name: "DREAMSKIN_TOOL_EXPECTED_REVISION", value: expectedRevision }] : []),

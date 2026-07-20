@@ -20,27 +20,28 @@ async function call(channel, ...args) {
 }
 
 const studio = (operation, input = {}) => call(channels.studioApi, operation, input);
+const scoped = (input, pluginId) => pluginId ? { ...input, pluginId } : input;
 const api = Object.freeze({
   getInfo: () => call(channels.desktopInfo),
   studio: Object.freeze({
     bootstrap: () => studio("bootstrap"),
-    listCatalog: () => studio("catalog.list"),
-    listThemes: () => studio("themes.list"),
-    createTheme: (input) => studio("themes.create", input),
-    duplicateTheme: (themeId) => studio("themes.duplicate", { themeId }),
-    deleteTheme: (themeId, input) => studio("themes.delete", { themeId, input }),
-    getTheme: (themeId) => studio("themes.read", { themeId }),
-    updateTheme: (themeId, input) => studio("themes.update", { themeId, input }),
-    applyTheme: (themeId) => studio("themes.apply", { themeId }),
-    validateTheme: (themeId) => studio("themes.validate", { themeId }),
-    previewTheme: (themeId, input = {}) => studio("themes.preview", { themeId, input }),
-    sendThemeMessage: (themeId, input) => studio("themes.message", { themeId, input }),
+    listCatalog: (pluginId) => studio("catalog.list", scoped({}, pluginId)),
+    listThemes: (pluginId) => studio("themes.list", scoped({}, pluginId)),
+    createTheme: (input, pluginId) => studio("themes.create", scoped(input, pluginId)),
+    duplicateTheme: (themeId, pluginId) => studio("themes.duplicate", scoped({ themeId }, pluginId)),
+    deleteTheme: (themeId, input, pluginId) => studio("themes.delete", scoped({ themeId, input }, pluginId)),
+    getTheme: (themeId, pluginId) => studio("themes.read", scoped({ themeId }, pluginId)),
+    updateTheme: (themeId, input, pluginId) => studio("themes.update", scoped({ themeId, input }, pluginId)),
+    applyTheme: (themeId, pluginId) => studio("themes.apply", scoped({ themeId }, pluginId)),
+    validateTheme: (themeId, pluginId) => studio("themes.validate", scoped({ themeId }, pluginId)),
+    previewTheme: (themeId, input = {}, pluginId) => studio("themes.preview", scoped({ themeId, input }, pluginId)),
+    sendThemeMessage: (themeId, input, pluginId) => studio("themes.message", scoped({ themeId, input }, pluginId)),
     listAgents: () => studio("agents.list"),
     connectAgent: (agentId) => studio("agents.connect", { agentId }),
     getSettings: () => studio("settings.read"),
     updateSettings: (input) => studio("settings.update", input),
-    verifyRuntime: (input = {}) => studio("runtime.verify", input),
-    restoreRuntime: () => studio("runtime.restore"),
+    verifyRuntime: (input = {}, pluginId) => studio("runtime.verify", scoped(input, pluginId)),
+    restoreRuntime: (pluginId) => studio("runtime.restore", scoped({}, pluginId)),
   }),
 });
 

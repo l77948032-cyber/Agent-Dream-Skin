@@ -3,6 +3,7 @@ import {
   ArrowDownAZ,
   ArrowLeft,
   BookOpen,
+  BriefcaseBusiness,
   Bot,
   Boxes,
   Check,
@@ -25,7 +26,6 @@ import {
   Monitor,
   MoreHorizontal,
   Palette,
-  PenTool,
   PlugZap,
   Plus,
   RotateCcw,
@@ -37,6 +37,7 @@ import {
   Terminal,
   Trash2,
   WandSparkles,
+  Workflow,
   X,
   ZoomIn,
   ZoomOut,
@@ -50,11 +51,13 @@ import {
   lazy,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
 
 import componentRegistry from "../../plugins/trae/resources/components.v1.json";
+import workBuddySceneRegistry from "../../plugins/workbuddy/resources/studio-scenes.v1.json";
 
 import {
   type CatalogEntry,
@@ -67,6 +70,7 @@ import {
   type InspectDto,
   type PluginDto,
   type RuntimeStatusDto,
+  type StudioTargetDto,
   type StudioSettings,
   ApiError,
   studioApi,
@@ -83,6 +87,7 @@ type CenterScope = "discover" | "mine";
 type ThemeSort = "recent" | "name";
 type ToastTone = "success" | "error" | "info";
 type Toast = { id: number; title: string; detail: string; tone: ToastTone };
+type TargetOption = { pluginId: string; targetId: string; name: string };
 type ChatMessage = {
   id: number;
   role: "assistant" | "user";
@@ -102,12 +107,32 @@ const categories: Array<"全部" | ThemeCategory> = [
   "国风",
 ];
 
-const sceneOptions: Array<{ value: ThemePreviewScene; label: string; icon: ReactNode }> = [
+const traeSceneOptions: Array<{ value: ThemePreviewScene; label: string; icon: ReactNode }> = [
   { value: "work", label: "Work", icon: <BookOpen size={14} /> },
   { value: "code", label: "Code", icon: <Code2 size={14} /> },
   { value: "design", label: "Design", icon: <Palette size={14} /> },
   { value: "thread", label: "对话页", icon: <MessageSquareText size={14} /> },
   { value: "components", label: "组件", icon: <Boxes size={14} /> },
+];
+
+const workBuddySceneIcons: Record<string, ReactNode> = {
+  home: <Home size={14} />,
+  chat: <MessageSquareText size={14} />,
+  result: <AppWindow size={14} />,
+  market: <BookOpen size={14} />,
+  automation: <Workflow size={14} />,
+  project: <FolderHeart size={14} />,
+  settings: <Settings size={14} />,
+  overlays: <Boxes size={14} />,
+};
+
+const workBuddySceneOptions: Array<{ value: ThemePreviewScene; label: string; icon: ReactNode }> = [
+  ...workBuddySceneRegistry.scenes.map((scene) => ({
+    value: `wb-${scene.id}` as ThemePreviewScene,
+    label: scene.name,
+    icon: workBuddySceneIcons[scene.id] || <AppWindow size={14} />,
+  })),
+  { value: "wb-components", label: "组件", icon: <Boxes size={14} /> },
 ];
 
 const previewZoomLevels = [1, 1.25, 1.5, 2] as const;
@@ -135,9 +160,78 @@ const componentLabels: Record<string, string> = {
   "toast.surface": "通知",
 };
 
-const componentNames = new Map(
-  componentRegistry.components.map((component) => [component.id, componentLabels[component.id] || component.id]),
+const workBuddyComponentLabels: Record<string, string> = {
+  "shell.workspace": "工作台外壳",
+  "shell.titlebar": "窗口标题栏",
+  "sidebar.navigation": "侧栏导航",
+  "sidebar.project": "项目列表",
+  "home.hero": "首页主视觉",
+  "home.quickAction": "快捷操作",
+  "chat.timeline": "对话时间线",
+  "chat.message.user": "用户消息",
+  "chat.message.agent": "Agent 消息",
+  "chat.toolCall": "工具调用",
+  "composer.surface": "任务输入区",
+  "composer.tool": "输入区工具",
+  "action.primary": "主要操作",
+  "result.shell": "结果工作区",
+  "result.tabs": "结果标签",
+  "result.artifact": "结果产物",
+  "result.fileTree": "文件列表",
+  "market.toolbar": "资源筛选",
+  "market.card": "资源卡片",
+  "automation.task": "自动化任务",
+  "automation.run": "运行记录",
+  "project.card": "项目卡片",
+  "settings.section": "设置面板",
+  "input.field": "输入框",
+  "selection.control": "选择控件",
+  "overlay.menu": "菜单",
+  "overlay.dialog": "对话框",
+  "overlay.tooltip": "提示",
+  "status.badge": "状态标记",
+  "status.toast": "通知",
+  "loading.skeleton": "加载状态",
+  "empty.state": "空状态",
+};
+
+const traeComponentNames = new Map(
+  componentRegistry.components.map((component) => [component.id, componentLabels[component.id] || component.id] as const),
 );
+const workBuddyComponentNames = new Map(Object.entries(workBuddyComponentLabels));
+
+const WORKBUDDY_PLUGIN_ID = "dreamskin.workbuddy";
+
+function isWorkBuddyTarget(value: { pluginId?: string; targetId?: string }) {
+  return value.pluginId === WORKBUDDY_PLUGIN_ID || value.targetId?.toLowerCase() === "workbuddy";
+}
+
+function sceneOptionsForTheme(item: LocalTheme) {
+  return isWorkBuddyTarget(item) ? workBuddySceneOptions : traeSceneOptions;
+}
+
+function componentNameForTheme(item: LocalTheme, componentId: string) {
+  const names = isWorkBuddyTarget(item) ? workBuddyComponentNames : traeComponentNames;
+  return names.get(componentId) || componentId;
+}
+
+function coverageForTarget(entry: CatalogEntry) {
+  return isWorkBuddyTarget(entry)
+    ? [...workBuddySceneRegistry.scenes.map((scene) => scene.name), `${Object.keys(workBuddyComponentLabels).length} 个组件`]
+    : ["Work", "Code", "Design", "对话页", `${componentRegistry.components.length} 个组件`];
+}
+
+function themeIdentity(item: Pick<LocalTheme, "pluginId" | "localId">) {
+  return `${item.pluginId}::${item.localId}`;
+}
+
+function distinctThemes(items: LocalTheme[]) {
+  return [...new Map(items.map((item) => [themeIdentity(item), item])).values()];
+}
+
+function distinctCatalog(items: CatalogEntry[]) {
+  return [...new Map(items.map((item) => [`${item.pluginId}::${item.theme.id}`, item])).values()];
+}
 
 const disconnectedConnection: AgentConnection = { agentId: null, state: "disconnected" };
 const defaultSettings: StudioSettings = {
@@ -159,9 +253,9 @@ function errorMessage(error: unknown) {
 }
 
 function putTheme(items: LocalTheme[], updated: LocalTheme) {
-  const index = items.findIndex((item) => item.localId === updated.localId);
+  const index = items.findIndex((item) => themeIdentity(item) === themeIdentity(updated));
   if (index === -1) return [updated, ...items];
-  return items.map((item) => item.localId === updated.localId ? updated : item);
+  return items.map((item) => themeIdentity(item) === themeIdentity(updated) ? updated : item);
 }
 
 function targetNameFromId(targetId: string) {
@@ -271,7 +365,7 @@ function WindowBar({
             <FolderHeart size={13} /><span>{workspaceTheme.theme.name}</span>
           </button>
         ) : null}
-        <button type="button" className="tab-add tooltip" aria-label="新建空白主题" data-tooltip="新建空白主题" disabled={createDisabled} onClick={onCreateTheme}><Plus size={14} /></button>
+        <button type="button" className="tab-add tooltip" aria-label="新建空白主题" data-tooltip="新建空白主题" disabled={createDisabled} onClick={() => onCreateTheme()}><Plus size={14} /></button>
       </div>
       <div className="window-actions">
         <button className="agent-pill" type="button" aria-label={connected ? `${agent.name}，ACP 已连接` : "连接本地 Agent"} onClick={() => onNavigate("connections")}>
@@ -348,7 +442,7 @@ function TemplateCard({
     <article className="template-card">
       <button className="template-preview" type="button" onClick={onInspect} aria-label={`查看 ${entry.theme.name}`}>
         <ThemeArtwork theme={entry.theme} />
-        <span className="target-badge"><Command size={11} />{entry.target || targetNameFromId(entry.targetId)}</span>
+        <span className="target-badge">{isWorkBuddyTarget(entry) ? <BriefcaseBusiness size={11} /> : <Command size={11} />}{entry.target || targetNameFromId(entry.targetId)}</span>
         {entry.theme.experimental ? <span className="beta-badge">Beta</span> : null}
       </button>
       <div className="template-meta">
@@ -381,7 +475,7 @@ function FeaturedCard({
     >
       <div className="featured-scrim" />
       <div className="featured-copy">
-        <span><Command size={12} />{entry.target || targetNameFromId(entry.targetId)} 精选</span>
+        <span>{isWorkBuddyTarget(entry) ? <BriefcaseBusiness size={12} /> : <Command size={12} />}{entry.target || targetNameFromId(entry.targetId)} 精选</span>
         <strong>{entry.theme.name}</strong>
         <p>{entry.theme.description}</p>
         <button type="button" onClick={local ? onOpen : onAdd}>
@@ -393,11 +487,11 @@ function FeaturedCard({
   );
 }
 
-function BlankThemeCard({ onCreate, wide = false }: { onCreate: () => void; wide?: boolean }) {
+function BlankThemeCard({ onCreate, wide = false, targetName }: { onCreate: () => void; wide?: boolean; targetName?: string }) {
   return (
     <button className={`blank-theme-card ${wide ? "is-wide" : ""}`} type="button" onClick={onCreate}>
       <span className="blank-grid"><CirclePlus size={27} /></span>
-      <span><strong>新建空白主题</strong><small>与 Agent 对话生成</small></span>
+      <span><strong>新建空白主题</strong><small>{targetName ? `为 ${targetName} 对话生成` : "选择目标后与 Agent 对话生成"}</small></span>
     </button>
   );
 }
@@ -562,6 +656,7 @@ function PageHeading({ title, meta, action }: { title: string; meta: string; act
 function ThemeCenter({
   catalog,
   localThemes,
+  targets,
   targetNameForTheme,
   onAdd,
   onOpen,
@@ -573,26 +668,27 @@ function ThemeCenter({
 }: {
   catalog: CatalogEntry[];
   localThemes: LocalTheme[];
+  targets: TargetOption[];
   targetNameForTheme: (theme: LocalTheme) => string;
   onAdd: (entry: CatalogEntry) => void;
-  onOpen: (id: string) => void;
+  onOpen: (theme: LocalTheme) => void;
   onDuplicate: (theme: LocalTheme) => Promise<boolean>;
   onDelete: (theme: LocalTheme) => Promise<boolean>;
-  onCreateBlank: () => void;
+  onCreateBlank: (pluginId?: string) => void;
   onInspect: (entry: CatalogEntry) => void;
   onLibrary: () => void;
 }) {
   const [scope, setScope] = useState<CenterScope>("discover");
   const [category, setCategory] = useState<"全部" | ThemeCategory>("全部");
   const [query, setQuery] = useState("");
-  const [targetId, setTargetId] = useState("all");
-  const targets = [...new Map(catalog.map((entry) => [entry.targetId, entry.target || targetNameFromId(entry.targetId)])).entries()];
-  const targetSummary = targets.map(([, name]) => name).join(" · ") || "暂无目标";
+  const [targetPluginId, setTargetPluginId] = useState("all");
+  const targetSummary = targets.map((target) => target.name).join(" · ") || "暂无目标";
+  const selectedTarget = targets.find((target) => target.pluginId === targetPluginId) || (targets.length === 1 ? targets[0] : undefined);
   const normalizedQuery = query.trim().toLowerCase();
   const localFor = (entry: CatalogEntry) => localThemes.find((item) => (
     item.pluginId === entry.pluginId && item.sourceId === entry.theme.id
   ));
-  const targetLocalThemes = localThemes.filter((item) => targetId === "all" || item.targetId === targetId);
+  const targetLocalThemes = localThemes.filter((item) => targetPluginId === "all" || item.pluginId === targetPluginId);
   const visibleLocalThemes = targetLocalThemes.filter((item) => (
     !normalizedQuery
     || `${item.theme.name} ${item.theme.description} ${targetNameForTheme(item)}`.toLowerCase().includes(normalizedQuery)
@@ -602,10 +698,10 @@ function ThemeCenter({
     || right.revision - left.revision
   ));
   const featuredEntries = catalog.filter((entry) => (
-    entry.featured && (targetId === "all" || entry.targetId === targetId)
+    entry.featured && (targetPluginId === "all" || entry.pluginId === targetPluginId)
   )).slice(0, 2);
   const filtered = catalog.filter((entry) => {
-    const matchesTarget = targetId === "all" || entry.targetId === targetId;
+    const matchesTarget = targetPluginId === "all" || entry.pluginId === targetPluginId;
     const matchesCategory = category === "全部" || entry.categories.includes(category);
     const matchesQuery = `${entry.theme.name} ${entry.theme.description} ${entry.author} ${entry.categories.join(" ")}`.toLowerCase().includes(normalizedQuery);
     return matchesTarget && matchesCategory && matchesQuery;
@@ -630,7 +726,7 @@ function ThemeCenter({
               { value: "mine", label: "我的主题" },
             ]}
           />
-          <div className="target-tabs" role="group" aria-label="目标应用"><span>目标</span>{targets.length > 1 ? <button type="button" className={targetId === "all" ? "is-active" : ""} aria-pressed={targetId === "all"} onClick={() => setTargetId("all")}>全部</button> : null}{targets.map(([id, name]) => <button type="button" className={targetId === id || targets.length === 1 ? "is-active" : ""} aria-pressed={targetId === id || targets.length === 1} key={id} onClick={() => setTargetId(id)}><Command size={13} />{name}</button>)}</div>
+          <div className="target-tabs" role="group" aria-label="目标应用"><span>目标</span>{targets.length > 1 ? <button type="button" className={targetPluginId === "all" ? "is-active" : ""} aria-pressed={targetPluginId === "all"} onClick={() => setTargetPluginId("all")}>全部</button> : null}{targets.map((target) => <button type="button" className={targetPluginId === target.pluginId || targets.length === 1 ? "is-active" : ""} aria-pressed={targetPluginId === target.pluginId || targets.length === 1} key={target.pluginId} onClick={() => setTargetPluginId(target.pluginId)}>{isWorkBuddyTarget(target) ? <BriefcaseBusiness size={13} /> : <Command size={13} />}{target.name}</button>)}</div>
         </div>
 
         {scope === "discover" ? (
@@ -645,7 +741,7 @@ function ThemeCenter({
                 <div className="featured-grid">
                   {featuredEntries.map((entry) => {
                     const local = localFor(entry);
-                    return <FeaturedCard key={`${entry.pluginId}:${entry.theme.id}`} entry={entry} local={local} onAdd={() => onAdd(entry)} onOpen={() => local && onOpen(local.localId)} />;
+                    return <FeaturedCard key={`${entry.pluginId}:${entry.theme.id}`} entry={entry} local={local} onAdd={() => onAdd(entry)} onOpen={() => local && onOpen(local)} />;
                   })}
                 </div>
               </section>
@@ -655,8 +751,8 @@ function ThemeCenter({
               <section className="content-section mine-shelf">
                 <div className="section-heading"><div><strong>我的主题</strong><span>最近编辑</span></div><button type="button" onClick={onLibrary}>查看全部</button></div>
                 <div className="mine-row">
-                  <BlankThemeCard onCreate={onCreateBlank} />
-                  {recentLocalThemes.slice(0, 3).map((item) => <LocalThemeCard key={item.localId} item={item} targetName={targetNameForTheme(item)} onOpen={() => onOpen(item.localId)} onDuplicate={() => onDuplicate(item)} onDelete={() => onDelete(item)} />)}
+                  <BlankThemeCard onCreate={() => onCreateBlank(selectedTarget?.pluginId)} targetName={selectedTarget?.name} />
+                  {recentLocalThemes.slice(0, 3).map((item) => <LocalThemeCard key={themeIdentity(item)} item={item} targetName={targetNameForTheme(item)} onOpen={() => onOpen(item)} onDuplicate={() => onDuplicate(item)} onDelete={() => onDelete(item)} />)}
                 </div>
               </section>
             ) : null}
@@ -666,7 +762,7 @@ function ThemeCenter({
               <div className="template-grid">
                 {filtered.map((entry) => {
                   const local = localFor(entry);
-                  return <TemplateCard key={`${entry.pluginId}:${entry.theme.id}`} entry={entry} local={local} onAdd={() => onAdd(entry)} onOpen={() => local && onOpen(local.localId)} onInspect={() => onInspect(entry)} />;
+                  return <TemplateCard key={`${entry.pluginId}:${entry.theme.id}`} entry={entry} local={local} onAdd={() => onAdd(entry)} onOpen={() => local && onOpen(local)} onInspect={() => onInspect(entry)} />;
                 })}
               </div>
               {!filtered.length ? <div className="catalog-empty"><Search size={18} /><strong>没有匹配的模板</strong><span>换个关键词、分类或目标试试。</span></div> : null}
@@ -676,8 +772,8 @@ function ThemeCenter({
           <section className="content-section scope-library">
             <div className="section-heading"><div><strong>我的主题</strong><span>{visibleLocalThemes.length} 个主题</span></div></div>
             <div className="library-grid">
-              <BlankThemeCard onCreate={onCreateBlank} wide />
-              {visibleLocalThemes.map((item) => <LocalThemeCard key={item.localId} item={item} targetName={targetNameForTheme(item)} onOpen={() => onOpen(item.localId)} onDuplicate={() => onDuplicate(item)} onDelete={() => onDelete(item)} />)}
+              <BlankThemeCard onCreate={() => onCreateBlank(selectedTarget?.pluginId)} wide targetName={selectedTarget?.name} />
+              {visibleLocalThemes.map((item) => <LocalThemeCard key={themeIdentity(item)} item={item} targetName={targetNameForTheme(item)} onOpen={() => onOpen(item)} onDuplicate={() => onDuplicate(item)} onDelete={() => onDelete(item)} />)}
             </div>
             {!visibleLocalThemes.length && normalizedQuery ? <div className="catalog-empty"><Search size={18} /><strong>没有匹配的本地主题</strong><span>清除搜索后可查看全部主题。</span></div> : null}
           </section>
@@ -689,6 +785,7 @@ function ThemeCenter({
 
 function MyThemes({
   localThemes,
+  targets,
   targetNameForTheme,
   onCreateBlank,
   onOpen,
@@ -696,19 +793,20 @@ function MyThemes({
   onDelete,
 }: {
   localThemes: LocalTheme[];
+  targets: TargetOption[];
   targetNameForTheme: (theme: LocalTheme) => string;
-  onCreateBlank: () => void;
-  onOpen: (id: string) => void;
+  onCreateBlank: (pluginId?: string) => void;
+  onOpen: (theme: LocalTheme) => void;
   onDuplicate: (theme: LocalTheme) => Promise<boolean>;
   onDelete: (theme: LocalTheme) => Promise<boolean>;
 }) {
-  const [targetId, setTargetId] = useState("all");
+  const [targetPluginId, setTargetPluginId] = useState("all");
   const [sort, setSort] = useState<ThemeSort>("recent");
-  const targets = [...new Map(localThemes.map((item) => [item.targetId, targetNameForTheme(item)])).entries()];
   useEffect(() => {
-    if (targetId !== "all" && !localThemes.some((item) => item.targetId === targetId)) setTargetId("all");
-  }, [localThemes, targetId]);
-  const filteredThemes = targetId === "all" ? localThemes : localThemes.filter((item) => item.targetId === targetId);
+    if (targetPluginId !== "all" && !targets.some((target) => target.pluginId === targetPluginId)) setTargetPluginId("all");
+  }, [targetPluginId, targets]);
+  const selectedTarget = targets.find((target) => target.pluginId === targetPluginId) || (targets.length === 1 ? targets[0] : undefined);
+  const filteredThemes = targetPluginId === "all" ? localThemes : localThemes.filter((item) => item.pluginId === targetPluginId);
   const visibleThemes = [...filteredThemes].sort((left, right) => {
     if (sort === "name") {
       return left.theme.name.localeCompare(right.theme.name, "zh-CN", { numeric: true, sensitivity: "base" });
@@ -719,11 +817,11 @@ function MyThemes({
   return (
     <main className="page-scroll">
       <div className="content-width">
-        <PageHeading title="我的主题" meta={`${localThemes.length} 个本地主题`} action={<button className="primary-button" type="button" onClick={onCreateBlank}><CirclePlus size={16} />新建空白主题</button>} />
-        <div className="library-filter-row"><div role="group" aria-label="目标应用筛选"><button type="button" className={targetId === "all" ? "is-active" : ""} aria-pressed={targetId === "all"} onClick={() => setTargetId("all")}>全部</button>{targets.map(([id, name]) => <button type="button" className={targetId === id ? "is-active" : ""} aria-pressed={targetId === id} key={id} onClick={() => setTargetId(id)}>{name}</button>)}</div><div className="library-sort" role="group" aria-label="主题排序"><button type="button" className={sort === "recent" ? "is-active" : ""} aria-pressed={sort === "recent"} onClick={() => setSort("recent")}><History size={13} />最近修改</button><button type="button" className={sort === "name" ? "is-active" : ""} aria-pressed={sort === "name"} onClick={() => setSort("name")}><ArrowDownAZ size={13} />名称</button></div></div>
+        <PageHeading title="我的主题" meta={`${localThemes.length} 个本地主题`} action={<button className="primary-button" type="button" onClick={() => onCreateBlank(selectedTarget?.pluginId)}><CirclePlus size={16} />新建空白主题</button>} />
+        <div className="library-filter-row"><div role="group" aria-label="目标应用筛选"><button type="button" className={targetPluginId === "all" ? "is-active" : ""} aria-pressed={targetPluginId === "all"} onClick={() => setTargetPluginId("all")}>全部</button>{targets.map((target) => <button type="button" className={targetPluginId === target.pluginId ? "is-active" : ""} aria-pressed={targetPluginId === target.pluginId} key={target.pluginId} onClick={() => setTargetPluginId(target.pluginId)}>{target.name}</button>)}</div><div className="library-sort" role="group" aria-label="主题排序"><button type="button" className={sort === "recent" ? "is-active" : ""} aria-pressed={sort === "recent"} onClick={() => setSort("recent")}><History size={13} />最近修改</button><button type="button" className={sort === "name" ? "is-active" : ""} aria-pressed={sort === "name"} onClick={() => setSort("name")}><ArrowDownAZ size={13} />名称</button></div></div>
         <div className="library-grid page-library-grid">
-          <BlankThemeCard onCreate={onCreateBlank} wide />
-          {visibleThemes.map((item) => <LocalThemeCard key={item.localId} item={item} targetName={targetNameForTheme(item)} onOpen={() => onOpen(item.localId)} onDuplicate={() => onDuplicate(item)} onDelete={() => onDelete(item)} />)}
+          <BlankThemeCard onCreate={() => onCreateBlank(selectedTarget?.pluginId)} wide targetName={selectedTarget?.name} />
+          {visibleThemes.map((item) => <LocalThemeCard key={themeIdentity(item)} item={item} targetName={targetNameForTheme(item)} onOpen={() => onOpen(item)} onDuplicate={() => onDuplicate(item)} onDelete={() => onDelete(item)} />)}
         </div>
       </div>
     </main>
@@ -797,7 +895,10 @@ function SettingsView({
   settings,
   inspect,
   runtime,
-  targetName,
+  targets,
+  inspectByPlugin,
+  runtimeByPlugin,
+  defaultPluginId,
   onChange,
   onVerifyRuntime,
   onRestoreRuntime,
@@ -805,19 +906,28 @@ function SettingsView({
   settings: StudioSettings;
   inspect: InspectDto | null;
   runtime: RuntimeStatusDto | null;
-  targetName: string;
+  targets: TargetOption[];
+  inspectByPlugin: Record<string, InspectDto>;
+  runtimeByPlugin: Record<string, RuntimeStatusDto>;
+  defaultPluginId: string;
   onChange: (patch: Partial<Pick<StudioSettings, "autoVerify" | "motionEnabled">>) => Promise<void>;
-  onVerifyRuntime: () => Promise<void>;
-  onRestoreRuntime: () => Promise<void>;
+  onVerifyRuntime: (pluginId: string) => Promise<void>;
+  onRestoreRuntime: (pluginId: string) => Promise<void>;
 }) {
   const [autoVerify, setAutoVerify] = useState(settings.autoVerify);
   const [motionEnabled, setMotionEnabled] = useState(settings.motionEnabled);
+  const [targetPluginId, setTargetPluginId] = useState(defaultPluginId || targets[0]?.pluginId || "");
   const [busy, setBusy] = useState<"autoVerify" | "motionEnabled" | null>(null);
   const [runtimeBusy, setRuntimeBusy] = useState<"verify" | "restore" | null>(null);
   useEffect(() => {
     setAutoVerify(settings.autoVerify);
     setMotionEnabled(settings.motionEnabled);
   }, [settings.autoVerify, settings.motionEnabled]);
+  useEffect(() => {
+    if (!targets.some((target) => target.pluginId === targetPluginId)) {
+      setTargetPluginId(defaultPluginId || targets[0]?.pluginId || "");
+    }
+  }, [defaultPluginId, targetPluginId, targets]);
   const update = async (key: "autoVerify" | "motionEnabled", value: boolean) => {
     setBusy(key);
     try {
@@ -826,19 +936,35 @@ function SettingsView({
       setBusy(null);
     }
   };
-  const runtimeLabel = runtime?.available === false || runtime?.session === "unsupported"
+  const selectedTarget = targets.find((target) => target.pluginId === targetPluginId) || targets[0];
+  const selectedInspect = (selectedTarget && inspectByPlugin[selectedTarget.pluginId]) || inspect;
+  const selectedRuntime = (selectedTarget && runtimeByPlugin[selectedTarget.pluginId]) || runtime;
+  const targetName = selectedTarget?.name || "目标应用";
+  const runtimeSession = selectedRuntime?.session;
+  const runtimeLabel = selectedRuntime?.available === false || runtimeSession === "unsupported"
     ? "不可用"
-    : runtime?.session === "active"
+    : runtimeSession === "active"
       ? "已连接"
-      : runtime?.session
-        ? "待连接"
-        : "未知";
-  const runtimeActive = runtime?.session === "active";
+      : runtimeSession === "degraded"
+        ? "需要修复"
+        : runtimeSession === "orphaned" || runtimeSession === "orphaned-unverified"
+          ? "待清理"
+          : runtimeSession === "off" || runtimeSession === "inactive"
+            ? "未启用"
+            : runtimeSession
+              ? "待连接"
+              : "未知";
+  const runtimeCanVerify = runtimeSession === "active";
+  const runtimeCanRestore = runtimeSession === "active"
+    || runtimeSession === "degraded"
+    || runtimeSession === "orphaned"
+    || runtimeSession === "orphaned-unverified";
   const runRuntimeAction = async (action: "verify" | "restore") => {
+    if (!selectedTarget) return;
     setRuntimeBusy(action);
     try {
-      if (action === "verify") await onVerifyRuntime();
-      else await onRestoreRuntime();
+      if (action === "verify") await onVerifyRuntime(selectedTarget.pluginId);
+      else await onRestoreRuntime(selectedTarget.pluginId);
     } finally {
       setRuntimeBusy(null);
     }
@@ -847,13 +973,14 @@ function SettingsView({
     <main className="page-scroll">
       <div className="content-width narrow-content">
         <PageHeading title="设置" meta="DreamSkin Studio" />
+        {targets.length > 1 ? <div className="settings-target-tabs" role="group" aria-label="设置目标应用">{targets.map((target) => <button type="button" key={target.pluginId} className={target.pluginId === selectedTarget?.pluginId ? "is-active" : ""} aria-pressed={target.pluginId === selectedTarget?.pluginId} onClick={() => setTargetPluginId(target.pluginId)}>{isWorkBuddyTarget(target) ? <BriefcaseBusiness size={14} /> : <Command size={14} />}{target.name}</button>)}</div> : null}
         <section className="settings-section">
           <div className="settings-title"><strong>主题工作台</strong></div>
           <div className="setting-row"><span><strong>自动验证</strong><small>Agent 修改完成后验证主题结构</small></span><button type="button" className={`toggle ${autoVerify ? "is-on" : ""}`} role="switch" disabled={Boolean(busy)} aria-label="自动验证" aria-checked={autoVerify} onClick={() => update("autoVerify", !autoVerify)}><i /></button></div>
           <div className="setting-row"><span><strong>界面动效</strong><small>主题卡片与工作台过渡</small></span><button type="button" className={`toggle ${motionEnabled ? "is-on" : ""}`} role="switch" disabled={Boolean(busy)} aria-label="界面动效" aria-checked={motionEnabled} onClick={() => update("motionEnabled", !motionEnabled)}><i /></button></div>
-          <div className="setting-row"><span><strong>主题存储位置</strong><small>{settings.themesRoot || "未配置"}</small></span></div>
+          <div className="setting-row"><span><strong>主题存储位置</strong><small>{(selectedTarget && settings.themeRoots?.[selectedTarget.pluginId]) || settings.themesRoot || "未配置"}</small></span></div>
         </section>
-        <section className="settings-section"><div className="settings-title"><strong>运行状态</strong></div><div className="diagnostic-row"><span><i />DreamSkin Tool</span><strong>{inspect?.agentToolVersion || "未知"}</strong></div><div className="diagnostic-row"><span><i />{targetName} Runtime</span><strong>{runtimeLabel}</strong></div><div className="diagnostic-row"><span><i />组件注册表</span><strong>{inspect?.registry?.components?.length ?? componentRegistry.components.length} 项</strong></div><button type="button" className="setting-row command-row" disabled={!runtimeActive || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("verify")}><span><strong>验证当前主题</strong><small>检查 {targetName} 中的实际换肤结果</small></span>{runtimeBusy === "verify" ? <LoaderCircle className="spin" size={15} /> : <Check size={15} />}</button><button type="button" className="setting-row command-row" disabled={!runtimeActive || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("restore")}><span><strong>恢复原生界面</strong><small>停止当前主题并恢复 {targetName}</small></span>{runtimeBusy === "restore" ? <LoaderCircle className="spin" size={15} /> : <RotateCcw size={15} />}</button></section>
+        <section className="settings-section"><div className="settings-title"><strong>{targetName} 运行状态</strong></div><div className="diagnostic-row"><span><i />DreamSkin Tool</span><strong>{selectedInspect?.agentToolVersion || "未知"}</strong></div><div className="diagnostic-row"><span><i />{targetName} Runtime</span><strong>{runtimeLabel}</strong></div><div className="diagnostic-row"><span><i />组件注册表</span><strong>{selectedInspect?.registry?.components?.length ?? (isWorkBuddyTarget(selectedTarget || {}) ? Object.keys(workBuddyComponentLabels).length : componentRegistry.components.length)} 项</strong></div><button type="button" className="setting-row command-row" disabled={!runtimeCanVerify || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("verify")}><span><strong>验证当前主题</strong><small>检查 {targetName} 中的实际换肤结果</small></span>{runtimeBusy === "verify" ? <LoaderCircle className="spin" size={15} /> : <Check size={15} />}</button><button type="button" className="setting-row command-row" disabled={!runtimeCanRestore || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("restore")}><span><strong>恢复原生界面</strong><small>停止当前主题并恢复 {targetName}</small></span>{runtimeBusy === "restore" ? <LoaderCircle className="spin" size={15} /> : <RotateCcw size={15} />}</button></section>
       </div>
     </main>
   );
@@ -906,7 +1033,7 @@ function ChatPane({
       </div>
       <div className="prompt-suggestions">{suggestions.map((suggestion) => <button type="button" key={suggestion} onClick={() => onSend(suggestion)} disabled={locked || !connected}>{suggestion}</button>)}</div>
       <form className="chat-composer" onSubmit={submit}>
-        {selectedComponent ? <div className="context-chip"><Boxes size={13} /><span>{componentNames.get(selectedComponent) || selectedComponent}</span><button type="button" aria-label="清除组件选择" onClick={onClearComponent}><X size={12} /></button></div> : null}
+        {selectedComponent ? <div className="context-chip"><Boxes size={13} /><span>{componentNameForTheme(theme, selectedComponent)}</span><button type="button" aria-label="清除组件选择" onClick={onClearComponent}><X size={12} /></button></div> : null}
         <textarea aria-label="主题修改指令" value={input} onChange={(event) => setInput(event.target.value)} placeholder={!connected ? "连接本地 Agent 后开始修改..." : theme.origin === "blank" ? "描述你想生成的主题..." : "告诉 Agent 想怎么修改..."} rows={3} disabled={!connected || locked} />
         <div className="composer-actions"><span className="model-button"><Command size={13} />DreamSkin Tool</span><button type="submit" className="send-button" disabled={!input.trim() || locked || !connected} aria-label="发送"><Send size={15} /></button></div>
       </form>
@@ -937,7 +1064,8 @@ function ThemeWorkspace({
   onApplied: (item: LocalTheme) => void;
   onError: (title: string, detail: string) => void;
 }) {
-  const [scene, setScene] = useState<ThemePreviewScene>("work");
+  const availableScenes = sceneOptionsForTheme(item);
+  const [scene, setScene] = useState<ThemePreviewScene>(isWorkBuddyTarget(item) ? "wb-home" : "work");
   const [appearanceMode, setAppearanceMode] = useState<AppearanceMode>(item.theme.appearance.colorScheme === "dark" ? "dark" : "light");
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -957,7 +1085,7 @@ function ThemeWorkspace({
         componentId: selectedComponent || undefined,
         agentId: agent.id,
         expectedRevision: item.revisionHash,
-      });
+      }, item.pluginId);
       setHistory((items) => [...items.slice(-19), structuredClone(item.theme)]);
       setAppearanceMode(result.theme.theme.appearance.colorScheme === "dark" ? "dark" : "light");
       onChange(result.theme);
@@ -970,7 +1098,7 @@ function ThemeWorkspace({
     } catch (error) {
       onError("主题修改失败", errorMessage(error));
       if (error instanceof ApiError && error.code === "REVISION_CONFLICT") {
-        studioApi.getTheme(item.localId).then(onChange).catch(() => {});
+        studioApi.getTheme(item.localId, item.pluginId).then(onChange).catch(() => {});
       }
     } finally {
       setBusy(false);
@@ -982,14 +1110,14 @@ function ThemeWorkspace({
     if (!previous || undoBusy || busy || applyBusy) return;
     setUndoBusy(true);
     try {
-      const updated = await studioApi.updateTheme(item.localId, structuredClone(previous), item.revisionHash);
+      const updated = await studioApi.updateTheme(item.localId, structuredClone(previous), item.revisionHash, item.pluginId);
       setHistory((items) => items.slice(0, -1));
       setAppearanceMode(updated.theme.appearance.colorScheme === "dark" ? "dark" : "light");
       onChange(updated);
     } catch (error) {
       onError("撤销失败", errorMessage(error));
       if (error instanceof ApiError && error.code === "REVISION_CONFLICT") {
-        studioApi.getTheme(item.localId).then(onChange).catch(() => {});
+        studioApi.getTheme(item.localId, item.pluginId).then(onChange).catch(() => {});
       }
     } finally {
       setUndoBusy(false);
@@ -1000,7 +1128,7 @@ function ThemeWorkspace({
     if (applyBusy || busy || undoBusy) return;
     setApplyBusy(true);
     try {
-      const result = await studioApi.applyTheme(item.localId);
+      const result = await studioApi.applyTheme(item.localId, item.pluginId);
       onChange(result.theme);
       onApplied(result.theme);
     } catch (error) {
@@ -1014,15 +1142,15 @@ function ThemeWorkspace({
     <main className="theme-workspace">
       <header className="editor-toolbar">
         <div className="editor-title"><IconButton label="返回我的主题" onClick={onBack}><ArrowLeft size={16} /></IconButton><div><strong>{item.theme.name}</strong><span><i />已保存 · v{item.revision}</span></div></div>
-        <div className="scene-tabs" role="group" aria-label="预览界面">{sceneOptions.map((option) => <button type="button" key={option.value} aria-label={option.label} aria-pressed={scene === option.value} className={scene === option.value ? "is-active" : ""} onClick={() => setScene(option.value)}>{option.icon}<span>{option.label}</span></button>)}</div>
+        <div className={`scene-tabs ${isWorkBuddyTarget(item) ? "is-workbuddy" : ""}`} role="group" aria-label={`${targetName} 预览界面`}>{availableScenes.map((option) => <button type="button" key={option.value} aria-label={option.label} aria-pressed={scene === option.value} className={scene === option.value ? "is-active" : ""} onClick={() => setScene(option.value)}>{option.icon}<span>{option.label}</span></button>)}</div>
         <div className="editor-actions"><IconButton label="撤销" disabled={!history.length || undoBusy || busy || applyBusy} onClick={undo}>{undoBusy ? <LoaderCircle className="spin" size={16} /> : <RotateCcw size={16} />}</IconButton><button className="primary-button" type="button" onClick={apply} disabled={applyBusy || busy || undoBusy}>{applyBusy ? <LoaderCircle className="spin" size={15} /> : <Check size={15} />}{applyBusy ? "应用中" : `应用到 ${targetName}`}</button></div>
       </header>
       <div className="editor-body">
         <ChatPane theme={item} agent={agent} connection={connection} messages={messages} selectedComponent={selectedComponent} busy={busy} locked={busy || undoBusy || applyBusy} onSend={sendPrompt} onClearComponent={() => setSelectedComponent(null)} />
         <section className="preview-pane">
-          <header className="preview-toolbar"><div><span className="live-indicator"><i />实时预览</span><span>{sceneOptions.find((option) => option.value === scene)?.label}</span></div><div><Segmented value={appearanceMode} onChange={setAppearanceMode} label="预览外观" options={[{ value: "light", label: "浅色" }, { value: "dark", label: "深色" }]} /><div className="preview-zoom-controls" role="group" aria-label="预览缩放"><IconButton className="zoom-button" label="缩小预览" disabled={previewZoomIndex <= 0} onClick={() => setPreviewZoom(previewZoomLevels[Math.max(0, previewZoomIndex - 1)])}><ZoomOut size={14} /></IconButton><span aria-live="polite">{Math.round(previewZoom * 100)}%</span><IconButton className="zoom-button" label="放大预览" disabled={previewZoomIndex >= previewZoomLevels.length - 1} onClick={() => setPreviewZoom(previewZoomLevels[Math.min(previewZoomLevels.length - 1, previewZoomIndex + 1)])}><ZoomIn size={14} /></IconButton><IconButton className="zoom-button" label="适合窗口" disabled={previewZoom === 1} onClick={() => setPreviewZoom(1)}><Maximize2 size={13} /></IconButton></div></div></header>
-          <div className="preview-canvas"><div className="preview-surface"><Suspense fallback={<div className="preview-loading" role="status" aria-label="正在载入主题预览"><LoaderCircle className="spin" size={18} /></div>}><ThemeScenePreview theme={item.theme} appearanceMode={appearanceMode} scene={scene} zoom={previewZoom} interactive onComponentSelect={(id) => id && setSelectedComponent(id)} /></Suspense></div></div>
-          <footer className="preview-status"><span><Monitor size={13} />{targetName} Desktop</span><span>{selectedComponent ? `已选择：${componentNames.get(selectedComponent) || selectedComponent}` : "点击组件，或用 Tab 聚焦后按 Enter 选择"}</span><span><Check size={13} />结构有效</span></footer>
+          <header className="preview-toolbar"><div><span className="live-indicator"><i />实时预览</span><span>{availableScenes.find((option) => option.value === scene)?.label}</span></div><div><Segmented value={appearanceMode} onChange={setAppearanceMode} label="预览外观" options={[{ value: "light", label: "浅色" }, { value: "dark", label: "深色" }]} /><div className="preview-zoom-controls" role="group" aria-label="预览缩放"><IconButton className="zoom-button" label="缩小预览" disabled={previewZoomIndex <= 0} onClick={() => setPreviewZoom(previewZoomLevels[Math.max(0, previewZoomIndex - 1)])}><ZoomOut size={14} /></IconButton><span aria-live="polite">{Math.round(previewZoom * 100)}%</span><IconButton className="zoom-button" label="放大预览" disabled={previewZoomIndex >= previewZoomLevels.length - 1} onClick={() => setPreviewZoom(previewZoomLevels[Math.min(previewZoomLevels.length - 1, previewZoomIndex + 1)])}><ZoomIn size={14} /></IconButton><IconButton className="zoom-button" label="适合窗口" disabled={previewZoom === 1} onClick={() => setPreviewZoom(1)}><Maximize2 size={13} /></IconButton></div></div></header>
+          <div className="preview-canvas"><div className="preview-surface"><Suspense fallback={<div className="preview-loading" role="status" aria-label="正在载入主题预览"><LoaderCircle className="spin" size={18} /></div>}><ThemeScenePreview theme={item.theme} appearanceMode={appearanceMode} scene={scene} targetId={item.targetId} pluginId={item.pluginId} zoom={previewZoom} interactive onComponentSelect={(id) => id && setSelectedComponent(id)} /></Suspense></div></div>
+          <footer className="preview-status"><span><Monitor size={13} />{targetName} Desktop</span><span>{selectedComponent ? `已选择：${componentNameForTheme(item, selectedComponent)}` : "点击组件，或用 Tab 聚焦后按 Enter 选择"}</span><span><Check size={13} />结构有效</span></footer>
         </section>
       </div>
     </main>
@@ -1065,9 +1193,57 @@ function ThemeDetail({ entry, local, motionDisabled, onClose, onAdd, onOpen }: {
       <motion.section ref={dialogRef} className="theme-detail" role="dialog" aria-modal="true" aria-labelledby={titleId} initial={motionDisabled ? false : { opacity: 0, y: 16, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={motionDisabled ? undefined : { opacity: 0, y: 8, scale: 0.99 }} transition={motionDisabled ? { duration: 0 } : { type: "spring", bounce: 0, duration: 0.34 }} onMouseDown={(event) => event.stopPropagation()}>
         <button ref={closeRef} className="modal-close" type="button" onClick={onClose} aria-label="关闭"><X size={17} /></button>
         <div className="detail-art"><ThemeArtwork theme={entry.theme} /></div>
-        <div className="detail-content"><span className="detail-target"><Command size={13} />{entry.target || targetNameFromId(entry.targetId)} Theme</span><h2 id={titleId}>{entry.theme.name}</h2><p>{entry.theme.description}</p><div className="detail-author"><span className="author-avatar">{entry.author.trim().charAt(0).toUpperCase() || "D"}</span><div><strong>{entry.author}</strong><span>版本 {entry.version} · {entry.downloads} 次添加</span></div></div><div className="detail-tags">{entry.categories.map((category) => <span key={category}>{category}</span>)}</div><div className="coverage-list"><strong>包含界面</strong><div><span><Check size={13} />Work</span><span><Check size={13} />Code</span><span><Check size={13} />Design</span><span><Check size={13} />对话页</span><span><Check size={13} />{componentRegistry.components.length} 个组件</span></div></div><button className="detail-primary" type="button" onClick={local ? onOpen : onAdd}>{local ? <Eye size={16} /> : <CloudDownload size={16} />}{local ? "打开我的主题" : "添加到我的主题"}</button></div>
+        <div className="detail-content"><span className="detail-target">{isWorkBuddyTarget(entry) ? <BriefcaseBusiness size={13} /> : <Command size={13} />}{entry.target || targetNameFromId(entry.targetId)} Theme</span><h2 id={titleId}>{entry.theme.name}</h2><p>{entry.theme.description}</p><div className="detail-author"><span className="author-avatar">{entry.author.trim().charAt(0).toUpperCase() || "D"}</span><div><strong>{entry.author}</strong><span>版本 {entry.version} · {entry.downloads} 次添加</span></div></div><div className="detail-tags">{entry.categories.map((category) => <span key={category}>{category}</span>)}</div><div className="coverage-list"><strong>包含界面</strong><div>{coverageForTarget(entry).map((label) => <span key={label}><Check size={13} />{label}</span>)}</div></div><button className="detail-primary" type="button" onClick={local ? onOpen : onAdd}>{local ? <Eye size={16} /> : <CloudDownload size={16} />}{local ? "打开我的主题" : "添加到我的主题"}</button></div>
       </motion.section>
     </motion.div>
+  );
+}
+
+function CreateTargetDialog({
+  targets,
+  busyPluginId,
+  onSelect,
+  onClose,
+}: {
+  targets: TargetOption[];
+  busyPluginId: string | null;
+  onSelect: (pluginId: string) => void;
+  onClose: () => void;
+}) {
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busyPluginId) onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [busyPluginId, onClose]);
+
+  return (
+    <div className="modal-backdrop create-target-backdrop" onMouseDown={() => !busyPluginId && onClose()}>
+      <section className="create-target-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={(event) => event.stopPropagation()}>
+        <button ref={closeRef} className="modal-close" type="button" aria-label="关闭" disabled={Boolean(busyPluginId)} onClick={onClose}><X size={17} /></button>
+        <span className="dialog-kicker"><CirclePlus size={14} />新建空白主题</span>
+        <h2 id={titleId}>先选择目标应用</h2>
+        <p>主题会继承对应应用的页面、组件与运行规则，之后可以通过 Agent 对话生成。</p>
+        <div className="create-target-grid">
+          {targets.map((target) => {
+            const workBuddy = isWorkBuddyTarget(target);
+            const busy = busyPluginId === target.pluginId;
+            return (
+              <button type="button" key={target.pluginId} disabled={Boolean(busyPluginId)} onClick={() => onSelect(target.pluginId)}>
+                <span className={`create-target-icon ${workBuddy ? "is-workbuddy" : "is-trae"}`}>{workBuddy ? <BriefcaseBusiness size={20} /> : <Command size={20} />}</span>
+                <span><strong>{target.name}</strong><small>{workBuddy ? "办公、对话、结果与自动化界面" : "Work、Code、Design 与对话界面"}</small></span>
+                {busy ? <LoaderCircle className="spin" size={16} /> : <ArrowLeft className="target-arrow" size={15} />}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1082,11 +1258,15 @@ export default function App() {
   const [settings, setSettings] = useState<StudioSettings>(defaultSettings);
   const [inspect, setInspect] = useState<InspectDto | null>(null);
   const [runtime, setRuntime] = useState<RuntimeStatusDto | null>(null);
+  const [runtimeByPlugin, setRuntimeByPlugin] = useState<Record<string, RuntimeStatusDto>>({});
   const [plugins, setPlugins] = useState<PluginDto[]>([]);
+  const [targetData, setTargetData] = useState<StudioTargetDto[]>([]);
   const [activePluginId, setActivePluginId] = useState("");
   const [messagesByTheme, setMessagesByTheme] = useState<Record<string, ChatMessage[]>>({});
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [workspaceKey, setWorkspaceKey] = useState<string | null>(null);
   const [detailEntry, setDetailEntry] = useState<CatalogEntry | null>(null);
+  const [createTargetOpen, setCreateTargetOpen] = useState(false);
+  const [createTargetBusy, setCreateTargetBusy] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [bootstrapError, setBootstrapError] = useState("");
@@ -1094,10 +1274,30 @@ export default function App() {
   const creatingThemeRef = useRef(false);
   const toastSequenceRef = useRef(0);
   const themeRefreshSequenceRef = useRef(0);
-  const workspaceTheme = localThemes.find((item) => item.localId === workspaceId);
+  const workspaceTheme = localThemes.find((item) => themeIdentity(item) === workspaceKey);
   const connectedAgent = agents.find((agent) => agent.id === connection.agentId);
   const activePlugin = plugins.find((plugin) => plugin.id === activePluginId) || plugins.find((plugin) => plugin.active);
   const activeTargetName = activePlugin?.manifest.target.name || catalog[0]?.target || "目标应用";
+  const targetOptions = useMemo<TargetOption[]>(() => {
+    const options = new Map<string, TargetOption>();
+    for (const target of targetData) {
+      options.set(target.pluginId, { pluginId: target.pluginId, targetId: target.targetId, name: target.targetName });
+    }
+    for (const plugin of plugins) {
+      options.set(plugin.id, { pluginId: plugin.id, targetId: plugin.manifest.target.id, name: plugin.manifest.target.name });
+    }
+    for (const entry of catalog) {
+      if (!options.has(entry.pluginId)) options.set(entry.pluginId, { pluginId: entry.pluginId, targetId: entry.targetId, name: entry.target || targetNameFromId(entry.targetId) });
+    }
+    for (const item of localThemes) {
+      if (!options.has(item.pluginId)) options.set(item.pluginId, { pluginId: item.pluginId, targetId: item.targetId, name: targetNameFromId(item.targetId) });
+    }
+    return [...options.values()];
+  }, [catalog, localThemes, plugins, targetData]);
+  const targetScopeKey = targetData.map((target) => target.pluginId).sort().join("|");
+  const inspectByPlugin = useMemo<Record<string, InspectDto>>(() => Object.fromEntries(
+    targetData.flatMap((target) => target.inspect ? [[target.pluginId, target.inspect] as const] : []),
+  ), [targetData]);
   const targetNameForTheme = (item: LocalTheme) => (
     plugins.find((plugin) => plugin.id === item.pluginId)?.manifest.target.name
     || catalog.find((entry) => entry.pluginId === item.pluginId)?.target
@@ -1119,15 +1319,19 @@ export default function App() {
     studioApi.bootstrap()
       .then((data) => {
         if (!active) return;
+        const targets = data.targets || [];
+        const scopedPlugins = targets.map((target) => target.plugin).filter((plugin): plugin is PluginDto => Boolean(plugin));
         setBootstrapError("");
-        setCatalog(data.catalog);
-        setLocalThemes(data.themes);
+        setTargetData(targets);
+        setCatalog(targets.length ? distinctCatalog(targets.flatMap((target) => target.catalog || [])) : data.catalog);
+        setLocalThemes(targets.length ? distinctThemes(targets.flatMap((target) => target.themes || [])) : data.themes);
         setAgents(data.agents);
         setConnection(data.connection);
         setSettings(data.settings);
         setInspect(data.inspect);
         setRuntime(data.runtime);
-        setPlugins(data.plugins || []);
+        setRuntimeByPlugin(Object.fromEntries(targets.flatMap((target) => target.runtime ? [[target.pluginId, target.runtime] as const] : [])));
+        setPlugins([...new Map([...(data.plugins || []), ...scopedPlugins].map((plugin) => [plugin.id, plugin])).values()]);
         setActivePluginId(data.activePluginId || "");
       })
       .catch((error) => {
@@ -1149,12 +1353,16 @@ export default function App() {
     if (bootstrapping || bootstrapError || !["center", "library", "workspace"].includes(view)) return;
     const sequence = ++themeRefreshSequenceRef.current;
     let active = true;
-    studioApi.listThemes()
+    const pluginIds = targetData.map((target) => target.pluginId);
+    const refresh = pluginIds.length
+      ? Promise.all(pluginIds.map((pluginId) => studioApi.listThemes(pluginId))).then((groups) => distinctThemes(groups.flat()))
+      : studioApi.listThemes();
+    refresh
       .then((themes) => {
         if (!active || sequence !== themeRefreshSequenceRef.current) return;
         setLocalThemes(themes);
-        if (view === "workspace" && workspaceId && !themes.some((item) => item.localId === workspaceId)) {
-          setWorkspaceId(null);
+        if (view === "workspace" && workspaceKey && !themes.some((item) => themeIdentity(item) === workspaceKey)) {
+          setWorkspaceKey(null);
           setView("library");
           toast("主题已在其他位置移除", "主题列表已重新同步，工作区已返回我的主题。", "error");
         }
@@ -1167,10 +1375,10 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [bootstrapError, bootstrapping, view, workspaceId]);
+  }, [bootstrapError, bootstrapping, targetScopeKey, view, workspaceKey]);
 
-  const openWorkspace = (id: string) => {
-    setWorkspaceId(id);
+  const openWorkspace = (item: LocalTheme) => {
+    setWorkspaceKey(themeIdentity(item));
     setView("workspace");
     setDetailEntry(null);
   };
@@ -1179,13 +1387,13 @@ export default function App() {
     const templateKey = `${entry.pluginId}:${entry.theme.id}`;
     const existing = localThemes.find((item) => item.pluginId === entry.pluginId && item.sourceId === entry.theme.id);
     if (existing) {
-      openWorkspace(existing.localId);
+      openWorkspace(existing);
       return;
     }
     if (addingTemplatesRef.current.has(templateKey)) return;
     addingTemplatesRef.current.add(templateKey);
     try {
-      const local = await studioApi.createTheme({ kind: "template", sourceId: entry.theme.id });
+      const local = await studioApi.createTheme({ kind: "template", sourceId: entry.theme.id, pluginId: entry.pluginId }, entry.pluginId);
       themeRefreshSequenceRef.current += 1;
       setLocalThemes((items) => putTheme(items, local));
       setDetailEntry(null);
@@ -1197,26 +1405,34 @@ export default function App() {
     }
   };
 
-  const createBlank = async () => {
+  const createBlank = async (requestedPluginId?: string) => {
     if (bootstrapping || bootstrapError || creatingThemeRef.current) return;
+    const pluginId = requestedPluginId || (targetOptions.length === 1 ? targetOptions[0]?.pluginId : undefined);
+    if (!pluginId) {
+      setCreateTargetOpen(true);
+      return;
+    }
     creatingThemeRef.current = true;
+    setCreateTargetBusy(pluginId);
     try {
-      const local = await studioApi.createTheme({ kind: "blank" });
+      const local = await studioApi.createTheme({ kind: "blank", pluginId }, pluginId);
       themeRefreshSequenceRef.current += 1;
       setLocalThemes((items) => putTheme(items, local));
-      setWorkspaceId(local.localId);
+      setWorkspaceKey(themeIdentity(local));
       setView("workspace");
-      toast("空白主题已创建", "现在可以和 Agent 对话生成主题。" );
+      setCreateTargetOpen(false);
+      toast("空白主题已创建", `现在可以为 ${targetNameForTheme(local)} 和 Agent 对话生成主题。`);
     } catch (error) {
       toast("创建主题失败", errorMessage(error), "error");
     } finally {
       creatingThemeRef.current = false;
+      setCreateTargetBusy(null);
     }
   };
 
   const duplicateTheme = async (item: LocalTheme) => {
     try {
-      const duplicate = await studioApi.duplicateTheme(item.localId);
+      const duplicate = await studioApi.duplicateTheme(item.localId, item.pluginId);
       themeRefreshSequenceRef.current += 1;
       setLocalThemes((items) => putTheme(items, duplicate));
       toast("主题已复制", `${duplicate.theme.name} 已添加到我的主题。`);
@@ -1229,16 +1445,16 @@ export default function App() {
 
   const deleteTheme = async (item: LocalTheme) => {
     try {
-      await studioApi.deleteTheme(item.localId, { expectedRevision: item.revisionHash });
+      await studioApi.deleteTheme(item.localId, { expectedRevision: item.revisionHash }, item.pluginId);
       themeRefreshSequenceRef.current += 1;
-      setLocalThemes((items) => items.filter((candidate) => candidate.localId !== item.localId));
+      setLocalThemes((items) => items.filter((candidate) => themeIdentity(candidate) !== themeIdentity(item)));
       setMessagesByTheme((current) => {
         const next = { ...current };
-        delete next[item.localId];
+        delete next[themeIdentity(item)];
         return next;
       });
-      if (workspaceId === item.localId) {
-        setWorkspaceId(null);
+      if (workspaceKey === themeIdentity(item)) {
+        setWorkspaceKey(null);
         setView("library");
       }
       toast("主题已删除", `${item.theme.name} 已从我的主题移除。`);
@@ -1253,7 +1469,7 @@ export default function App() {
     themeRefreshSequenceRef.current += 1;
     setLocalThemes((items) => {
       const normalized = updated.status === "applied"
-        ? items.map((item) => item.localId !== updated.localId && item.status === "applied" ? { ...item, status: "verified" as const } : item)
+        ? items.map((item) => item.pluginId === updated.pluginId && item.localId !== updated.localId && item.status === "applied" ? { ...item, status: "verified" as const } : item)
         : items;
       return putTheme(normalized, updated);
     });
@@ -1295,28 +1511,35 @@ export default function App() {
     }
   };
 
-  const verifyRuntime = async () => {
+  const verifyRuntime = async (pluginId: string) => {
+    const targetName = targetOptions.find((target) => target.pluginId === pluginId)?.name || activeTargetName;
     try {
-      const result = await studioApi.verifyRuntime();
-      const themeName = localThemes.find((item) => item.localId === runtime?.themeId)?.theme.name;
-      toast("运行验证通过", themeName ? `${themeName} 的实际换肤结果正常。` : `${activeTargetName} 主题运行正常。`);
+      const result = await studioApi.verifyRuntime({}, pluginId);
+      const targetRuntime = runtimeByPlugin[pluginId] || (pluginId === activePluginId ? runtime : null);
+      const themeName = localThemes.find((item) => item.pluginId === pluginId && item.localId === targetRuntime?.themeId)?.theme.name;
+      toast("运行验证通过", themeName ? `${themeName} 的实际换肤结果正常。` : `${targetName} 主题运行正常。`);
       const themeId = result.themeId;
       if (typeof themeId === "string") {
-        setRuntime((current) => ({ ...(current || {}), available: true, session: "active", themeId }));
+        const next = { ...(targetRuntime || {}), available: true, session: "active", themeId };
+        setRuntimeByPlugin((current) => ({ ...current, [pluginId]: next }));
+        if (pluginId === activePluginId) setRuntime(next);
       }
     } catch (error) {
       toast("运行验证失败", errorMessage(error), "error");
     }
   };
 
-  const restoreRuntime = async () => {
+  const restoreRuntime = async (pluginId: string) => {
+    const targetName = targetOptions.find((target) => target.pluginId === pluginId)?.name || activeTargetName;
     try {
-      const result = await studioApi.restoreRuntime();
-      setRuntime(result.after || { available: true, session: "inactive" });
+      const result = await studioApi.restoreRuntime(pluginId);
+      const next = result.after || { available: true, session: "inactive" };
+      setRuntimeByPlugin((current) => ({ ...current, [pluginId]: next }));
+      if (pluginId === activePluginId) setRuntime(next);
       setLocalThemes((items) => items.map((item) => (
-        item.status === "applied" ? { ...item, status: "verified" as const } : item
+        item.pluginId === pluginId && item.status === "applied" ? { ...item, status: "verified" as const } : item
       )));
-      toast("已恢复原生界面", `${activeTargetName} 已停止使用 DreamSkin 主题。`);
+      toast("已恢复原生界面", `${targetName} 已停止使用 DreamSkin 主题。`);
     } catch (error) {
       toast("恢复原生界面失败", errorMessage(error), "error");
     }
@@ -1328,9 +1551,10 @@ export default function App() {
   };
 
   const updateThemeMessages = (theme: LocalTheme, update: (items: ChatMessage[]) => ChatMessage[]) => {
+    const key = themeIdentity(theme);
     setMessagesByTheme((current) => ({
       ...current,
-      [theme.localId]: update(current[theme.localId] || initialThemeMessages(theme)),
+      [key]: update(current[key] || initialThemeMessages(theme)),
     }));
   };
 
@@ -1346,15 +1570,16 @@ export default function App() {
       <div className="app-content">
         {bootstrapping ? <div className="bootstrap-loading" role="status"><LoaderCircle className="spin" size={19} /><strong>正在载入 Studio</strong></div> : null}
         {!bootstrapping && bootstrapError ? <div className="bootstrap-error" role="alert"><Info size={19} /><strong>无法载入 Studio</strong><span>{bootstrapError}</span><button type="button" onClick={() => window.location.reload()}><RotateCcw size={13} />重试</button></div> : null}
-        {!bootstrapping && !bootstrapError && view === "center" ? <ThemeCenter catalog={catalog} localThemes={localThemes} targetNameForTheme={targetNameForTheme} onAdd={addTemplate} onOpen={openWorkspace} onDuplicate={duplicateTheme} onDelete={deleteTheme} onCreateBlank={createBlank} onInspect={setDetailEntry} onLibrary={() => setView("library")} /> : null}
-        {!bootstrapping && !bootstrapError && view === "library" ? <MyThemes localThemes={localThemes} targetNameForTheme={targetNameForTheme} onCreateBlank={createBlank} onOpen={openWorkspace} onDuplicate={duplicateTheme} onDelete={deleteTheme} /> : null}
+        {!bootstrapping && !bootstrapError && view === "center" ? <ThemeCenter catalog={catalog} localThemes={localThemes} targets={targetOptions} targetNameForTheme={targetNameForTheme} onAdd={addTemplate} onOpen={openWorkspace} onDuplicate={duplicateTheme} onDelete={deleteTheme} onCreateBlank={createBlank} onInspect={setDetailEntry} onLibrary={() => setView("library")} /> : null}
+        {!bootstrapping && !bootstrapError && view === "library" ? <MyThemes localThemes={localThemes} targets={targetOptions} targetNameForTheme={targetNameForTheme} onCreateBlank={createBlank} onOpen={openWorkspace} onDuplicate={duplicateTheme} onDelete={deleteTheme} /> : null}
         {!bootstrapping && !bootstrapError && view === "connections" ? <Connections agents={agents} connection={connection} onConnect={connectAgent} onRefresh={refreshAgents} /> : null}
-        {!bootstrapping && !bootstrapError && view === "settings" ? <SettingsView settings={settings} inspect={inspect} runtime={runtime} targetName={activeTargetName} onChange={updateSettings} onVerifyRuntime={verifyRuntime} onRestoreRuntime={restoreRuntime} /> : null}
-        {!bootstrapping && !bootstrapError && view === "workspace" && workspaceTheme ? <ThemeWorkspace key={workspaceTheme.localId} item={workspaceTheme} targetName={targetNameForTheme(workspaceTheme)} agent={connectedAgent} connection={connection} messages={messagesByTheme[workspaceTheme.localId] || initialThemeMessages(workspaceTheme)} onBack={() => setView("library")} onChange={updateLocalTheme} onMessagesChange={(update) => updateThemeMessages(workspaceTheme, update)} onApplied={(item) => { setRuntime((current) => ({ ...(current || {}), available: true, session: "active", themeId: item.localId })); toast("主题已应用", `${item.theme.name} 已通过 DreamSkin Tool 应用到 ${targetNameForTheme(item)}。`); }} onError={(title, detail) => toast(title, detail, "error")} /> : null}
+        {!bootstrapping && !bootstrapError && view === "settings" ? <SettingsView settings={settings} inspect={inspect} runtime={runtime} targets={targetOptions} inspectByPlugin={inspectByPlugin} runtimeByPlugin={runtimeByPlugin} defaultPluginId={activePluginId || targetOptions[0]?.pluginId || ""} onChange={updateSettings} onVerifyRuntime={verifyRuntime} onRestoreRuntime={restoreRuntime} /> : null}
+        {!bootstrapping && !bootstrapError && view === "workspace" && workspaceTheme ? <ThemeWorkspace key={themeIdentity(workspaceTheme)} item={workspaceTheme} targetName={targetNameForTheme(workspaceTheme)} agent={connectedAgent} connection={connection} messages={messagesByTheme[themeIdentity(workspaceTheme)] || initialThemeMessages(workspaceTheme)} onBack={() => setView("library")} onChange={updateLocalTheme} onMessagesChange={(update) => updateThemeMessages(workspaceTheme, update)} onApplied={(item) => { const next = { ...(runtimeByPlugin[item.pluginId] || {}), available: true, session: "active", themeId: item.localId }; setRuntimeByPlugin((current) => ({ ...current, [item.pluginId]: next })); if (item.pluginId === activePluginId) setRuntime(next); toast("主题已应用", `${item.theme.name} 已通过 DreamSkin Tool 应用到 ${targetNameForTheme(item)}。`); }} onError={(title, detail) => toast(title, detail, "error")} /> : null}
       </div>
 
       <AnimatePresence>
-        {detailEntry ? <ThemeDetail entry={detailEntry} local={detailLocal} motionDisabled={motionDisabled} onClose={() => setDetailEntry(null)} onAdd={() => addTemplate(detailEntry)} onOpen={() => detailLocal && openWorkspace(detailLocal.localId)} /> : null}
+        {detailEntry ? <ThemeDetail entry={detailEntry} local={detailLocal} motionDisabled={motionDisabled} onClose={() => setDetailEntry(null)} onAdd={() => addTemplate(detailEntry)} onOpen={() => detailLocal && openWorkspace(detailLocal)} /> : null}
+        {createTargetOpen ? <CreateTargetDialog targets={targetOptions} busyPluginId={createTargetBusy} onSelect={createBlank} onClose={() => setCreateTargetOpen(false)} /> : null}
       </AnimatePresence>
 
       <div className="toast-region">

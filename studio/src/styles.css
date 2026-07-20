@@ -1609,6 +1609,143 @@ button:active:not(:disabled) {
 .diagnostic-row span i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 .diagnostic-row strong { color: var(--muted); font-size: 9px; font-weight: 550; }
 
+.settings-target-tabs {
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  gap: 3px;
+  margin-bottom: 12px;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-pressed);
+}
+
+.settings-target-tabs button {
+  display: inline-flex;
+  height: 31px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.settings-target-tabs button.is-active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(31, 39, 48, 0.12);
+}
+
+.create-target-backdrop {
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+}
+
+.create-target-dialog {
+  position: relative;
+  width: min(520px, calc(100vw - 56px));
+  padding: 28px;
+  border: 1px solid rgba(28, 35, 43, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 28px 80px rgba(20, 26, 32, 0.26), 0 3px 12px rgba(20, 26, 32, 0.08);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+
+.create-target-dialog .modal-close {
+  top: 16px;
+  right: 16px;
+}
+
+.dialog-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.create-target-dialog h2 {
+  margin: 10px 0 7px;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.create-target-dialog > p {
+  max-width: 410px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.create-target-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.create-target-grid > button {
+  display: grid;
+  min-width: 0;
+  min-height: 82px;
+  grid-template-columns: 40px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.create-target-grid > button:hover:not(:disabled),
+.create-target-grid > button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface));
+  box-shadow: 0 8px 22px rgba(31, 39, 48, 0.09);
+}
+
+.create-target-grid > button:disabled { cursor: default; opacity: 0.58; }
+
+.create-target-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(213, 95, 69, 0.11);
+  color: var(--accent);
+}
+
+.create-target-icon.is-workbuddy {
+  background: rgba(65, 156, 207, 0.12);
+  color: #287fae;
+}
+
+.create-target-grid > button > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.create-target-grid strong { font-size: 11px; }
+.create-target-grid small { color: var(--muted); font-size: 8px; line-height: 1.4; }
+.create-target-grid .target-arrow { color: var(--quiet); transform: rotate(180deg); }
+
 .theme-workspace {
   display: grid;
   width: 100%;
@@ -1692,6 +1829,13 @@ button:active:not(:disabled) {
 
 .scene-tabs button.is-active::after {
   background: var(--accent);
+}
+
+.scene-tabs.is-workbuddy button {
+  gap: 4px;
+  padding-right: 7px;
+  padding-left: 7px;
+  font-size: 8px;
 }
 
 .editor-actions {
@@ -2376,6 +2520,7 @@ button:active:not(:disabled) {
   .editor-actions .preview-button { display: none; }
   .editor-body { grid-template-columns: 310px minmax(0, 1fr); }
   .theme-detail { grid-template-columns: minmax(0, 1.1fr) minmax(270px, 0.9fr); }
+  .scene-tabs.is-workbuddy button { padding-right: 5px; padding-left: 5px; }
 }
 
 @media (max-width: 780px) {
@@ -2398,6 +2543,8 @@ button:active:not(:disabled) {
   .preview-canvas { padding: 12px; }
   .theme-detail { grid-template-columns: 1fr; overflow: auto; }
   .detail-art { min-height: 260px; }
+  .create-target-grid { grid-template-columns: minmax(0, 1fr); }
+  .create-target-dialog { max-height: calc(100vh - 40px); overflow-y: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

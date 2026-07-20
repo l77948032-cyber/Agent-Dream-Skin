@@ -143,6 +143,94 @@ test("Studio HTTP routes return stable success envelopes and parsed request bodi
   ]);
 });
 
+test("Studio HTTP plugin routes preserve the composite plugin and theme scope", async (t) => {
+  const fixture = await serverFixture(t);
+  const calls = [];
+  const pluginId = "dreamskin.workbuddy";
+  fixture.backend.catalog = async (scope) => {
+    calls.push(["catalog", scope]);
+    return [{ pluginId: scope }];
+  };
+  fixture.backend.themes = async (scope) => {
+    calls.push(["themes", scope]);
+    return [{ pluginId: scope, localId: "shared" }];
+  };
+  fixture.backend.createTheme = async (input, scope) => {
+    calls.push(["create", scope, input]);
+    return { pluginId: scope, localId: "created" };
+  };
+  fixture.backend.updateTheme = async (id, input, scope) => {
+    calls.push(["update", scope, id, input]);
+    return { pluginId: scope, localId: id };
+  };
+  fixture.backend.applyTheme = async (id, scope) => {
+    calls.push(["apply", scope, id]);
+    return { pluginId: scope, applied: id };
+  };
+  fixture.backend.message = async (id, input, scope) => {
+    calls.push(["message", scope, id, input]);
+    return { pluginId: scope, messaged: id };
+  };
+  fixture.backend.verify = async (input, scope) => {
+    calls.push(["verify", scope, input]);
+    return { pluginId: scope, verified: true };
+  };
+  fixture.backend.restore = async (scope) => {
+    calls.push(["restore", scope]);
+    return { pluginId: scope, restored: true };
+  };
+  const prefix = `${fixture.baseUrl}/api/v1/plugins/${pluginId}`;
+  const jsonHeaders = { "Content-Type": "application/json" };
+
+  assert.equal((await jsonResponse(await fetch(`${prefix}/catalog`))).body.result[0].pluginId, pluginId);
+  assert.equal((await jsonResponse(await fetch(`${prefix}/themes`))).body.result[0].pluginId, pluginId);
+  await fetch(`${prefix}/themes`, {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ kind: "blank", pluginId }),
+  });
+  await fetch(`${prefix}/themes/shared`, {
+    method: "PATCH",
+    headers: jsonHeaders,
+    body: JSON.stringify({ expectedRevision: "revision-one", theme: { name: "Changed" } }),
+  });
+  await fetch(`${prefix}/themes/shared/apply`, { method: "POST" });
+  await fetch(`${prefix}/themes/shared/messages`, {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ prompt: "warmer", expectedRevision: "revision-one" }),
+  });
+  await fetch(`${prefix}/runtime/verify`, {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ screenshot: false }),
+  });
+  await fetch(`${prefix}/runtime/restore`, { method: "POST" });
+
+  assert.deepEqual(calls, [
+    ["catalog", pluginId],
+    ["themes", pluginId],
+    ["create", pluginId, { kind: "blank" }],
+    ["update", pluginId, "shared", { expectedRevision: "revision-one", theme: { name: "Changed" } }],
+    ["apply", pluginId, "shared"],
+    ["message", pluginId, "shared", { prompt: "warmer", expectedRevision: "revision-one" }],
+    ["verify", pluginId, { screenshot: false }],
+    ["restore", pluginId],
+  ]);
+
+  const mismatch = await jsonResponse(await fetch(`${prefix}/themes`, {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ kind: "blank", pluginId: "dreamskin.trae" }),
+  }));
+  assert.equal(mismatch.status, 400);
+  assert.equal(mismatch.body.error.code, "INVALID_ARGUMENT");
+
+  const malformed = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/plugins/Bad.Plugin/themes`));
+  assert.equal(malformed.status, 400);
+  assert.equal(malformed.body.error.code, "INVALID_ARGUMENT");
+});
+
 test("Studio HTTP maps malformed bodies and backend errors to stable error envelopes", async (t) => {
   const fixture = await serverFixture(t);
   fixture.backend.updateTheme = async () => {
@@ -342,6 +430,169 @@ test("Studio HTTP rejects cross-origin writes and non-JSON mutation payloads", a
   assert.equal(fixture.calls.filter(([name]) => name === "createTheme").length, 3);
 });
 
+test("Studio backend keeps catalogs, themes, runtime, components, and chat scoped by plugin", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-studio-targets-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const calls = [];
+  const pluginIds = ["dreamskin.trae", "dreamskin.workbuddy"];
+  const descriptors = new Map();
+  const targets = [];
+
+  for (const pluginId of pluginIds) {
+    const targetId = pluginId.split(".").at(-1);
+    const registryPath = path.join(root, `${targetId}-components.json`);
+    await fs.writeFile(registryPath, JSON.stringify({
+      components: [{
+        id: `${targetId}.surface`,
+        description: `${targetId} surface`,
+        modes: ["light"],
+        states: ["default"],
+        visualSlots: ["background"],
+      }],
+    }));
+    const descriptor = {
+      id: pluginId,
+      state: "active",
+      active: true,
+      manifest: {
+        id: pluginId,
+        name: targetId,
+        version: "1.0.0",
+        target: { id: targetId, name: targetId === "trae" ? "Trae" : "WorkBuddy", platforms: ["darwin"] },
+      },
+    };
+    descriptors.set(pluginId, descriptor);
+    const library = {
+      catalog: async () => [{ pluginId, id: `${targetId}-template` }],
+      list: async ({ activeThemeId } = {}) => [{ pluginId, localId: "shared", activeThemeId }],
+      settings: async () => ({ autoVerify: true, selectedAgentId: "codex" }),
+      read: async (id) => ({
+        pluginId,
+        localId: id,
+        revisionHash: `${pluginId}:revision-1`,
+        theme: { colors: { accent: "#111111" } },
+      }),
+      markApplied: async (id, revision) => ({ pluginId, localId: id, revisionHash: revision, status: "applied" }),
+      reconcile: async (id) => ({
+        pluginId,
+        localId: id,
+        revisionHash: `${pluginId}:revision-2`,
+        theme: { colors: { accent: "#222222" } },
+      }),
+    };
+    targets.push({
+      pluginId,
+      targetId,
+      targetName: descriptor.manifest.target.name,
+      library,
+      registryPath,
+      themesRoot: path.join(root, "themes", targetId),
+    });
+  }
+
+  const backend = new StudioBackend({
+    tool: {
+      inspect: async (pluginId) => ({ pluginId, inspected: true }),
+      validateTheme: async (input, pluginId) => {
+        calls.push(["validate", pluginId, input.themeId]);
+        return { valid: true };
+      },
+    },
+    runtimeManager: {
+      status: async (pluginId) => ({ available: true, session: "off", pluginId }),
+      apply: async (id, pluginId) => {
+        calls.push(["apply", pluginId, id]);
+        return { applied: true, pluginId, themeId: id };
+      },
+      verify: async (input, pluginId) => {
+        calls.push(["verify", pluginId, input]);
+        return { verified: true, pluginId };
+      },
+      restore: async (pluginId) => {
+        calls.push(["restore", pluginId]);
+        return { restored: true, pluginId };
+      },
+    },
+    pluginManager: {
+      get: (pluginId) => descriptors.get(pluginId),
+      list: () => [...descriptors.values()],
+    },
+    library: targets[0].library,
+    targets,
+    defaultPluginId: "dreamskin.trae",
+    sessions: {
+      selectedAgentId: "codex",
+      agents: async () => [{ id: "codex" }],
+      connectionState: () => ({ agentId: "codex", state: "connected" }),
+      prompt: async (input) => {
+        calls.push(["message", input.pluginId, input.themeId, input.expectedRevision]);
+        return {
+          text: "主题已更新",
+          sessionId: "session-one",
+          response: { stopReason: "end_turn" },
+        };
+      },
+      acceptRevision: (input) => { calls.push(["accept", input.pluginId, input.themeId, input.revision]); },
+    },
+    dataRoot: path.join(root, "data"),
+  });
+
+  const bootstrap = await backend.bootstrap();
+  assert.equal(bootstrap.activePluginId, "dreamskin.trae");
+  assert.equal(bootstrap.targets.length, 2);
+  assert.deepEqual(
+    bootstrap.targets.map(({ pluginId, catalog, themes, runtime, components }) => ({
+      pluginId,
+      catalogPluginId: catalog[0].pluginId,
+      themePluginId: themes[0].pluginId,
+      runtimePluginId: runtime.pluginId,
+      componentId: components[0].id,
+    })),
+    [
+      {
+        pluginId: "dreamskin.trae",
+        catalogPluginId: "dreamskin.trae",
+        themePluginId: "dreamskin.trae",
+        runtimePluginId: "dreamskin.trae",
+        componentId: "trae.surface",
+      },
+      {
+        pluginId: "dreamskin.workbuddy",
+        catalogPluginId: "dreamskin.workbuddy",
+        themePluginId: "dreamskin.workbuddy",
+        runtimePluginId: "dreamskin.workbuddy",
+        componentId: "workbuddy.surface",
+      },
+    ],
+  );
+  assert.equal((await backend.theme("shared")).pluginId, "dreamskin.trae");
+  assert.equal((await backend.theme("shared", "dreamskin.workbuddy")).pluginId, "dreamskin.workbuddy");
+
+  calls.length = 0;
+  await backend.applyTheme("shared", "dreamskin.workbuddy");
+  await backend.verify({ screenshot: false }, "dreamskin.workbuddy");
+  await backend.restore("dreamskin.workbuddy");
+  const messaged = await backend.message("shared", {
+    prompt: "make it brighter",
+    componentId: "workbuddy.surface",
+    expectedRevision: "dreamskin.workbuddy:revision-1",
+  }, "dreamskin.workbuddy");
+  assert.equal(messaged.theme.pluginId, "dreamskin.workbuddy");
+  assert.deepEqual(calls, [
+    ["validate", "dreamskin.workbuddy", "shared"],
+    ["apply", "dreamskin.workbuddy", "shared"],
+    ["verify", "dreamskin.workbuddy", { screenshot: false }],
+    ["restore", "dreamskin.workbuddy"],
+    ["message", "dreamskin.workbuddy", "shared", "dreamskin.workbuddy:revision-1"],
+    ["accept", "dreamskin.workbuddy", "shared", "dreamskin.workbuddy:revision-2"],
+    ["validate", "dreamskin.workbuddy", "shared"],
+  ]);
+  assert.throws(
+    () => backend.verify({ pluginId: "dreamskin.trae" }, "dreamskin.workbuddy"),
+    (error) => error.code === "INVALID_ARGUMENT",
+  );
+});
+
 test("Studio backend generates screenshot paths only inside its data root", async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-studio-previews-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
@@ -409,6 +660,61 @@ test("Studio deletion fails closed when runtime status is unavailable", async ()
       && error.details.runtimeError.message === "status failed",
   );
   assert.equal(deleteCalls, 0);
+});
+
+test("Studio keeps a degraded runtime theme applied and prevents its deletion", async () => {
+  let deleteCalls = 0;
+  let listedActiveThemeId = null;
+  const backend = new StudioBackend({
+    tool: {},
+    runtimeManager: {
+      status: async () => ({
+        session: "degraded",
+        themeId: "theme-one",
+        themeRevision: "revision-one",
+      }),
+    },
+    pluginManager: { list: () => [] },
+    library: {
+      list: async ({ activeThemeId: value }) => {
+        listedActiveThemeId = value;
+        return [{ localId: "theme-one", status: value === "theme-one" ? "applied" : "ready" }];
+      },
+      delete: async () => { deleteCalls += 1; },
+    },
+    sessions: {},
+  });
+
+  const themes = await backend.themes();
+  assert.equal(listedActiveThemeId, "theme-one");
+  assert.equal(themes[0].status, "applied");
+  await assert.rejects(
+    () => backend.deleteTheme("theme-one", { expectedRevision: "revision-one" }),
+    (error) => error.code === "THEME_ACTIVE",
+  );
+  assert.equal(deleteCalls, 0);
+});
+
+test("Studio blocks deletion while an owned runtime has no trustworthy theme identity", async () => {
+  for (const session of ["orphaned", "orphaned-unverified", "active", "degraded"]) {
+    let deleteCalls = 0;
+    const backend = new StudioBackend({
+      tool: {},
+      runtimeManager: { status: async () => ({ session }) },
+      pluginManager: { list: () => [] },
+      library: { delete: async () => { deleteCalls += 1; } },
+      sessions: {},
+    });
+
+    await assert.rejects(
+      () => backend.deleteTheme("theme-one", { expectedRevision: "revision-one" }),
+      (error) => error.code === "THEME_ACTIVE"
+        && error.details.runtimeSession === session
+        && error.details.themeId === null,
+      session,
+    );
+    assert.equal(deleteCalls, 0, session);
+  }
 });
 
 test("Studio apply and delete share one lifecycle lock", async () => {

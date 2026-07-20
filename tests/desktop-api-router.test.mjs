@@ -73,6 +73,61 @@ test("desktop API router exposes only named Studio operations", async () => {
   });
 });
 
+test("desktop API router forwards plugin scope independently from a shared theme id", async () => {
+  const fixture = backendFixture();
+  const calls = [];
+  fixture.backend.createTheme = async (input, pluginId) => {
+    calls.push(["create", pluginId, input]);
+    return { pluginId, localId: "shared" };
+  };
+  fixture.backend.applyTheme = async (id, pluginId) => {
+    calls.push(["apply", pluginId, id]);
+    return { pluginId, applied: id };
+  };
+  fixture.backend.message = async (id, input, pluginId) => {
+    calls.push(["message", pluginId, id, input]);
+    return { pluginId, messaged: id };
+  };
+  fixture.backend.verify = async (input, pluginId) => {
+    calls.push(["verify", pluginId, input]);
+    return { pluginId, verified: true };
+  };
+  fixture.backend.restore = async (pluginId) => {
+    calls.push(["restore", pluginId]);
+    return { pluginId, restored: true };
+  };
+  fixture.backend.asset = async (kind, id, pluginId) => {
+    calls.push(["asset", pluginId, kind, id]);
+    return { buffer: Buffer.from("asset"), bytes: 5, mime: "image/png", revision: "revision-one" };
+  };
+  const router = new DesktopStudioApiRouter({ backend: fixture.backend });
+  const pluginId = "dreamskin.workbuddy";
+
+  await router.invoke("themes.create", { kind: "blank", pluginId });
+  await router.invoke("themes.apply", { themeId: "shared", pluginId });
+  await router.invoke("themes.message", {
+    themeId: "shared",
+    pluginId,
+    input: { prompt: "brighter", expectedRevision: "revision-one" },
+  });
+  await router.invoke("runtime.verify", { screenshot: false, pluginId });
+  await router.invoke("runtime.restore", { pluginId });
+  await router.asset("theme", "shared", pluginId);
+
+  assert.deepEqual(calls, [
+    ["create", pluginId, { kind: "blank" }],
+    ["apply", pluginId, "shared"],
+    ["message", pluginId, "shared", { prompt: "brighter", expectedRevision: "revision-one" }],
+    ["verify", pluginId, { screenshot: false }],
+    ["restore", pluginId],
+    ["asset", pluginId, "theme", "shared"],
+  ]);
+  await assert.rejects(
+    () => router.invoke("themes.list", { pluginId: "Bad.Plugin" }),
+    (error) => error.code === "INVALID_ARGUMENT",
+  );
+});
+
 test("dreamskin protocol serves the SPA, immutable assets, and Studio API", async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-desktop-protocol-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
@@ -171,6 +226,67 @@ test("dreamskin protocol serves the SPA, immutable assets, and Studio API", asyn
   }));
   assert.equal(activeDelete.status, 409);
   assert.equal((await activeDelete.json()).error.code, "THEME_ACTIVE");
+});
+
+test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-desktop-scoped-protocol-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.writeFile(path.join(root, "index.html"), "studio");
+  const fixture = backendFixture();
+  const calls = [];
+  fixture.backend.catalog = async (pluginId) => {
+    calls.push(["catalog", pluginId]);
+    return [{ pluginId }];
+  };
+  fixture.backend.message = async (id, input, pluginId) => {
+    calls.push(["message", pluginId, id, input]);
+    return { pluginId, id };
+  };
+  const handle = createDreamSkinProtocolHandler({
+    router: new DesktopStudioApiRouter({ backend: fixture.backend }),
+    distRoot: root,
+  });
+  const pluginId = "dreamskin.workbuddy";
+  const catalog = await handle(new Request(`dreamskin://studio/api/v1/plugins/${pluginId}/catalog`));
+  assert.equal(catalog.status, 200);
+  assert.equal((await catalog.json()).result[0].pluginId, pluginId);
+
+  const message = await handle(new Request(
+    `dreamskin://studio/api/v1/plugins/${pluginId}/themes/shared/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "dreamskin://studio",
+        "Sec-Fetch-Site": "same-origin",
+      },
+      body: JSON.stringify({ prompt: "warmer", expectedRevision: "revision-one" }),
+    },
+  ));
+  assert.equal(message.status, 200);
+  assert.deepEqual(calls, [
+    ["catalog", pluginId],
+    ["message", pluginId, "shared", { prompt: "warmer", expectedRevision: "revision-one" }],
+  ]);
+
+  const mismatch = await handle(new Request(
+    `dreamskin://studio/api/v1/plugins/${pluginId}/themes/shared/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "dreamskin://studio",
+        "Sec-Fetch-Site": "same-origin",
+      },
+      body: JSON.stringify({
+        prompt: "warmer",
+        expectedRevision: "revision-one",
+        pluginId: "dreamskin.trae",
+      }),
+    },
+  ));
+  assert.equal(mismatch.status, 400);
+  assert.equal((await mismatch.json()).error.code, "INVALID_ARGUMENT");
 });
 
 test("dreamskin protocol rejects untrusted origins, hosts, and payload types", async (t) => {

@@ -16,13 +16,15 @@ import {
   VersionedRuntimeInstaller,
 } from "../src/core/versioned-runtime-installer.mjs";
 import { TRAE_CATALOG_METADATA } from "../plugins/trae/catalog.mjs";
+import { WORKBUDDY_CATALOG_METADATA } from "../plugins/workbuddy/catalog.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_PROJECT_ROOT = path.resolve(HERE, "..");
 export const DEFAULT_DESKTOP_RESOURCE_DIRECTORY = "build/desktop-resources";
 export const TRAE_RUNTIME_NAMESPACE = "dreamskin.trae";
+export const WORKBUDDY_RUNTIME_NAMESPACE = "dreamskin.workbuddy";
 
-export const DESKTOP_RUNTIME_SCRIPT_PATHS = Object.freeze([
+export const TRAE_RUNTIME_SCRIPT_PATHS = Object.freeze([
   "scripts/common-macos.sh",
   "scripts/common-windows.ps1",
   "scripts/injector.mjs",
@@ -34,6 +36,20 @@ export const DESKTOP_RUNTIME_SCRIPT_PATHS = Object.freeze([
   "scripts/stop-trae-skin-windows.ps1",
   "scripts/verify-trae-skin-macos.sh",
   "scripts/verify-trae-skin-windows.ps1",
+]);
+
+export const WORKBUDDY_RUNTIME_SCRIPT_PATHS = Object.freeze([
+  "scripts/common-workbuddy-macos.sh",
+  "scripts/injector.mjs",
+  "scripts/start-workbuddy-skin-macos.sh",
+  "scripts/status-workbuddy-skin-macos.sh",
+  "scripts/stop-workbuddy-skin-macos.sh",
+  "scripts/verify-workbuddy-skin-macos.sh",
+  "scripts/workbuddy-injector.mjs",
+]);
+
+export const DESKTOP_RUNTIME_SCRIPT_PATHS = Object.freeze([
+  ...new Set([...TRAE_RUNTIME_SCRIPT_PATHS, ...WORKBUDDY_RUNTIME_SCRIPT_PATHS]),
 ]);
 
 const RUNTIME_CORE_PATHS = Object.freeze([
@@ -237,12 +253,12 @@ function validateStudioPath(relativePath) {
   }
 }
 
-async function catalogThemes(files, catalogRoot, projectRoot) {
+async function catalogThemes(files, catalogRoot, projectRoot, { label, metadata }) {
   const themes = new Map();
   for (const [relativePath, buffer] of files) {
     const segments = relativePath.split("/");
     if (segments.length !== 2 || !THEME_ID_PATTERN.test(segments[0])) {
-      throw buildError("DESKTOP_BUILD_SOURCE_INVALID", "Trae catalog must contain one directory per structured theme.", {
+      throw buildError("DESKTOP_BUILD_SOURCE_INVALID", `${label} catalog must contain one directory per structured theme.`, {
         path: `${catalogRoot}/${relativePath}`,
       });
     }
@@ -258,20 +274,20 @@ async function catalogThemes(files, catalogRoot, projectRoot) {
     .filter((entry) => !entry.isDirectory() || !THEME_ID_PATTERN.test(entry.name))
     .map((entry) => entry.name);
   if (invalidEntries.length) {
-    throw buildError("DESKTOP_BUILD_SOURCE_INVALID", "Trae catalog must contain only structured theme directories.", {
+    throw buildError("DESKTOP_BUILD_SOURCE_INVALID", `${label} catalog must contain only structured theme directories.`, {
       catalogRoot,
       entries: invalidEntries,
     });
   }
-  const expectedIds = Object.keys(TRAE_CATALOG_METADATA).sort(stableCompare);
+  const expectedIds = Object.keys(metadata).sort(stableCompare);
   const actualIds = catalogEntries.map((entry) => entry.name);
   const actualIdSet = new Set(actualIds);
   const missing = expectedIds.filter((id) => !actualIdSet.has(id));
-  const extra = actualIds.filter((id) => !Object.hasOwn(TRAE_CATALOG_METADATA, id));
+  const extra = actualIds.filter((id) => !Object.hasOwn(metadata, id));
   if (missing.length || extra.length) {
     throw buildError(
       "DESKTOP_BUILD_CATALOG_MISMATCH",
-      "Packaged Trae catalog directories must exactly match TRAE_CATALOG_METADATA.",
+      `Packaged ${label} catalog directories must exactly match its static metadata.`,
       { catalogRoot, expected: expectedIds, actual: actualIds, missing, extra },
     );
   }
@@ -327,6 +343,128 @@ async function assertMirroredSource(projectRoot, sourcePath, canonicalPath, cano
   }
 }
 
+async function collectPackagedPlugin({
+  projectRoot,
+  output,
+  packageVersion,
+  directory,
+  namespace,
+  label,
+  catalogMetadata,
+  extraResourcePaths = [],
+  assetPaths,
+  mirrors = [],
+}) {
+  const pluginRoot = `plugins/${directory}`;
+  const manifestPath = `${pluginRoot}/plugin.json`;
+  const manifest = validatePluginManifest(
+    await readJsonSource(projectRoot, manifestPath, `${label} plugin manifest`),
+  );
+  if (manifest.id !== namespace || manifest.version !== packageVersion) {
+    throw buildError("DESKTOP_BUILD_VERSION_MISMATCH", "Product, plugin, and runtime versions must stay aligned.", {
+      productVersion: packageVersion,
+      pluginVersion: manifest.version,
+      expectedPluginId: namespace,
+      pluginId: manifest.id,
+    });
+  }
+  if (!manifest.catalog || !manifest.theme.runtimeMappingPath) {
+    throw buildError(
+      "DESKTOP_BUILD_SOURCE_INVALID",
+      `The ${label} plugin must declare catalog and runtime mapping resources.`,
+    );
+  }
+
+  const { entry: _entry, ...packagedManifest } = structuredClone(manifest);
+  validatePluginManifest(packagedManifest);
+  output.add(manifestPath, `${JSON.stringify(packagedManifest, null, 2)}\n`);
+  const packagedPaths = [manifestPath];
+
+  const buffers = new Map();
+  const resourcePaths = [...new Set([
+    ...Object.values(manifest.theme),
+    ...extraResourcePaths,
+  ])].sort(stableCompare);
+  for (const relativePath of resourcePaths) {
+    const sourcePath = `${pluginRoot}/${relativePath}`;
+    const buffer = await readSourceFile(projectRoot, sourcePath);
+    try {
+      JSON.parse(buffer.toString("utf8"));
+    } catch (error) {
+      throw buildError("DESKTOP_BUILD_SOURCE_INVALID", `${label} plugin resource is not valid JSON.`, {
+        path: sourcePath,
+      }, error);
+    }
+    buffers.set(relativePath, buffer);
+    output.add(sourcePath, buffer);
+    packagedPaths.push(sourcePath);
+  }
+
+  for (const relativePath of [...assetPaths].sort(stableCompare)) {
+    const sourcePath = `${pluginRoot}/${relativePath}`;
+    const buffer = await readSourceFile(projectRoot, sourcePath);
+    buffers.set(relativePath, buffer);
+    output.add(sourcePath, buffer);
+    packagedPaths.push(sourcePath);
+  }
+  await Promise.all(mirrors.map(({ sourcePath, canonicalRelativePath }) => {
+    const canonicalBuffer = buffers.get(canonicalRelativePath);
+    if (!canonicalBuffer) {
+      throw buildError("DESKTOP_BUILD_SOURCE_INVALID", "A plugin mirror references an uncollected canonical resource.", {
+        sourcePath,
+        canonicalPath: `${pluginRoot}/${canonicalRelativePath}`,
+      });
+    }
+    return assertMirroredSource(
+      projectRoot,
+      sourcePath,
+      `${pluginRoot}/${canonicalRelativePath}`,
+      canonicalBuffer,
+    );
+  }));
+
+  const catalogRoot = `${pluginRoot}/${manifest.catalog.root}`;
+  const catalogFiles = await readSourceTree(projectRoot, catalogRoot);
+  await catalogThemes(catalogFiles, catalogRoot, projectRoot, {
+    label,
+    metadata: catalogMetadata,
+  });
+  for (const [relativePath, buffer] of [...catalogFiles].sort(([left], [right]) => stableCompare(left, right))) {
+    const destination = `${catalogRoot}/${relativePath}`;
+    output.add(destination, buffer);
+    packagedPaths.push(destination);
+  }
+
+  return {
+    manifest,
+    buffers,
+    packagedPaths: packagedPaths.sort(stableCompare),
+  };
+}
+
+function addRuntimePackage(output, { namespace, version, payloadPaths }) {
+  const runtimePackageRoot = `runtime/${namespace}`;
+  const runtimeFiles = [];
+  for (const relativePath of [...new Set(payloadPaths)].sort(stableCompare)) {
+    const file = output.get(relativePath);
+    output.add(`${runtimePackageRoot}/${relativePath}`, file.buffer, file.mode);
+    runtimeFiles.push({
+      path: relativePath,
+      sha256: sha256(file.buffer),
+      bytes: file.buffer.length,
+      mode: file.mode,
+    });
+  }
+  const manifest = {
+    schemaVersion: 1,
+    namespace,
+    version,
+    files: runtimeFiles,
+  };
+  output.add(`${runtimePackageRoot}/${RUNTIME_MANIFEST_FILE}`, `${JSON.stringify(manifest, null, 2)}\n`);
+  return manifest;
+}
+
 async function collectDesktopFiles(projectRoot) {
   const output = new OutputFiles();
   const packageManifest = await readJsonSource(projectRoot, "package.json", "package.json");
@@ -334,67 +472,37 @@ async function collectDesktopFiles(projectRoot) {
     throw buildError("DESKTOP_BUILD_SOURCE_INVALID", "package.json must declare a version.");
   }
 
-  const sourcePluginManifest = validatePluginManifest(
-    await readJsonSource(projectRoot, "plugins/trae/plugin.json", "Trae plugin manifest"),
-  );
-  if (sourcePluginManifest.id !== TRAE_RUNTIME_NAMESPACE || sourcePluginManifest.version !== packageManifest.version) {
-    throw buildError("DESKTOP_BUILD_VERSION_MISMATCH", "Product, plugin, and runtime versions must stay aligned.", {
-      productVersion: packageManifest.version,
-      pluginVersion: sourcePluginManifest.version,
-      pluginId: sourcePluginManifest.id,
-    });
-  }
-  if (!sourcePluginManifest.catalog || !sourcePluginManifest.theme.runtimeMappingPath) {
-    throw buildError("DESKTOP_BUILD_SOURCE_INVALID", "The Trae plugin must declare catalog and runtime mapping resources.");
-  }
-
-  const { entry: _entry, ...packagedPluginManifest } = structuredClone(sourcePluginManifest);
-  validatePluginManifest(packagedPluginManifest);
-  output.add("plugins/trae/plugin.json", `${JSON.stringify(packagedPluginManifest, null, 2)}\n`);
-
-  const pluginResourceBuffers = new Map();
-  for (const relativePath of Object.values(sourcePluginManifest.theme).sort(stableCompare)) {
-    const sourcePath = `plugins/trae/${relativePath}`;
-    const buffer = await readSourceFile(projectRoot, sourcePath);
-    JSON.parse(buffer.toString("utf8"));
-    pluginResourceBuffers.set(relativePath, buffer);
-    output.add(sourcePath, buffer);
-  }
-
-  const pluginCss = await readSourceFile(projectRoot, "plugins/trae/assets/trae-skin.css");
-  await Promise.all([
-    assertMirroredSource(
-      projectRoot,
-      "assets/trae-skin.css",
-      "plugins/trae/assets/trae-skin.css",
-      pluginCss,
-    ),
-    assertMirroredSource(
-      projectRoot,
-      "registry/components.v1.json",
-      `plugins/trae/${sourcePluginManifest.theme.registryPath}`,
-      pluginResourceBuffers.get(sourcePluginManifest.theme.registryPath),
-    ),
-    assertMirroredSource(
-      projectRoot,
-      "registry/theme-runtime.v1.json",
-      `plugins/trae/${sourcePluginManifest.theme.runtimeMappingPath}`,
-      pluginResourceBuffers.get(sourcePluginManifest.theme.runtimeMappingPath),
-    ),
-    assertMirroredSource(
-      projectRoot,
-      "schemas/theme-v1.schema.json",
-      `plugins/trae/${sourcePluginManifest.theme.schemaPath}`,
-      pluginResourceBuffers.get(sourcePluginManifest.theme.schemaPath),
-    ),
-  ]);
-  output.add("plugins/trae/assets/trae-skin.css", pluginCss);
-  const catalogSourceRoot = `plugins/trae/${sourcePluginManifest.catalog.root}`;
-  const catalogFiles = await readSourceTree(projectRoot, catalogSourceRoot);
-  await catalogThemes(catalogFiles, catalogSourceRoot, projectRoot);
-  for (const [relativePath, buffer] of [...catalogFiles].sort(([left], [right]) => stableCompare(left, right))) {
-    output.add(`${catalogSourceRoot}/${relativePath}`, buffer);
-  }
+  const trae = await collectPackagedPlugin({
+    projectRoot,
+    output,
+    packageVersion: packageManifest.version,
+    directory: "trae",
+    namespace: TRAE_RUNTIME_NAMESPACE,
+    label: "Trae",
+    catalogMetadata: TRAE_CATALOG_METADATA,
+    assetPaths: ["assets/trae-skin.css"],
+    mirrors: [
+      { sourcePath: "assets/trae-skin.css", canonicalRelativePath: "assets/trae-skin.css" },
+      { sourcePath: "registry/components.v1.json", canonicalRelativePath: "resources/components.v1.json" },
+      { sourcePath: "registry/theme-runtime.v1.json", canonicalRelativePath: "resources/theme-runtime.v1.json" },
+      { sourcePath: "schemas/theme-v1.schema.json", canonicalRelativePath: "resources/theme-v1.schema.json" },
+    ],
+  });
+  const workbuddy = await collectPackagedPlugin({
+    projectRoot,
+    output,
+    packageVersion: packageManifest.version,
+    directory: "workbuddy",
+    namespace: WORKBUDDY_RUNTIME_NAMESPACE,
+    label: "WorkBuddy",
+    catalogMetadata: WORKBUDDY_CATALOG_METADATA,
+    extraResourcePaths: ["resources/studio-scenes.v1.json"],
+    assetPaths: ["assets/trae-skin.css", "assets/workbuddy-skin.css"],
+    mirrors: [{
+      sourcePath: "plugins/workbuddy/assets/trae-skin.css",
+      canonicalRelativePath: "assets/workbuddy-skin.css",
+    }],
+  });
 
   const studioFiles = await readSourceTree(projectRoot, "studio/dist");
   if (!studioFiles.has("index.html")) {
@@ -414,41 +522,38 @@ async function collectDesktopFiles(projectRoot) {
     output.add(relativePath, await readSourceFile(projectRoot, relativePath));
   }
   output.add("assets/renderer-inject.js", await readSourceFile(projectRoot, "assets/renderer-inject.js"));
-  output.add("assets/trae-skin.css", pluginCss);
-  output.add("registry/components.v1.json", pluginResourceBuffers.get(sourcePluginManifest.theme.registryPath));
-  output.add("registry/theme-runtime.v1.json", pluginResourceBuffers.get(sourcePluginManifest.theme.runtimeMappingPath));
+  output.add("assets/workbuddy-renderer-inject.js", await readSourceFile(projectRoot, "assets/workbuddy-renderer-inject.js"));
+  output.add("assets/trae-skin.css", trae.buffers.get("assets/trae-skin.css"));
+  output.add("registry/components.v1.json", trae.buffers.get(trae.manifest.theme.registryPath));
+  output.add("registry/theme-runtime.v1.json", trae.buffers.get(trae.manifest.theme.runtimeMappingPath));
   output.add(ACP_DESTINATION_PATH, await readSourceFile(projectRoot, ACP_SOURCE_PATH), 0o755);
   for (const [sourcePath, destinationPath] of DESKTOP_LEGAL_PATHS) {
     output.add(destinationPath, await readSourceFile(projectRoot, sourcePath));
   }
 
-  const runtimePayloadPaths = [
-    ...DESKTOP_RUNTIME_SCRIPT_PATHS,
-    ...RUNTIME_CORE_PATHS,
-    "assets/renderer-inject.js",
-    "assets/trae-skin.css",
-    "registry/components.v1.json",
-    "registry/theme-runtime.v1.json",
-  ].sort(stableCompare);
-  const runtimePackageRoot = `runtime/${TRAE_RUNTIME_NAMESPACE}`;
-  const runtimeFiles = [];
-  for (const relativePath of runtimePayloadPaths) {
-    const file = output.get(relativePath);
-    output.add(`${runtimePackageRoot}/${relativePath}`, file.buffer, file.mode);
-    runtimeFiles.push({
-      path: relativePath,
-      sha256: sha256(file.buffer),
-      bytes: file.buffer.length,
-      mode: file.mode,
-    });
-  }
-  const runtimeManifest = {
-    schemaVersion: 1,
+  const traeRuntimeManifest = addRuntimePackage(output, {
     namespace: TRAE_RUNTIME_NAMESPACE,
-    version: sourcePluginManifest.version,
-    files: runtimeFiles,
-  };
-  output.add(`${runtimePackageRoot}/${RUNTIME_MANIFEST_FILE}`, `${JSON.stringify(runtimeManifest, null, 2)}\n`);
+    version: trae.manifest.version,
+    payloadPaths: [
+      ...TRAE_RUNTIME_SCRIPT_PATHS,
+      ...RUNTIME_CORE_PATHS,
+      "assets/renderer-inject.js",
+      "assets/trae-skin.css",
+      "registry/components.v1.json",
+      "registry/theme-runtime.v1.json",
+    ],
+  });
+  const workbuddyRuntimeManifest = addRuntimePackage(output, {
+    namespace: WORKBUDDY_RUNTIME_NAMESPACE,
+    version: workbuddy.manifest.version,
+    payloadPaths: [
+      ...WORKBUDDY_RUNTIME_SCRIPT_PATHS,
+      ...RUNTIME_CORE_PATHS,
+      "assets/trae-skin.css",
+      "assets/workbuddy-renderer-inject.js",
+      ...workbuddy.packagedPaths,
+    ],
+  });
 
   const resourceManifest = {
     schemaVersion: 1,
@@ -462,7 +567,15 @@ async function collectDesktopFiles(projectRoot) {
     })),
   };
   output.add(DESKTOP_RESOURCE_MANIFEST_FILE, `${JSON.stringify(resourceManifest, null, 2)}\n`);
-  return { output, resourceManifest, runtimeManifest };
+  return {
+    output,
+    resourceManifest,
+    runtimeManifest: traeRuntimeManifest,
+    runtimeManifests: new Map([
+      [TRAE_RUNTIME_NAMESPACE, traeRuntimeManifest],
+      [WORKBUDDY_RUNTIME_NAMESPACE, workbuddyRuntimeManifest],
+    ]),
+  };
 }
 
 async function writeOutputFiles(root, output) {
@@ -505,13 +618,15 @@ async function outputInventory(root, current = root) {
 
 async function verifyStagedOutput(stage, output) {
   await validateDesktopResourceManifest({ resourceRoot: stage });
-  const runtimeRoot = path.join(stage, "runtime", TRAE_RUNTIME_NAMESPACE);
-  const verifier = new VersionedRuntimeInstaller({
-    runtimeRoot: path.join(stage, ".runtime-verifier"),
-    namespace: TRAE_RUNTIME_NAMESPACE,
-  });
-  const runtimePackage = await verifier.loadPackageManifest({ sourceRoot: runtimeRoot });
-  await verifier.verifyFiles(runtimePackage.sourceRoot, runtimePackage.manifest, "DESKTOP_RUNTIME_INTEGRITY_FAILED");
+  for (const namespace of [TRAE_RUNTIME_NAMESPACE, WORKBUDDY_RUNTIME_NAMESPACE]) {
+    const runtimeRoot = path.join(stage, "runtime", namespace);
+    const verifier = new VersionedRuntimeInstaller({
+      runtimeRoot: path.join(stage, ".runtime-verifier"),
+      namespace,
+    });
+    const runtimePackage = await verifier.loadPackageManifest({ sourceRoot: runtimeRoot });
+    await verifier.verifyFiles(runtimePackage.sourceRoot, runtimePackage.manifest, "DESKTOP_RUNTIME_INTEGRITY_FAILED");
+  }
   const actual = await outputInventory(stage);
   const expected = output.entries().map(([relativePath]) => relativePath);
   if (actual.length !== expected.length || actual.some((file, index) => file !== expected[index])) {
@@ -530,7 +645,7 @@ function assertSafeOutputRoot(projectRoot, outRoot) {
     });
   }
   const protectedSources = [
-    "studio/dist", "plugins/trae", "scripts", "assets", "registry", "src/core",
+    "studio/dist", "plugins/trae", "plugins/workbuddy", "scripts", "assets", "registry", "src/core",
     "node_modules/@agentclientprotocol/codex-acp",
   ].map((relativePath) => path.join(projectRoot, ...relativePath.split("/")));
   if (protectedSources.some((source) => isInside(source, outRoot) || isInside(outRoot, source))) {
@@ -594,6 +709,13 @@ export async function buildDesktopResources({
       resourceManifestPath: path.join(destination, DESKTOP_RESOURCE_MANIFEST_FILE),
       runtimePackageRoot: path.join(destination, "runtime", TRAE_RUNTIME_NAMESPACE),
       runtimeManifestPath: path.join(destination, "runtime", TRAE_RUNTIME_NAMESPACE, RUNTIME_MANIFEST_FILE),
+      runtimePackages: Object.fromEntries(
+        [...collected.runtimeManifests].map(([namespace, manifest]) => [namespace, {
+          root: path.join(destination, "runtime", namespace),
+          manifestPath: path.join(destination, "runtime", namespace, RUNTIME_MANIFEST_FILE),
+          version: manifest.version,
+        }]),
+      ),
       version: collected.resourceManifest.version,
       files: collected.output.files.size,
       bytes: collected.output.bytes,

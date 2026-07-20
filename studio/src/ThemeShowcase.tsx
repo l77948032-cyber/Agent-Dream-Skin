@@ -5,9 +5,11 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import fixtureCss from "./mcp-preview-fixture.css?raw";
 import type { AppearanceMode, PreviewMode, StudioTheme } from "./themes";
+import { WorkBuddyScenePreview, type WorkBuddyScene } from "./WorkBuddyPreview";
 
 type PreviewRoute = "home" | "thread" | "components";
-export type ThemePreviewScene = "work" | "code" | "design" | "thread" | "components";
+export type TraePreviewScene = "work" | "code" | "design" | "thread" | "components";
+export type ThemePreviewScene = TraePreviewScene | WorkBuddyScene;
 type RuntimeFormat = "raw" | "percent" | "px";
 
 const FRAME_WIDTH = 1200;
@@ -432,7 +434,7 @@ function ToolPreviewFrame({
   );
 }
 
-const sceneTitles: Record<ThemePreviewScene, string> = {
+const sceneTitles: Record<TraePreviewScene, string> = {
   work: "Work 首页",
   code: "Code 首页",
   design: "Design 首页",
@@ -440,7 +442,7 @@ const sceneTitles: Record<ThemePreviewScene, string> = {
   components: "组件库",
 };
 
-export function ThemeScenePreview({
+function TraeThemeScenePreview({
   theme,
   appearanceMode,
   scene,
@@ -450,7 +452,7 @@ export function ThemeScenePreview({
 }: {
   theme: StudioTheme;
   appearanceMode: AppearanceMode;
-  scene: ThemePreviewScene;
+  scene: TraePreviewScene;
   zoom?: number;
   interactive?: boolean;
   onComponentSelect?: (componentId: string) => void;
@@ -490,6 +492,33 @@ export function ThemeScenePreview({
       onComponentSelect={onComponentSelect}
     />
   );
+}
+
+export function ThemeScenePreview({
+  theme,
+  appearanceMode,
+  scene,
+  targetId,
+  pluginId,
+  zoom = 1,
+  interactive = false,
+  onComponentSelect,
+}: {
+  theme: StudioTheme;
+  appearanceMode: AppearanceMode;
+  scene: ThemePreviewScene;
+  targetId?: string;
+  pluginId?: string;
+  zoom?: number;
+  interactive?: boolean;
+  onComponentSelect?: (componentId: string) => void;
+}) {
+  const workBuddy = pluginId === "dreamskin.workbuddy" || targetId?.toLowerCase() === "workbuddy" || scene.startsWith("wb-");
+  if (workBuddy) {
+    const workBuddyScene: WorkBuddyScene = scene.startsWith("wb-") ? scene as WorkBuddyScene : "wb-home";
+    return <WorkBuddyScenePreview theme={theme} appearanceMode={appearanceMode} scene={workBuddyScene} zoom={zoom} interactive={interactive} onComponentSelect={onComponentSelect} />;
+  }
+  return <TraeThemeScenePreview theme={theme} appearanceMode={appearanceMode} scene={scene as TraePreviewScene} zoom={zoom} interactive={interactive} onComponentSelect={onComponentSelect} />;
 }
 
 function PreviewSection({ title, meta, children }: { title: string; meta: string; children: React.ReactNode }) {

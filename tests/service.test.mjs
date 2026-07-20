@@ -61,6 +61,36 @@ test("preview restores the previous active theme after verification", async () =
   assert.equal(repositoryLocked, false);
 });
 
+test("preview repairs and restores the previous degraded theme", async () => {
+  const calls = [];
+  const runtime = {
+    descriptor: () => ({ platform: "test", supported: true }),
+    status: async () => ({
+      session: "degraded",
+      themeId: "previous",
+      themeRevision: PREVIOUS_REVISION,
+    }),
+    apply: async (id, options) => { calls.push(["apply", id, options]); },
+    verify: async () => ({ targets: [{ result: { pass: true } }] }),
+    restore: async () => { calls.push(["restore"]); },
+  };
+  const repository = {
+    read: async (id) => ({
+      id,
+      revision: id === "previous" ? PREVIOUS_REVISION : CANDIDATE_REVISION,
+    }),
+  };
+  const service = new TraeDreamSkinService({ repository, runtime });
+
+  const result = await service.preview("candidate", { screenshot: false });
+  assert.equal(result.restoration.mode, "theme");
+  assert.equal(result.restoration.themeId, "previous");
+  assert.deepEqual(calls, [
+    ["apply", "candidate", { revision: CANDIDATE_REVISION }],
+    ["apply", "previous", { revision: PREVIOUS_REVISION }],
+  ]);
+});
+
 test("preview restores native state when no skin was active", async () => {
   const calls = [];
   const runtime = {

@@ -14,6 +14,10 @@ const DEFAULT_CALL_TIMEOUT_MS = 5 * 60_000;
 const DEFAULT_STOP_TIMEOUT_MS = 15_000;
 const DEFAULT_KILL_TIMEOUT_MS = 5_000;
 const STUDIO_URL = "dreamskin://studio/";
+export const REQUIRED_PACKAGED_TARGETS = Object.freeze([
+  "dreamskin.trae",
+  "dreamskin.workbuddy",
+]);
 
 function parseArguments(argv) {
   const options = { appPath: DEFAULT_APP, agentId: "codex", runAgent: true, screenshotPath: null, keepData: false };
@@ -322,6 +326,60 @@ function appendDiagnostic(error, message) {
   error.message = `${error.message}\n${message}`;
 }
 
+export function assertPackagedProductBootstrap(base) {
+  assert.ok(base && typeof base === "object", "Packaged bootstrap result must be an object");
+  assert.ok(Array.isArray(base.targetPluginIds), "Packaged bootstrap must expose target plugin ids");
+  for (const pluginId of REQUIRED_PACKAGED_TARGETS) {
+    assert.ok(
+      base.targetPluginIds.includes(pluginId),
+      `Packaged bootstrap must include ${pluginId}`,
+    );
+    assert.equal(
+      base.info?.runtimeVersions?.[pluginId],
+      base.info?.appVersion,
+      `Packaged ${pluginId} runtime must match the app version`,
+    );
+  }
+}
+
+export async function runWorkBuddyScopedSmoke(client) {
+  const result = await client.evaluate(`(async () => {
+    const pluginId = "dreamskin.workbuddy";
+    const created = await window.dreamskin.studio.createTheme({ kind: "blank" }, pluginId);
+    const read = await window.dreamskin.studio.getTheme(created.localId, pluginId);
+    const deleted = await window.dreamskin.studio.deleteTheme(
+      read.localId,
+      { expectedRevision: read.revisionHash },
+      pluginId,
+    );
+    const remaining = await window.dreamskin.studio.listThemes(pluginId);
+    return {
+      pluginId,
+      created: {
+        localId: created.localId,
+        pluginId: created.pluginId,
+        revisionHash: created.revisionHash,
+      },
+      read: {
+        localId: read.localId,
+        pluginId: read.pluginId,
+        revisionHash: read.revisionHash,
+      },
+      deleted,
+      absentAfterDelete: !remaining.some((theme) => theme.localId === created.localId),
+    };
+  })()`);
+  assert.equal(result.pluginId, "dreamskin.workbuddy");
+  assert.equal(result.created?.pluginId, result.pluginId);
+  assert.equal(result.read?.pluginId, result.pluginId);
+  assert.equal(result.read?.localId, result.created?.localId);
+  assert.equal(result.read?.revisionHash, result.created?.revisionHash);
+  assert.equal(result.deleted?.deleted, true);
+  assert.equal(result.deleted?.themeId, result.created?.localId);
+  assert.equal(result.absentAfterDelete, true);
+  return result;
+}
+
 export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
   const runtime = { ...DEFAULT_RUNTIME, ...dependencies };
   const appPath = path.resolve(options.appPath || DEFAULT_APP);
@@ -359,6 +417,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
       return {
         info,
         templates: bootstrap.catalog.length,
+        targetPluginIds: (bootstrap.targets || []).map((entry) => entry.pluginId),
         agent: bootstrap.agents.find((entry) => entry.id === ${JSON.stringify(agentId)}) || null,
         title: document.title,
         readyState: document.readyState,
@@ -367,6 +426,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
     assert.equal(base.info.packaged, true);
     assert.equal(base.info.resourcesVerified, true);
     assert.equal(base.info.runtimeVersion, base.info.appVersion);
+    assertPackagedProductBootstrap(base);
     assert.equal(base.title, "DreamSkin Studio");
     assert.equal(base.readyState, "complete");
     assert.ok(base.templates > 0);
@@ -375,6 +435,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
     assert.ok(ui.cards > 0, "Studio must render theme cards");
     assert.equal(ui.horizontalOverflow, false, "Studio must not overflow the packaged viewport horizontally");
 
+    const workBuddySmoke = runAgent ? null : await runWorkBuddyScopedSmoke(client);
     let agentResult = null;
     if (runAgent) {
       assert.equal(base.agent?.state, "detected", `${agentId} must be installed and ACP-ready`);
@@ -416,6 +477,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
     verificationResult = {
       ...base,
       ui,
+      workBuddySmoke,
       agentResult,
       dataRoot: options.keepData ? dataRoot : undefined,
       screenshotPath: options.screenshotPath || undefined,

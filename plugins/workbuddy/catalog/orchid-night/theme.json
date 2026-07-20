@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "orchid-night",
+  "name": "Orchid Night",
+  "description": "深靛玻璃与兰花紫构成的夜间工作台，用克制的青色边光强调运行状态与焦点。",
+  "layout": "classic",
+  "brandSubtitle": "WORKBUDDY / ORCHID",
+  "tagline": "Deep focus after dark.",
+  "statusText": "NIGHT FLOW ACTIVE",
+  "quote": "QUIET SYSTEMS / BRIGHT IDEAS",
+  "image": "background.png",
+  "colors": {
+    "background": "#080B18",
+    "panel": "#111528",
+    "panelAlt": "#191B34",
+    "accent": "#9A6FF2",
+    "accentAlt": "#46C9DA",
+    "secondary": "#D35E91",
+    "highlight": "#D1A253",
+    "onAccent": "#FFFFFF",
+    "success": "#55C8A3",
+    "warning": "#D1A253",
+    "danger": "#E06B82",
+    "info": "#46C9DA",
+    "disabled": "#676B86",
+    "text": "#F3F1FC",
+    "muted": "#AAA6BF",
+    "line": "rgba(154, 111, 242, 0.27)",
+    "selection": "rgba(70, 201, 218, 0.24)",
+    "terminal": "#070A14"
+  },
+  "states": {
+    "surfaceHover": "rgba(70, 201, 218, 0.10)",
+    "surfaceActive": "rgba(154, 111, 242, 0.19)",
+    "focus": "#46C9DA",
+    "tooltipBackground": "#201B3B",
+    "tooltipText": "#F3F1FC"
+  },
+  "visual": {
+    "motif": "prism",
+    "iconTreatment": "medallion",
+    "surfaceTreatment": "glass",
+    "accentPlacement": "glow",
+    "cardTreatment": "badge",
+    "ornament": "facets"
+  },
+  "appearance": {
+    "treatment": "violet-rift",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(5, 8, 20, 0.22)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.96,
+    "surfaceOpacity": 0.78,
+    "sidebarOpacity": 0.90,
+    "blur": 18,
+    "saturation": 0.96,
+    "radius": 6,
+    "shadow": "deep",
+    "colorScheme": "dark"
+  }
+}

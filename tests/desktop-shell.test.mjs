@@ -227,6 +227,53 @@ test("desktop shell registers one secure window, protocol, IPC, and awaits backe
   assert.equal(electron.calls.filter((call) => call === "release-lock").length, 1);
 });
 
+test("desktop shell prepares isolated roots and backend configs for every configured target", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-desktop-multitarget-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const distRoot = path.join(root, "studio", "dist");
+  await fs.mkdir(distRoot, { recursive: true });
+  await fs.writeFile(path.join(distRoot, "index.html"), "studio");
+  const userDataPath = path.join(root, "user-data");
+  const electron = electronFixture({ appPath: root, userDataPath });
+  let backendConfig;
+  const controller = await startDesktopApplication({
+    electron,
+    createBackend: async (config) => {
+      backendConfig = config;
+      return { close: async () => {} };
+    },
+    developmentResourcesPath: root,
+    preloadPath: "/tmp/preload.mjs",
+    targetDefinitions: [
+      { pluginId: "dreamskin.trae", pluginResourceDirectory: "trae" },
+      { pluginId: "dreamskin.workbuddy", pluginResourceDirectory: "workbuddy" },
+    ],
+  });
+
+  assert.deepEqual(Object.keys(backendConfig.targets), ["dreamskin.trae", "dreamskin.workbuddy"]);
+  assert.equal(
+    backendConfig.targets["dreamskin.workbuddy"].paths.pluginRoot,
+    path.join(root, "plugins", "workbuddy"),
+  );
+  assert.equal(
+    backendConfig.targets["dreamskin.workbuddy"].paths.userThemesRoot,
+    path.join(userDataPath, "dreamskin", "themes", "dreamskin.workbuddy"),
+  );
+  assert.equal(
+    backendConfig.targets["dreamskin.workbuddy"].backendOptions.dataRoot,
+    path.join(userDataPath, "dreamskin", "state", "dreamskin.workbuddy"),
+  );
+  assert.equal(
+    backendConfig.targets["dreamskin.workbuddy"].paths.backupsRoot,
+    path.join(userDataPath, "dreamskin", "backups", "dreamskin.workbuddy"),
+  );
+  assert.equal(
+    (await fs.stat(path.join(userDataPath, "dreamskin", "runtime", "dreamskin.workbuddy"))).isDirectory(),
+    true,
+  );
+  await controller.shutdown();
+});
+
 test("final exit keeps the renderer alive until logical cleanup completes and terminates once", async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-final-exit-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
@@ -452,6 +499,84 @@ test("packaged desktop installs and selects the verified bundled runtime", async
     resourcesPath,
     preloadPath: "/tmp/preload.cjs",
   }), { code: "RUNTIME_VERSION_MISMATCH" });
+});
+
+test("packaged desktop installs every configured target runtime independently", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-packaged-multitarget-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const resourcesPath = path.join(root, "resources");
+  const resourceRoot = path.join(resourcesPath, "dreamskin");
+  const files = [["studio/dist/index.html", Buffer.from("studio")]];
+  for (const [namespace, scriptName] of [
+    ["dreamskin.trae", "status-trae-skin-macos.sh"],
+    ["dreamskin.workbuddy", "status-workbuddy-skin-macos.sh"],
+  ]) {
+    const script = Buffer.from("#!/bin/bash\nexit 0\n");
+    const manifest = Buffer.from(`${JSON.stringify({
+      schemaVersion: 1,
+      namespace,
+      version: "0.2.0",
+      files: [{
+        path: `scripts/${scriptName}`,
+        sha256: crypto.createHash("sha256").update(script).digest("hex"),
+        bytes: script.length,
+        mode: 0o755,
+      }],
+    }, null, 2)}\n`);
+    files.push([`runtime/${namespace}/scripts/${scriptName}`, script]);
+    files.push([`runtime/${namespace}/runtime-manifest.v1.json`, manifest]);
+  }
+  for (const [relative, buffer] of files) {
+    const target = path.join(resourceRoot, ...relative.split("/"));
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, buffer);
+  }
+  await fs.writeFile(path.join(resourceRoot, "resource-manifest.v1.json"), `${JSON.stringify({
+    schemaVersion: 1,
+    product: "dreamskin",
+    version: "0.2.0",
+    resources: files.map(([relative, buffer]) => ({
+      path: relative,
+      type: "file",
+      sha256: crypto.createHash("sha256").update(buffer).digest("hex"),
+      bytes: buffer.length,
+    })),
+  }, null, 2)}\n`);
+
+  const userDataPath = path.join(root, "user-data");
+  const electron = electronFixture({
+    packaged: true,
+    appPath: path.join(root, "app.asar"),
+    userDataPath,
+    version: "0.2.0",
+  });
+  let backendConfig;
+  const controller = await startDesktopApplication({
+    electron,
+    createBackend: async (config) => {
+      backendConfig = config;
+      return { close: async () => {} };
+    },
+    developmentResourcesPath: root,
+    resourcesPath,
+    preloadPath: "/tmp/preload.cjs",
+    targetDefinitions: [
+      { pluginId: "dreamskin.trae", pluginResourceDirectory: "trae" },
+      { pluginId: "dreamskin.workbuddy", pluginResourceDirectory: "workbuddy" },
+    ],
+  });
+
+  for (const pluginId of ["dreamskin.trae", "dreamskin.workbuddy"]) {
+    assert.equal(
+      backendConfig.targets[pluginId].paths.activeRuntimeRoot,
+      path.join(userDataPath, "dreamskin", "runtime", pluginId, "versions", "0.2.0"),
+    );
+    assert.equal(
+      (await fs.stat(path.join(backendConfig.targets[pluginId].paths.activeRuntimeRoot, "scripts"))).isDirectory(),
+      true,
+    );
+  }
+  await controller.shutdown();
 });
 
 test("quit and activate during backend startup cannot create or leak a running desktop", async (t) => {

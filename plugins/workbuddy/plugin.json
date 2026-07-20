@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "dreamskin.workbuddy",
+  "name": "WorkBuddy DreamSkin",
+  "version": "0.2.0",
+  "description": "First-party DreamSkin target plugin for WorkBuddy.",
+  "entry": "plugin.mjs",
+  "catalog": {
+    "root": "catalog"
+  },
+  "target": {
+    "id": "workbuddy",
+    "name": "WorkBuddy",
+    "platforms": ["darwin"]
+  },
+  "theme": {
+    "schemaPath": "resources/theme-v1.schema.json",
+    "registryPath": "resources/components.v1.json",
+    "runtimeMappingPath": "resources/theme-runtime.v1.json"
+  },
+  "themeTool": {
+    "name": "dreamskin_theme",
+    "actions": ["inspect", "list", "read", "create", "update", "validate"]
+  },
+  "capabilities": {
+    "preview": {
+      "supported": true,
+      "screenshot": true,
+      "restoresPreviousState": true
+    },
+    "runtime": {
+      "supported": true,
+      "actions": ["apply", "verify", "restore"]
+    }
+  }
+}

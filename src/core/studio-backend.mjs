@@ -18,7 +18,11 @@ import {
 import { StudioLibrary } from "./studio-library.mjs";
 
 function activeThemeId(status) {
-  return status?.session === "active" ? status.themeId : null;
+  return (status?.session === "active" || status?.session === "degraded")
+    && typeof status.themeId === "string"
+    && status.themeId
+    ? status.themeId
+    : null;
 }
 
 function changedAreas(before, after) {
@@ -52,6 +56,57 @@ function componentContext(component) {
   ].join("\n");
 }
 
+function withoutPluginId(input = {}) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  const { pluginId: _pluginId, ...rest } = input;
+  return rest;
+}
+
+function studioTargetEntries(targets) {
+  if (targets instanceof Map) return [...targets.values()];
+  if (Array.isArray(targets)) return targets;
+  if (targets && typeof targets === "object") return Object.values(targets);
+  return [];
+}
+
+function studioTargetMap(targets, defaults) {
+  const entries = studioTargetEntries(targets);
+  if (entries.length === 0) entries.push(defaults);
+  const result = new Map();
+  for (const target of entries) {
+    const pluginId = target.pluginId || target.plugin?.manifest?.id;
+    if (typeof pluginId !== "string" || !pluginId || !target.library) {
+      throw new ToolError(
+        "INVALID_STUDIO_DEPENDENCY",
+        "Every Studio target requires pluginId and library.",
+      );
+    }
+    if (result.has(pluginId)) {
+      throw new ToolError(
+        "INVALID_STUDIO_DEPENDENCY",
+        `Studio target '${pluginId}' is configured more than once.`,
+        { pluginId },
+      );
+    }
+    result.set(pluginId, Object.freeze({
+      ...target,
+      pluginId,
+      targetId: target.targetId || target.plugin?.manifest?.target?.id,
+      targetName: target.targetName || target.plugin?.manifest?.target?.name,
+      registryPath: target.registryPath || defaults.registryPath,
+      themesRoot: path.resolve(target.themesRoot || defaults.themesRoot),
+      dataRoot: path.resolve(target.dataRoot || defaults.dataRoot),
+      backupsRoot: path.resolve(
+        target.backupsRoot
+          || target.library.userRepository?.backupsRoot
+          || defaults.backupsRoot
+          || path.join(target.dataRoot || defaults.dataRoot, "backups"),
+      ),
+    }));
+  }
+  return result;
+}
+
 export class StudioBackend {
   constructor({
     tool,
@@ -63,18 +118,80 @@ export class StudioBackend {
     registryPath = REGISTRY_PATH,
     themesRoot = STUDIO_THEMES_ROOT,
     dataRoot = STUDIO_DATA_ROOT,
+    backupsRoot,
+    targets,
+    defaultPluginId = runtimeManager?.defaultPluginId || "dreamskin.trae",
   }) {
     this.tool = tool;
     this.runtimeManager = runtimeManager;
     this.pluginManager = pluginManager;
-    this.library = library;
+    this.defaultPluginId = defaultPluginId;
+    this.targets = studioTargetMap(targets, {
+      pluginId: defaultPluginId,
+      library,
+      registryPath,
+      themesRoot,
+      dataRoot,
+      backupsRoot: backupsRoot || library?.userRepository?.backupsRoot || path.join(dataRoot, "backups"),
+    });
+    if (!this.targets.has(defaultPluginId)) {
+      throw new ToolError(
+        "PLUGIN_NOT_FOUND",
+        `Default Studio plugin '${defaultPluginId}' is not configured.`,
+        { pluginId: defaultPluginId },
+      );
+    }
+    const defaultTarget = this.targets.get(defaultPluginId);
+    this.library = defaultTarget.library;
     this.agentRegistry = agentRegistry;
-    this.sessions = sessions || new AcpSessionManager({ agentRegistry, themesRoot });
-    this.registryPath = registryPath;
-    this.themesRoot = themesRoot;
+    this.sessions = sessions || new AcpSessionManager({
+      agentRegistry,
+      themesRoot: defaultTarget.themesRoot,
+      themeRoots: Object.fromEntries(
+        [...this.targets.values()].map((target) => [target.pluginId, target.themesRoot]),
+      ),
+      pluginRoots: Object.fromEntries(
+        [...this.targets.values()]
+          .filter((target) => target.pluginRoot || target.plugin?.rootPath)
+          .map((target) => [target.pluginId, target.pluginRoot || target.plugin.rootPath]),
+      ),
+      dataRoots: Object.fromEntries(
+        [...this.targets.values()].map((target) => [target.pluginId, target.dataRoot]),
+      ),
+      backupsRoot: defaultTarget.backupsRoot,
+      backupRoots: Object.fromEntries(
+        [...this.targets.values()].map((target) => [target.pluginId, target.backupsRoot]),
+      ),
+    });
+    this.registryPath = defaultTarget.registryPath;
+    this.themesRoot = defaultTarget.themesRoot;
     this.previewRoot = path.join(path.resolve(dataRoot), "previews");
-    this.registry = null;
+    this.registries = new Map();
     this.themeLifecycleQueue = Promise.resolve();
+  }
+
+  target(pluginId = this.defaultPluginId) {
+    const target = this.targets.get(pluginId);
+    if (!target) {
+      throw new ToolError("PLUGIN_NOT_FOUND", `Plugin '${pluginId}' is not configured in Studio.`, { pluginId });
+    }
+    return target;
+  }
+
+  scopedInput(input = {}, pluginId) {
+    if (
+      pluginId
+      && input?.pluginId !== undefined
+      && input.pluginId !== pluginId
+    ) {
+      throw new ToolError(
+        "INVALID_ARGUMENT",
+        "Body pluginId must match the target selected by the route.",
+        { routePluginId: pluginId, bodyPluginId: input.pluginId },
+      );
+    }
+    const selectedPluginId = pluginId || input?.pluginId || this.defaultPluginId;
+    return { pluginId: selectedPluginId, input: withoutPluginId(input) };
   }
 
   screenshotOptions(input, { defaultScreenshot, prefix }) {
@@ -92,9 +209,10 @@ export class StudioBackend {
     return operation;
   }
 
-  async runtimeStatus({ failClosed = false } = {}) {
+  async runtimeStatus({ failClosed = false, pluginId = this.defaultPluginId } = {}) {
     try {
-      const status = await this.runtimeManager.status();
+      this.target(pluginId);
+      const status = await this.runtimeManager.status(pluginId);
       if (failClosed && (
         !status
         || typeof status !== "object"
@@ -104,7 +222,7 @@ export class StudioBackend {
         throw new ToolError(
           status?.error?.code || "RUNTIME_UNAVAILABLE",
           status?.error?.message || "Runtime status is unavailable.",
-          { runtimeError: status?.error || null },
+          { pluginId, runtimeError: status?.error || null },
         );
       }
       return status;
@@ -117,113 +235,164 @@ export class StudioBackend {
     }
   }
 
-  async components() {
-    if (!this.registry) this.registry = JSON.parse(await fs.readFile(this.registryPath, "utf8"));
-    return this.registry.components || [];
+  async components(pluginId = this.defaultPluginId) {
+    const target = this.target(pluginId);
+    if (!this.registries.has(pluginId)) {
+      this.registries.set(pluginId, JSON.parse(await fs.readFile(target.registryPath, "utf8")));
+    }
+    return this.registries.get(pluginId).components || [];
   }
 
   async bootstrap() {
-    const [inspect, runtime, catalog, agents, settings] = await Promise.all([
-      this.tool.inspect(),
-      this.runtimeStatus(),
-      this.library.catalog(),
+    const [targetResults, agents, settings] = await Promise.all([
+      Promise.all([...this.targets.values()].map(async (target) => {
+        const [inspect, runtime, catalog, components] = await Promise.all([
+          this.tool.inspect(target.pluginId),
+          this.runtimeStatus({ pluginId: target.pluginId }),
+          target.library.catalog(),
+          this.components(target.pluginId),
+        ]);
+        const plugin = typeof this.pluginManager.get === "function"
+          ? this.pluginManager.get(target.pluginId)
+          : null;
+        return {
+          pluginId: target.pluginId,
+          targetId: target.targetId || plugin?.manifest?.target?.id,
+          targetName: target.targetName || plugin?.manifest?.target?.name,
+          plugin,
+          catalog,
+          themes: await target.library.list({ activeThemeId: activeThemeId(runtime) }),
+          inspect,
+          runtime,
+          components,
+          themesRoot: target.themesRoot,
+        };
+      })),
       this.sessions.agents(),
       this.library.settings(),
     ]);
-    const activeId = activeThemeId(runtime);
+    const defaultTarget = targetResults.find((target) => target.pluginId === this.defaultPluginId);
     return {
-      catalog,
-      themes: await this.library.list({ activeThemeId: activeId }),
+      // Legacy fields continue to describe the default target.
+      catalog: defaultTarget.catalog,
+      themes: defaultTarget.themes,
       agents,
       connection: this.sessions.connectionState(),
       plugins: this.pluginManager.list(),
-      activePluginId: this.runtimeManager.defaultPluginId,
+      activePluginId: this.defaultPluginId,
+      targets: targetResults,
       settings: {
         ...settings,
         themesRoot: this.themesRoot,
+        themeRoots: Object.fromEntries(targetResults.map((target) => [target.pluginId, target.themesRoot])),
       },
-      inspect,
-      runtime,
+      inspect: defaultTarget.inspect,
+      runtime: defaultTarget.runtime,
     };
   }
 
-  async themes() {
-    const status = await this.runtimeStatus();
-    return this.library.list({ activeThemeId: activeThemeId(status) });
+  async themes(pluginId = this.defaultPluginId) {
+    const target = this.target(pluginId);
+    const status = await this.runtimeStatus({ pluginId });
+    return target.library.list({ activeThemeId: activeThemeId(status) });
   }
 
-  async theme(id) {
-    const status = await this.runtimeStatus();
-    return this.library.read(id, { activeThemeId: activeThemeId(status) });
+  async theme(id, pluginId = this.defaultPluginId) {
+    const target = this.target(pluginId);
+    const status = await this.runtimeStatus({ pluginId });
+    return target.library.read(id, { activeThemeId: activeThemeId(status) });
   }
 
-  async createTheme(input = {}) {
-    const status = await this.runtimeStatus();
+  async createTheme(rawInput = {}, explicitPluginId) {
+    const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
+    const target = this.target(pluginId);
+    const status = await this.runtimeStatus({ pluginId });
     const options = { activeThemeId: activeThemeId(status) };
-    if (input.kind === "template") return this.library.addTemplate(input.sourceId, options);
-    if (input.kind === "blank") return this.library.createBlank(options);
+    if (input.kind === "template") return target.library.addTemplate(input.sourceId, options);
+    if (input.kind === "blank") return target.library.createBlank(options);
     throw new ToolError("INVALID_ARGUMENT", "kind must be 'template' or 'blank'.");
   }
 
-  async duplicateTheme(id) {
-    const status = await this.runtimeStatus();
-    return this.library.duplicate(id, { activeThemeId: activeThemeId(status) });
+  async duplicateTheme(id, pluginId = this.defaultPluginId) {
+    const target = this.target(pluginId);
+    const status = await this.runtimeStatus({ pluginId });
+    return target.library.duplicate(id, { activeThemeId: activeThemeId(status) });
   }
 
-  async deleteTheme(id, input = {}) {
+  async deleteTheme(id, rawInput = {}, explicitPluginId) {
+    const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
+    const target = this.target(pluginId);
     if (typeof input.expectedRevision !== "string" || !input.expectedRevision) {
       throw new ToolError("INVALID_ARGUMENT", "expectedRevision is required when deleting a theme.");
     }
     return this.themeLifecycleOperation(async () => {
-      const status = await this.runtimeStatus({ failClosed: true });
-      if (activeThemeId(status) === id) {
+      const status = await this.runtimeStatus({ failClosed: true, pluginId });
+      const appliedThemeId = activeThemeId(status);
+      const ambiguousOwnedSession = status.session === "orphaned"
+        || status.session === "orphaned-unverified"
+        || ((status.session === "active" || status.session === "degraded") && !appliedThemeId);
+      if (ambiguousOwnedSession) {
+        throw new ToolError(
+          "THEME_ACTIVE",
+          "Restore the runtime before deleting themes while its active theme identity is unavailable.",
+          { pluginId, themeId: null, runtimeSession: status.session },
+        );
+      }
+      if (appliedThemeId === id) {
         throw new ToolError("THEME_ACTIVE", "Restore or apply another theme before deleting the active theme.", {
+          pluginId,
           themeId: id,
         });
       }
-      return this.library.delete(id, { expectedRevision: input.expectedRevision });
+      return target.library.delete(id, { expectedRevision: input.expectedRevision });
     });
   }
 
-  async updateTheme(id, input = {}) {
+  async updateTheme(id, rawInput = {}, explicitPluginId) {
+    const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
+    const target = this.target(pluginId);
     if (typeof input.expectedRevision !== "string" || !input.expectedRevision) {
       throw new ToolError("INVALID_ARGUMENT", "expectedRevision is required when updating an existing theme.");
     }
     return this.themeLifecycleOperation(async () => {
-      const status = await this.runtimeStatus();
-      return this.library.update(id, input, { activeThemeId: activeThemeId(status) });
+      const status = await this.runtimeStatus({ pluginId });
+      return target.library.update(id, input, { activeThemeId: activeThemeId(status) });
     });
   }
 
-  async applyTheme(id) {
+  async applyTheme(id, pluginId = this.defaultPluginId) {
+    const target = this.target(pluginId);
     return this.themeLifecycleOperation(async () => {
-      const before = await this.library.read(id);
-      await this.tool.validateTheme({ themeId: id });
-      const runtime = await this.runtimeManager.apply(id);
+      const before = await target.library.read(id);
+      await this.tool.validateTheme({ themeId: id }, pluginId);
+      const runtime = await this.runtimeManager.apply(id, pluginId);
       try {
         return {
-          theme: await this.library.markApplied(id, before.revisionHash),
+          theme: await target.library.markApplied(id, before.revisionHash),
           runtime,
         };
       } catch (error) {
-        await this.runtimeManager.restore().catch(() => {});
+        await this.runtimeManager.restore(pluginId).catch(() => {});
         throw error;
       }
     });
   }
 
-  async validateTheme(id) {
-    await this.library.read(id);
-    return this.tool.validateTheme({ themeId: id });
+  async validateTheme(id, pluginId = this.defaultPluginId) {
+    const target = this.target(pluginId);
+    await target.library.read(id);
+    return this.tool.validateTheme({ themeId: id }, pluginId);
   }
 
-  async previewTheme(id, input = {}) {
+  async previewTheme(id, rawInput = {}, explicitPluginId) {
+    const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
+    const target = this.target(pluginId);
     return this.themeLifecycleOperation(async () => {
-      await this.library.read(id);
+      await target.library.read(id);
       return this.runtimeManager.preview({ id, ...this.screenshotOptions(input, {
         defaultScreenshot: true,
         prefix: "preview",
-      }) });
+      }) }, pluginId);
     });
   }
 
@@ -240,14 +409,16 @@ export class StudioBackend {
     };
   }
 
-  message(id, input = {}) {
-    return this.themeLifecycleOperation(() => this.messageUnlocked(id, input));
+  message(id, input = {}, pluginId) {
+    return this.themeLifecycleOperation(() => this.messageUnlocked(id, input, pluginId));
   }
 
-  async messageUnlocked(id, input = {}) {
+  async messageUnlocked(id, rawInput = {}, explicitPluginId) {
+    const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
+    const target = this.target(pluginId);
     const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";
     if (!prompt) throw new ToolError("INVALID_ARGUMENT", "prompt is required.");
-    const before = await this.library.read(id);
+    const before = await target.library.read(id);
     if (typeof input.expectedRevision !== "string" || !input.expectedRevision) {
       throw new ToolError("INVALID_ARGUMENT", "expectedRevision is required when editing a theme by chat.");
     }
@@ -260,7 +431,7 @@ export class StudioBackend {
     const agentId = input.agentId || this.sessions.selectedAgentId || (await this.library.settings()).selectedAgentId;
     if (!agentId) throw new ToolError("AGENT_NOT_CONNECTED", "Connect a local ACP agent before editing by chat.");
     const component = input.componentId
-      ? (await this.components()).find((candidate) => candidate.id === input.componentId)
+      ? (await this.components(pluginId)).find((candidate) => candidate.id === input.componentId)
       : null;
     if (input.componentId && !component) {
       throw new ToolError("COMPONENT_NOT_FOUND", `Component '${input.componentId}' is not registered.`);
@@ -268,17 +439,17 @@ export class StudioBackend {
     const settings = await this.library.settings();
     const context = [
       "You are editing one structured theme through the DreamSkin Tool provided by Studio.",
-      `Target plugin id: ${this.runtimeManager.defaultPluginId}`,
+      `Target plugin id: ${pluginId}`,
       `Target theme id: ${id}`,
       `Current revision: ${before.revisionHash}`,
       `Exact read arguments: ${JSON.stringify({
         action: "read",
-        pluginId: this.runtimeManager.defaultPluginId,
+        pluginId,
         themeId: id,
       })}`,
       `Exact update argument keys: ${JSON.stringify({
         action: "update",
-        pluginId: this.runtimeManager.defaultPluginId,
+        pluginId,
         themeId: id,
         expectedRevision: before.revisionHash,
         themePatch: { colors: { accent: "#RRGGBB" } },
@@ -294,20 +465,20 @@ export class StudioBackend {
     const run = await this.sessions.prompt({
       agentId,
       themeId: id,
-      pluginId: this.runtimeManager.defaultPluginId,
+      pluginId,
       prompt,
       context,
       expectedRevision: before.revisionHash,
     });
-    const after = await this.library.reconcile(id);
+    const after = await target.library.reconcile(id);
     this.sessions.acceptRevision?.({
       agentId,
       themeId: id,
-      pluginId: this.runtimeManager.defaultPluginId,
+      pluginId,
       sessionId: run.sessionId,
       revision: after.revisionHash,
     });
-    if (settings.autoVerify) await this.tool.validateTheme({ themeId: id });
+    if (settings.autoVerify) await this.tool.validateTheme({ themeId: id }, pluginId);
     const changes = changedAreas(before.theme, after.theme);
     return {
       theme: after,
@@ -318,18 +489,21 @@ export class StudioBackend {
     };
   }
 
-  catalog() {
-    return this.library.catalog();
+  catalog(pluginId = this.defaultPluginId) {
+    return this.target(pluginId).library.catalog();
   }
 
-  asset(kind, id) {
-    return this.library.asset(kind, id);
+  asset(kind, id, pluginId = this.defaultPluginId) {
+    return this.target(pluginId).library.asset(kind, id);
   }
 
   async settings() {
     return {
       ...await this.library.settings(),
       themesRoot: this.themesRoot,
+      themeRoots: Object.fromEntries(
+        [...this.targets.values()].map((target) => [target.pluginId, target.themesRoot]),
+      ),
     };
   }
 
@@ -337,18 +511,24 @@ export class StudioBackend {
     return {
       ...await this.library.updateSettings(input),
       themesRoot: this.themesRoot,
+      themeRoots: Object.fromEntries(
+        [...this.targets.values()].map((target) => [target.pluginId, target.themesRoot]),
+      ),
     };
   }
 
-  verify(input = {}) {
+  verify(rawInput = {}, explicitPluginId) {
+    const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
+    this.target(pluginId);
     return this.runtimeManager.verify(this.screenshotOptions(input, {
       defaultScreenshot: false,
       prefix: "verify",
-    }));
+    }), pluginId);
   }
 
-  restore() {
-    return this.themeLifecycleOperation(() => this.runtimeManager.restore());
+  restore(pluginId = this.defaultPluginId) {
+    this.target(pluginId);
+    return this.themeLifecycleOperation(() => this.runtimeManager.restore(pluginId));
   }
 
   async close() {
@@ -372,8 +552,11 @@ export async function createStudioBackend({
   agentRegistryOptions = {},
   sessions,
   sessionOptions = {},
+  applicationContext,
+  defaultPluginId,
+  targetOptions = {},
 } = {}) {
-  const context = await createTraeApplicationContext({
+  const context = applicationContext || await createTraeApplicationContext({
     themesRoot: userThemesRoot,
     dataRoot,
     backupsRoot: path.join(dataRoot, "backups"),
@@ -384,16 +567,83 @@ export async function createStudioBackend({
     registryPath,
     scriptsRoot,
   });
-  const catalogRepository = context.catalogRepository;
-  const library = new StudioLibrary({
-    catalogRepository,
-    userRepository: context.repository,
-    tool: context.tool,
-    pluginId: context.plugin.manifest.id,
-    catalog: context.plugin.catalog,
-    manifestPath,
+  const resolvedDefaultPluginId = defaultPluginId
+    || context.defaultPluginId
+    || context.runtime.defaultPluginId
+    || context.plugin.manifest.id;
+  const applicationTargets = context.targets instanceof Map
+    ? [...context.targets.values()]
+    : [{
+        plugin: context.plugin,
+        pluginId: context.plugin.manifest.id,
+        repository: context.repository,
+        catalogRepository: context.catalogRepository,
+        resources: context.pluginManager.resources(context.plugin.manifest.id),
+        themesRoot: userThemesRoot,
+      }];
+  const studioTargets = applicationTargets.map((target) => {
+    const pluginId = target.pluginId || target.plugin.manifest.id;
+    const options = targetOptions instanceof Map
+      ? targetOptions.get(pluginId) || {}
+      : targetOptions[pluginId] || {};
+    const isDefault = pluginId === resolvedDefaultPluginId;
+    const targetManifestPath = options.manifestPath
+      || target.manifestPath
+      || (isDefault
+        ? manifestPath
+        : path.join(path.dirname(manifestPath), "libraries", `${pluginId}.json`));
+    const targetThemesRoot = options.themesRoot || target.themesRoot;
+    const targetPlugin = target.plugin;
+    if (!targetThemesRoot || (!options.library && (
+      !target.repository
+      || !target.catalogRepository
+      || !targetPlugin?.catalog
+    ))) {
+      throw new ToolError(
+        "INVALID_STUDIO_DEPENDENCY",
+        `Studio target '${pluginId}' requires repositories, catalog, and themesRoot.`,
+        { pluginId },
+      );
+    }
+    const library = options.library || new StudioLibrary({
+      catalogRepository: target.catalogRepository,
+      userRepository: target.repository,
+      tool: context.tool,
+      pluginId,
+      catalog: targetPlugin.catalog,
+      manifestPath: targetManifestPath,
+      apiPrefix: options.apiPrefix || (isDefault
+        ? "/api/v1"
+        : `/api/v1/plugins/${encodeURIComponent(pluginId)}`),
+    });
+    const targetDataRoot = options.dataRoot || target.dataRoot || (isDefault
+      ? dataRoot
+      : path.join(dataRoot, "targets", pluginId));
+    return {
+      pluginId,
+      targetId: target.targetId || targetPlugin?.manifest?.target?.id,
+      targetName: target.targetName || targetPlugin?.manifest?.target?.name,
+      plugin: targetPlugin,
+      pluginRoot: options.pluginRoot || target.rootPath || targetPlugin?.rootPath,
+      library,
+      registryPath: options.registryPath
+        || target.registryPath
+        || target.resources?.registryPath
+        || context.pluginManager.resources(pluginId).registryPath,
+      themesRoot: targetThemesRoot,
+      dataRoot: targetDataRoot,
+      backupsRoot: options.backupsRoot
+        || target.repository?.backupsRoot
+        || library.userRepository?.backupsRoot
+        || path.join(targetDataRoot, "backups"),
+    };
   });
-  const pluginResources = context.pluginManager.resources(context.plugin.manifest.id);
+  const defaultTarget = studioTargets.find((target) => target.pluginId === resolvedDefaultPluginId);
+  if (!defaultTarget) {
+    throw new ToolError("PLUGIN_NOT_FOUND", `Default Studio plugin '${resolvedDefaultPluginId}' is not configured.`, {
+      pluginId: resolvedDefaultPluginId,
+    });
+  }
   const targetAgentRegistry = agentRegistry || new AgentRegistry({
     projectRoot,
     ...agentRegistryOptions,
@@ -401,7 +651,20 @@ export async function createStudioBackend({
   const targetSessions = sessions || new AcpSessionManager({
     agentRegistry: targetAgentRegistry,
     projectRoot,
-    themesRoot: userThemesRoot,
+    themesRoot: defaultTarget.themesRoot,
+    themeRoots: Object.fromEntries(studioTargets.map((target) => [target.pluginId, target.themesRoot])),
+    pluginRoots: Object.fromEntries(
+      studioTargets
+        .filter((target) => target.pluginRoot)
+        .map((target) => [target.pluginId, target.pluginRoot]),
+    ),
+    dataRoots: Object.fromEntries(
+      studioTargets.map((target) => [target.pluginId, target.dataRoot]),
+    ),
+    backupsRoot: defaultTarget.backupsRoot,
+    backupRoots: Object.fromEntries(
+      studioTargets.map((target) => [target.pluginId, target.backupsRoot]),
+    ),
     dataRoot,
     ...sessionOptions,
   });
@@ -409,11 +672,13 @@ export async function createStudioBackend({
     tool: context.tool,
     runtimeManager: context.runtime,
     pluginManager: context.pluginManager,
-    library,
+    library: defaultTarget.library,
     agentRegistry: targetAgentRegistry,
     sessions: targetSessions,
-    registryPath: registryPath || pluginResources.registryPath,
-    themesRoot: userThemesRoot,
+    registryPath: defaultTarget.registryPath,
+    themesRoot: defaultTarget.themesRoot,
+    targets: studioTargets,
+    defaultPluginId: resolvedDefaultPluginId,
     dataRoot,
   });
 }

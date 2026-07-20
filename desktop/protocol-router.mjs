@@ -24,6 +24,7 @@ const MIME_TYPES = new Map([
   [".woff", "font/woff"],
   [".woff2", "font/woff2"],
 ]);
+const PLUGIN_ID_PATTERN = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/;
 
 const CSP = [
   "default-src 'self'",
@@ -56,7 +57,13 @@ function responseHeaders(extra = {}) {
 function statusFor(error) {
   const code = error?.code;
   if (code === "STUDIO_NOT_BUILT") return 503;
-  if (code === "NOT_FOUND" || code === "THEME_NOT_FOUND" || code === "TEMPLATE_NOT_FOUND" || code === "COMPONENT_NOT_FOUND") return 404;
+  if (
+    code === "NOT_FOUND"
+    || code === "THEME_NOT_FOUND"
+    || code === "TEMPLATE_NOT_FOUND"
+    || code === "COMPONENT_NOT_FOUND"
+    || code === "PLUGIN_NOT_FOUND"
+  ) return 404;
   if (code === "METHOD_NOT_ALLOWED") return 405;
   if (code === "INVALID_CONTENT_TYPE") return 415;
   if (code === "REVISION_CONFLICT" || code === "THEME_ACTIVE") return 409;
@@ -130,59 +137,115 @@ async function optionalJson(request) {
   return hasBody(request) ? readJson(request) : {};
 }
 
+function studioApiScope(pathname) {
+  const prefix = "/api/v1/plugins/";
+  if (!pathname.startsWith(prefix)) return { pathname, pluginId: undefined };
+  const remainder = pathname.slice(prefix.length);
+  const separator = remainder.indexOf("/");
+  const pluginId = separator === -1 ? remainder : remainder.slice(0, separator);
+  if (!PLUGIN_ID_PATTERN.test(pluginId) || pluginId.length > 128) {
+    throw new ToolError("INVALID_ARGUMENT", "Studio pluginId is invalid.");
+  }
+  return {
+    pluginId,
+    pathname: `/api/v1${separator === -1 ? "" : remainder.slice(separator)}`,
+  };
+}
+
+function routeScopedInput(input, pluginId) {
+  if (!pluginId) return input;
+  if (input.pluginId !== undefined && input.pluginId !== pluginId) {
+    throw new ToolError("INVALID_ARGUMENT", "Body pluginId must match the target selected by the route.", {
+      routePluginId: pluginId,
+      bodyPluginId: input.pluginId,
+    });
+  }
+  const { pluginId: _pluginId, ...body } = input;
+  return { ...body, pluginId };
+}
+
+function routeScopedBody(input, pluginId) {
+  const scoped = routeScopedInput(input, pluginId);
+  if (!pluginId) return scoped;
+  const { pluginId: _pluginId, ...body } = scoped;
+  return body;
+}
+
 async function apiRoute(request, url, router) {
-  const pathname = url.pathname;
+  const scope = studioApiScope(url.pathname);
+  const pathname = scope.pathname;
+  const { pluginId } = scope;
   const method = request.method.toUpperCase();
   if (!["GET", "HEAD"].includes(method)) assertMutationRequest(request);
 
-  if (pathname === "/api/v1/bootstrap" && method === "GET") return success(await router.invoke("bootstrap"));
-  if (pathname === "/api/v1/catalog" && method === "GET") return success(await router.invoke("catalog.list"));
-  if (pathname === "/api/v1/themes" && method === "GET") return success(await router.invoke("themes.list"));
-  if (pathname === "/api/v1/themes" && method === "POST") return success(await router.invoke("themes.create", await readJson(request)), 201);
-  if (pathname === "/api/v1/agents" && method === "GET") return success(await router.invoke("agents.list"));
-  if (pathname === "/api/v1/settings" && method === "GET") return success(await router.invoke("settings.read"));
-  if (pathname === "/api/v1/settings" && method === "PATCH") return success(await router.invoke("settings.update", await readJson(request)));
-  if (pathname === "/api/v1/runtime/verify" && method === "POST") return success(await router.invoke("runtime.verify", await optionalJson(request)));
-  if (pathname === "/api/v1/runtime/restore" && method === "POST") return success(await router.invoke("runtime.restore"));
+  if (!pluginId && pathname === "/api/v1/bootstrap" && method === "GET") return success(await router.invoke("bootstrap"));
+  if (pathname === "/api/v1/catalog" && method === "GET") return success(await router.invoke("catalog.list", { pluginId }));
+  if (pathname === "/api/v1/themes" && method === "GET") return success(await router.invoke("themes.list", { pluginId }));
+  if (pathname === "/api/v1/themes" && method === "POST") {
+    return success(await router.invoke(
+      "themes.create",
+      routeScopedInput(await readJson(request), pluginId),
+    ), 201);
+  }
+  if (!pluginId && pathname === "/api/v1/agents" && method === "GET") return success(await router.invoke("agents.list"));
+  if (!pluginId && pathname === "/api/v1/settings" && method === "GET") return success(await router.invoke("settings.read"));
+  if (!pluginId && pathname === "/api/v1/settings" && method === "PATCH") return success(await router.invoke("settings.update", await readJson(request)));
+  if (pathname === "/api/v1/runtime/verify" && method === "POST") {
+    return success(await router.invoke(
+      "runtime.verify",
+      routeScopedInput(await optionalJson(request), pluginId),
+    ));
+  }
+  if (pathname === "/api/v1/runtime/restore" && method === "POST") {
+    return success(await router.invoke("runtime.restore", { pluginId }));
+  }
 
   let match = pathname.match(/^\/api\/v1\/catalog\/([a-z0-9][a-z0-9_-]{0,63})\/asset$/);
   if (match && (method === "GET" || method === "HEAD")) {
     const revision = requestedAssetRevision(url);
-    return assetResponse(await router.asset("catalog", match[1]), method, revision);
+    return assetResponse(await router.asset("catalog", match[1], pluginId), method, revision);
   }
 
   match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/asset$/);
   if (match && (method === "GET" || method === "HEAD")) {
     const revision = requestedAssetRevision(url);
-    return assetResponse(await router.asset("theme", match[1]), method, revision);
+    return assetResponse(await router.asset("theme", match[1], pluginId), method, revision);
   }
 
   match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})$/);
-  if (match && method === "GET") return success(await router.invoke("themes.read", { themeId: match[1] }));
+  if (match && method === "GET") return success(await router.invoke("themes.read", { themeId: match[1], pluginId }));
   if (match && method === "PATCH") {
-    return success(await router.invoke("themes.update", { themeId: match[1], input: await readJson(request) }));
+    return success(await router.invoke("themes.update", {
+      themeId: match[1],
+      input: routeScopedBody(await readJson(request), pluginId),
+      pluginId,
+    }));
   }
   if (match && method === "DELETE") {
-    return success(await router.invoke("themes.delete", { themeId: match[1], input: await readJson(request) }));
+    return success(await router.invoke("themes.delete", {
+      themeId: match[1],
+      input: routeScopedBody(await readJson(request), pluginId),
+      pluginId,
+    }));
   }
 
   match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/duplicate$/);
   if (match && method === "POST") {
-    return success(await router.invoke("themes.duplicate", { themeId: match[1] }), 201);
+    return success(await router.invoke("themes.duplicate", { themeId: match[1], pluginId }), 201);
   }
 
   match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/(apply|validate|preview|messages)$/);
   if (match && method === "POST") {
     const [, themeId, action] = match;
-    if (action === "apply") return success(await router.invoke("themes.apply", { themeId }));
-    if (action === "validate") return success(await router.invoke("themes.validate", { themeId }));
-    const input = await readJson(request);
+    if (action === "apply") return success(await router.invoke("themes.apply", { themeId, pluginId }));
+    if (action === "validate") return success(await router.invoke("themes.validate", { themeId, pluginId }));
+    const input = routeScopedBody(await readJson(request), pluginId);
     const operation = action === "preview" ? "themes.preview" : "themes.message";
-    return success(await router.invoke(operation, { themeId, input }));
+    return success(await router.invoke(operation, { themeId, input, pluginId }));
   }
 
   match = pathname.match(/^\/api\/v1\/agents\/([a-z0-9_-]+)\/connect$/);
-  if (match && method === "POST") return success(await router.invoke("agents.connect", { agentId: match[1] }));
+  if (!pluginId && match && method === "POST") return success(await router.invoke("agents.connect", { agentId: match[1] }));
 
   throw new ToolError("NOT_FOUND", "Desktop API route not found.");
 }

@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
+import vm from "node:vm";
 
 import {
   DevToolsClient,
+  REQUIRED_PACKAGED_TARGETS,
+  assertPackagedProductBootstrap,
+  runWorkBuddyScopedSmoke,
   stopChild,
   verifyPackagedDesktop,
   waitForStudioContext,
@@ -56,6 +60,85 @@ function fakeChild() {
   child.kill = () => true;
   return child;
 }
+
+test("packaged verifier requires both product targets and their matching runtimes", () => {
+  const base = {
+    info: {
+      appVersion: "0.2.0",
+      runtimeVersions: {
+        "dreamskin.trae": "0.2.0",
+        "dreamskin.workbuddy": "0.2.0",
+      },
+    },
+    targetPluginIds: [...REQUIRED_PACKAGED_TARGETS],
+  };
+  assert.doesNotThrow(() => assertPackagedProductBootstrap(base));
+
+  assert.throws(
+    () => assertPackagedProductBootstrap({
+      ...base,
+      targetPluginIds: ["dreamskin.trae"],
+    }),
+    /must include dreamskin\.workbuddy/,
+  );
+  assert.throws(
+    () => assertPackagedProductBootstrap({
+      ...base,
+      info: {
+        ...base.info,
+        runtimeVersions: {
+          ...base.info.runtimeVersions,
+          "dreamskin.workbuddy": null,
+        },
+      },
+    }),
+    /dreamskin\.workbuddy runtime must match the app version/,
+  );
+});
+
+test("skip-agent smoke creates, reads, and deletes a blank WorkBuddy theme without applying it", async () => {
+  const calls = [];
+  let theme = null;
+  const studio = {
+    createTheme: async (input, pluginId) => {
+      calls.push(["create", input, pluginId]);
+      theme = {
+        localId: "blank-workbuddy-fixture",
+        pluginId,
+        revisionHash: "revision-one",
+      };
+      return theme;
+    },
+    getTheme: async (themeId, pluginId) => {
+      calls.push(["read", themeId, pluginId]);
+      return { ...theme };
+    },
+    deleteTheme: async (themeId, input, pluginId) => {
+      calls.push(["delete", themeId, input, pluginId]);
+      theme = null;
+      return { deleted: true, themeId };
+    },
+    listThemes: async (pluginId) => {
+      calls.push(["list", pluginId]);
+      return theme ? [theme] : [];
+    },
+    applyTheme: async () => assert.fail("packaged CRUD smoke must not apply a theme"),
+  };
+  const client = {
+    evaluate: (expression) => vm.runInNewContext(expression, {
+      window: { dreamskin: { studio } },
+    }),
+  };
+
+  const result = await runWorkBuddyScopedSmoke(client);
+  assert.equal(result.absentAfterDelete, true);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    ["create", { kind: "blank" }, "dreamskin.workbuddy"],
+    ["read", "blank-workbuddy-fixture", "dreamskin.workbuddy"],
+    ["delete", "blank-workbuddy-fixture", { expectedRevision: "revision-one" }, "dreamskin.workbuddy"],
+    ["list", "dreamskin.workbuddy"],
+  ]);
+});
 
 test("packaged verifier always stops the app and removes temp data after renderer discovery fails", async () => {
   const child = fakeChild();

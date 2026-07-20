@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "paper-garden",
+  "name": "Paper Garden",
+  "description": "由压花植物、纤维纸与墨蓝线条组成的明亮纸艺工作台，适合长时间阅读和整理资料。",
+  "layout": "classic",
+  "brandSubtitle": "WORKBUDDY / PAPER GARDEN",
+  "tagline": "Grow a thoughtful workspace.",
+  "statusText": "READY TO CULTIVATE",
+  "quote": "COLLECT / CONNECT / CREATE",
+  "image": "background.png",
+  "colors": {
+    "background": "#F2F4F0",
+    "panel": "#FEFEFB",
+    "panelAlt": "#E8EEEA",
+    "accent": "#467668",
+    "accentAlt": "#C87979",
+    "secondary": "#294D6A",
+    "highlight": "#B98225",
+    "onAccent": "#FFFFFF",
+    "success": "#467668",
+    "warning": "#B98225",
+    "danger": "#B9535D",
+    "info": "#477B9C",
+    "disabled": "#9AA5A0",
+    "text": "#203137",
+    "muted": "#62736F",
+    "line": "rgba(41, 77, 106, 0.18)",
+    "selection": "rgba(70, 118, 104, 0.18)",
+    "terminal": "#1D2D33"
+  },
+  "states": {
+    "surfaceHover": "rgba(70, 118, 104, 0.10)",
+    "surfaceActive": "rgba(200, 121, 121, 0.15)",
+    "focus": "#467668",
+    "tooltipBackground": "#29423E",
+    "tooltipText": "#FEFEFB"
+  },
+  "visual": {
+    "motif": "collage",
+    "iconTreatment": "stamp",
+    "surfaceTreatment": "paper",
+    "accentPlacement": "corner",
+    "cardTreatment": "poster",
+    "ornament": "tape"
+  },
+  "appearance": {
+    "treatment": "paper-wash",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(242, 244, 240, 0.06)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.94,
+    "surfaceOpacity": 0.88,
+    "sidebarOpacity": 0.94,
+    "blur": 12,
+    "saturation": 0.86,
+    "radius": 5,
+    "shadow": "soft",
+    "colorScheme": "light"
+  }
+}

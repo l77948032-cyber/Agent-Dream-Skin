@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createTraeApplicationContext } from "../src/core/application-context.mjs";
+import {
+  createApplicationContext,
+  createTraeApplicationContext,
+} from "../src/core/application-context.mjs";
 import { DreamSkinToolCore } from "../src/core/dreamskin-tool.mjs";
 import { HostRuntimeManager } from "../src/core/runtime-manager.mjs";
 
@@ -76,6 +79,76 @@ test("runtime capabilities stay outside the Agent Tool contract", async () => {
     ["runtime", "apply"],
     ["runtime", "verify"],
     ["runtime", "restore"],
+  ]);
+});
+
+test("application context registers multiple targets while preserving Trae as the legacy default", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-multi-context-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const calls = [];
+  const target = async (id, targetId, targetName) => {
+    const pluginRoot = path.join(root, targetId);
+    await fs.mkdir(pluginRoot, { recursive: true });
+    await fs.writeFile(path.join(pluginRoot, "schema.json"), "{}\n");
+    await fs.writeFile(path.join(pluginRoot, "registry.json"), '{"components":[]}\n');
+    return {
+      rootPath: pluginRoot,
+      plugin: {
+        rootPath: pluginRoot,
+        manifest: {
+          schemaVersion: 1,
+          id,
+          name: `${targetName} Theme`,
+          version: "1.0.0",
+          target: { id: targetId, name: targetName, platforms: ["darwin"] },
+          theme: { schemaPath: "schema.json", registryPath: "registry.json" },
+          themeTool: { name: "dreamskin_theme", actions: ["inspect"] },
+          capabilities: {
+            preview: { supported: false, screenshot: false, restoresPreviousState: false },
+            runtime: { supported: true, actions: ["apply", "verify", "restore"] },
+          },
+        },
+        executeThemeAction: async (action, input) => {
+          calls.push([id, "theme", action, input]);
+          return { pluginId: id, action };
+        },
+        executeRuntimeAction: async (action, input) => {
+          calls.push([id, "runtime", action, input]);
+          return { pluginId: id, action };
+        },
+        runtimeStatus: async () => ({ available: true, pluginId: id }),
+      },
+      repository: { id: `${id}:repository` },
+      themesRoot: path.join(root, "themes", targetId),
+    };
+  };
+  const workBuddy = await target("dreamskin.workbuddy", "workbuddy", "WorkBuddy");
+  const trae = await target("dreamskin.trae", "trae", "Trae");
+  const context = await createApplicationContext({
+    targets: [workBuddy, trae],
+    dataRoot: path.join(root, "data"),
+    projectRoot: root,
+  });
+  t.after(() => Promise.allSettled(
+    context.pluginManager.list({ state: "active" }).map(({ id }) => context.pluginManager.deactivate(id)),
+  ));
+
+  assert.equal(context.defaultPluginId, "dreamskin.trae");
+  assert.equal(context.plugin, trae.plugin);
+  assert.equal(context.repository, trae.repository);
+  assert.equal(context.targets.size, 2);
+  assert.equal(context.target("dreamskin.workbuddy").targetName, "WorkBuddy");
+  assert.deepEqual(await context.tool.inspect("dreamskin.workbuddy"), {
+    pluginId: "dreamskin.workbuddy",
+    action: "inspect",
+  });
+  assert.deepEqual(await context.runtime.apply("same-theme", "dreamskin.workbuddy"), {
+    pluginId: "dreamskin.workbuddy",
+    action: "apply",
+  });
+  assert.deepEqual(calls, [
+    ["dreamskin.workbuddy", "theme", "inspect", {}],
+    ["dreamskin.workbuddy", "runtime", "apply", { id: "same-theme" }],
   ]);
 });
 

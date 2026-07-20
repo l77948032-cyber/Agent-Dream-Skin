@@ -87,6 +87,15 @@ test("preload bridge exposes explicit frozen methods instead of raw Electron IPC
     themeId: "sunlit-spark",
     input: { expectedRevision: "rev", theme: { name: "New" } },
   }]);
+  await api.studio.applyTheme("shared", "dreamskin.workbuddy");
+  assert.deepEqual(calls[1], [IPC_CHANNELS.studioApi, "themes.apply", {
+    themeId: "shared",
+    pluginId: "dreamskin.workbuddy",
+  }]);
+  await api.studio.restoreRuntime("dreamskin.workbuddy");
+  assert.deepEqual(calls[2], [IPC_CHANNELS.studioApi, "runtime.restore", {
+    pluginId: "dreamskin.workbuddy",
+  }]);
 
   const rejectedApi = createPreloadApi({ invoke: async () => ({
     ok: false,
@@ -123,5 +132,15 @@ test("sandbox-compatible CommonJS preload publishes the same narrow bridge", asy
   assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), [IPC_CHANNELS.studioApi, "themes.message", {
     themeId: "theme-one",
     input: { prompt: "make it warmer" },
+  }]);
+  await exposed.value.studio.sendThemeMessage(
+    "shared",
+    { prompt: "make it cooler" },
+    "dreamskin.workbuddy",
+  );
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[1])), [IPC_CHANNELS.studioApi, "themes.message", {
+    themeId: "shared",
+    input: { prompt: "make it cooler" },
+    pluginId: "dreamskin.workbuddy",
   }]);
 });

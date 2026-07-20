@@ -4,10 +4,17 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as z from "zod/v4";
 
-import { createTraeApplicationContext } from "./core/application-context.mjs";
+import {
+  createTraeApplicationContext,
+  DEFAULT_PLUGIN_ID,
+} from "./core/application-context.mjs";
 import { errorEnvelope, ToolError } from "./core/errors.mjs";
-import { PROJECT_ROOT } from "./core/paths.mjs";
+import { PROJECT_ROOT, THEMES_ROOT, TOOL_DATA_ROOT } from "./core/paths.mjs";
 import { AGENT_TOOL_VERSION } from "./core/service.mjs";
+import {
+  createWorkBuddyApplicationContext,
+  WORKBUDDY_PLUGIN_ID,
+} from "./core/workbuddy-application-context.mjs";
 
 function toolResult(result) {
   return {
@@ -182,21 +189,58 @@ function registerLegacyTools(server, service) {
   register(server, "restore", { title: "Restore native Trae", description: "Restore Trae to its native state.", inputSchema: emptyInput }, () => service.restore());
 }
 
-export async function startMcpServer({ profile = "tool" } = {}) {
-  const context = await createTraeApplicationContext({
-    projectRoot: PROJECT_ROOT,
-    pluginRoot: path.resolve(
-      process.env.DREAMSKIN_TOOL_PLUGIN_ROOT || path.join(PROJECT_ROOT, "plugins", "trae"),
-    ),
+export async function createMcpApplicationContext({
+  env = process.env,
+  projectRoot = PROJECT_ROOT,
+  traeFactory = createTraeApplicationContext,
+  workBuddyFactory = createWorkBuddyApplicationContext,
+} = {}) {
+  const pluginId = env.DREAMSKIN_TOOL_PLUGIN_ID || DEFAULT_PLUGIN_ID;
+  const resolvedProjectRoot = path.resolve(projectRoot);
+  const dataRoot = path.resolve(env.TRAE_DREAM_SKIN_TOOL_HOME || TOOL_DATA_ROOT);
+  const common = {
+    projectRoot: resolvedProjectRoot,
+    themesRoot: path.resolve(env.TRAE_DREAM_SKIN_THEMES_ROOT || THEMES_ROOT),
+    dataRoot,
+    backupsRoot: path.resolve(env.DREAMSKIN_TOOL_BACKUPS_ROOT || path.join(dataRoot, "backups")),
+    scriptsRoot: path.join(resolvedProjectRoot, "scripts"),
+  };
+  if (pluginId === DEFAULT_PLUGIN_ID) {
+    return traeFactory({
+      ...common,
+      pluginRoot: path.resolve(
+        env.DREAMSKIN_TOOL_PLUGIN_ROOT || path.join(resolvedProjectRoot, "plugins", "trae"),
+      ),
+    });
+  }
+  if (pluginId === WORKBUDDY_PLUGIN_ID) {
+    return workBuddyFactory({
+      ...common,
+      pluginRoot: path.resolve(
+        env.DREAMSKIN_TOOL_WORKBUDDY_PLUGIN_ROOT
+          || env.DREAMSKIN_TOOL_PLUGIN_ROOT
+          || path.join(resolvedProjectRoot, "plugins", "workbuddy"),
+      ),
+      ...(env.WORKBUDDY_DREAM_SKIN_HOME
+        ? { stateRoot: path.resolve(env.WORKBUDDY_DREAM_SKIN_HOME) }
+        : {}),
+    });
+  }
+  throw new ToolError("PLUGIN_NOT_FOUND", `Plugin '${pluginId}' is not available to the ACP Tool adapter.`, {
+    pluginId,
   });
+}
+
+export async function startMcpServer({ profile = "tool", env = process.env } = {}) {
+  const context = await createMcpApplicationContext({ env });
   const server = createMcpServer({
     tool: context.tool,
     service: context.legacyService,
     profile,
     scope: {
-      pluginId: process.env.DREAMSKIN_TOOL_PLUGIN_ID || undefined,
-      themeId: process.env.DREAMSKIN_TOOL_THEME_ID || undefined,
-      expectedRevision: process.env.DREAMSKIN_TOOL_EXPECTED_REVISION || undefined,
+      pluginId: env.DREAMSKIN_TOOL_PLUGIN_ID || undefined,
+      themeId: env.DREAMSKIN_TOOL_THEME_ID || undefined,
+      expectedRevision: env.DREAMSKIN_TOOL_EXPECTED_REVISION || undefined,
     },
   });
   const transport = new StdioServerTransport();

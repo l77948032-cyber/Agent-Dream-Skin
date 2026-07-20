@@ -13,8 +13,10 @@ import {
   DESKTOP_RUNTIME_SCRIPT_PATHS,
   parseBuildArguments,
   TRAE_RUNTIME_NAMESPACE,
+  WORKBUDDY_RUNTIME_NAMESPACE,
 } from "../scripts/build-desktop-resources.mjs";
 import { TRAE_CATALOG_METADATA } from "../plugins/trae/catalog.mjs";
+import { WORKBUDDY_CATALOG_METADATA } from "../plugins/workbuddy/catalog.mjs";
 import {
   DESKTOP_RESOURCE_MANIFEST_FILE,
   validateDesktopResourceManifest,
@@ -38,15 +40,15 @@ async function write(root, relativePath, contents, mode = 0o644) {
 async function sourceFixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-desktop-build-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  const manifest = {
+  const manifest = ({ id, name, target, platforms }) => ({
     schemaVersion: 1,
-    id: TRAE_RUNTIME_NAMESPACE,
-    name: "Trae DreamSkin",
+    id,
+    name,
     version: "0.2.0",
     description: "Fixture",
     entry: "plugin.mjs",
     catalog: { root: "catalog" },
-    target: { id: "trae", name: "Trae", platforms: ["darwin", "win32"] },
+    target: { id: target.toLowerCase(), name: target, platforms },
     theme: {
       schemaPath: "resources/theme-v1.schema.json",
       registryPath: "resources/components.v1.json",
@@ -60,10 +62,22 @@ async function sourceFixture(t) {
       preview: { supported: true, screenshot: true, restoresPreviousState: true },
       runtime: { supported: true, actions: ["apply", "verify", "restore"] },
     },
-  };
+  });
+  const traeManifest = manifest({
+    id: TRAE_RUNTIME_NAMESPACE,
+    name: "Trae DreamSkin",
+    target: "Trae",
+    platforms: ["darwin", "win32"],
+  });
+  const workbuddyManifest = manifest({
+    id: WORKBUDDY_RUNTIME_NAMESPACE,
+    name: "WorkBuddy DreamSkin",
+    target: "WorkBuddy",
+    platforms: ["darwin"],
+  });
 
   await write(root, "package.json", `${JSON.stringify({ name: "fixture", version: "0.2.0" })}\n`);
-  await write(root, "plugins/trae/plugin.json", `${JSON.stringify(manifest, null, 2)}\n`);
+  await write(root, "plugins/trae/plugin.json", `${JSON.stringify(traeManifest, null, 2)}\n`);
   await write(root, "plugins/trae/plugin.mjs", "throw new Error('source entry must not be copied');\n");
   await write(root, "plugins/trae/catalog.mjs", "export const secret = 'not packaged';\n");
   await write(root, "plugins/trae/resources/theme-v1.schema.json", "{}\n");
@@ -85,9 +99,32 @@ async function sourceFixture(t) {
       Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     );
   }
+  await write(root, "plugins/workbuddy/plugin.json", `${JSON.stringify(workbuddyManifest, null, 2)}\n`);
+  await write(root, "plugins/workbuddy/plugin.mjs", "throw new Error('source entry must not be copied');\n");
+  await write(root, "plugins/workbuddy/catalog.mjs", "export const secret = 'not packaged';\n");
+  await write(root, "plugins/workbuddy/resources/theme-v1.schema.json", "{}\n");
+  await write(root, "plugins/workbuddy/resources/components.v1.json", '{"components":[]}\n');
+  await write(root, "plugins/workbuddy/resources/theme-runtime.v1.json", "{}\n");
+  await write(root, "plugins/workbuddy/resources/studio-scenes.v1.json", '{"scenes":[]}\n');
+  await write(root, "plugins/workbuddy/assets/workbuddy-skin.css", ":root{--workbuddy-fixture:1}\n");
+  await write(root, "plugins/workbuddy/assets/trae-skin.css", ":root{--workbuddy-fixture:1}\n");
+  await write(root, "plugins/workbuddy/resources/private-build-note.json", '{"secret":true}\n');
+  for (const id of Object.keys(WORKBUDDY_CATALOG_METADATA)) {
+    await write(
+      root,
+      `plugins/workbuddy/catalog/${id}/theme.json`,
+      `${JSON.stringify({ schemaVersion: 1, id, name: `Fixture ${id}`, image: "background.png" })}\n`,
+    );
+    await write(
+      root,
+      `plugins/workbuddy/catalog/${id}/background.png`,
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    );
+  }
   await write(root, "studio/dist/index.html", "<!doctype html><script src=\"/assets/app.js\"></script>\n");
   await write(root, "studio/dist/assets/app.js", "globalThis.fixture=true;\n");
   await write(root, "assets/renderer-inject.js", "globalThis.rendererFixture=true;\n");
+  await write(root, "assets/workbuddy-renderer-inject.js", "globalThis.workbuddyRendererFixture=true;\n");
   await write(root, "assets/trae-skin.css", ":root{--fixture:1}\n");
   for (const relativePath of DESKTOP_RUNTIME_SCRIPT_PATHS) {
     await write(root, relativePath, `// fixture ${relativePath}\n`, relativePath.endsWith(".sh") ? 0o755 : 0o644);
@@ -120,7 +157,7 @@ async function inventory(root, current = root) {
   return result.sort();
 }
 
-test("desktop resource builder emits only the verified allowlist and an installable Trae runtime package", async (t) => {
+test("desktop resource builder emits the verified allowlist and installable Trae and WorkBuddy runtimes", async (t) => {
   const projectRoot = await sourceFixture(t);
   const outRoot = path.join(projectRoot, "build", "desktop-resources");
   const result = await buildDesktopResources({ projectRoot, outRoot });
@@ -135,6 +172,8 @@ test("desktop resource builder emits only the verified allowlist and an installa
   assert.equal(files.some((file) => file.includes("node_modules")), false);
   assert.equal(files.includes("plugins/trae/plugin.mjs"), false);
   assert.equal(files.includes("plugins/trae/catalog.mjs"), false);
+  assert.equal(files.includes("plugins/workbuddy/plugin.mjs"), false);
+  assert.equal(files.includes("plugins/workbuddy/catalog.mjs"), false);
   assert.equal(files.includes("scripts/install-macos-runtime.sh"), false);
   assert.equal(files.includes("scripts/studio-dev.mjs"), false);
   assert.equal(files.includes("schemas/theme-v1.schema.json"), false);
@@ -143,20 +182,55 @@ test("desktop resource builder emits only the verified allowlist and an installa
     assert.equal(files.includes(`plugins/trae/catalog/${id}/theme.json`), true);
     assert.equal(files.includes(`plugins/trae/catalog/${id}/background.png`), true);
   }
+  assert.equal(files.includes("plugins/workbuddy/resources/studio-scenes.v1.json"), true);
+  assert.equal(files.includes("plugins/workbuddy/assets/workbuddy-skin.css"), true);
+  assert.equal(files.includes("plugins/workbuddy/assets/trae-skin.css"), true);
+  assert.equal(files.includes("plugins/workbuddy/resources/private-build-note.json"), false);
+  for (const id of Object.keys(WORKBUDDY_CATALOG_METADATA)) {
+    assert.equal(files.includes(`plugins/workbuddy/catalog/${id}/theme.json`), true);
+    assert.equal(files.includes(`plugins/workbuddy/catalog/${id}/background.png`), true);
+  }
   for (const [, destinationPath] of DESKTOP_LEGAL_PATHS) {
     assert.equal(files.includes(destinationPath), true);
   }
 
   const packagedPlugin = JSON.parse(await fs.readFile(path.join(outRoot, "plugins", "trae", "plugin.json"), "utf8"));
   assert.equal(Object.hasOwn(packagedPlugin, "entry"), false);
-  const runtimeSource = path.join(outRoot, "runtime", TRAE_RUNTIME_NAMESPACE);
-  const installer = new VersionedRuntimeInstaller({
-    runtimeRoot: path.join(projectRoot, "user-data", "runtime"),
-    namespace: TRAE_RUNTIME_NAMESPACE,
-  });
-  const installed = await installer.install({ sourceRoot: runtimeSource, activate: false });
-  assert.equal(installed.installed, true);
-  assert.equal(installed.version, "0.2.0");
+  const packagedWorkBuddy = JSON.parse(await fs.readFile(
+    path.join(outRoot, "plugins", "workbuddy", "plugin.json"),
+    "utf8",
+  ));
+  assert.equal(Object.hasOwn(packagedWorkBuddy, "entry"), false);
+  for (const namespace of [TRAE_RUNTIME_NAMESPACE, WORKBUDDY_RUNTIME_NAMESPACE]) {
+    const runtimeSource = path.join(outRoot, "runtime", namespace);
+    const installer = new VersionedRuntimeInstaller({
+      runtimeRoot: path.join(projectRoot, "user-data", "runtime"),
+      namespace,
+    });
+    const installed = await installer.install({ sourceRoot: runtimeSource, activate: false });
+    assert.equal(installed.installed, true);
+    assert.equal(installed.version, "0.2.0");
+  }
+  const workbuddyRuntimeRoot = path.join(outRoot, "runtime", WORKBUDDY_RUNTIME_NAMESPACE);
+  for (const requiredPath of [
+    "scripts/common-workbuddy-macos.sh",
+    "scripts/injector.mjs",
+    "scripts/workbuddy-injector.mjs",
+    "assets/trae-skin.css",
+    "assets/workbuddy-renderer-inject.js",
+    "plugins/workbuddy/assets/workbuddy-skin.css",
+    "plugins/workbuddy/resources/components.v1.json",
+    "src/core/paths.mjs",
+    "src/core/theme-loader.mjs",
+    "src/core/theme-model.mjs",
+  ]) {
+    assert.equal(files.includes(`runtime/${WORKBUDDY_RUNTIME_NAMESPACE}/${requiredPath}`), true);
+    await fs.access(path.join(workbuddyRuntimeRoot, ...requiredPath.split("/")));
+  }
+  assert.deepEqual(Object.keys(result.runtimePackages).sort(), [
+    TRAE_RUNTIME_NAMESPACE,
+    WORKBUDDY_RUNTIME_NAMESPACE,
+  ]);
 });
 
 test("desktop resource builder rejects catalog metadata whose theme directory is missing", async (t) => {
@@ -175,6 +249,23 @@ test("desktop resource builder rejects catalog metadata whose theme directory is
   );
 });
 
+test("desktop resource builder rejects a missing WorkBuddy catalog theme", async (t) => {
+  const projectRoot = await sourceFixture(t);
+  const missingId = Object.keys(WORKBUDDY_CATALOG_METADATA)[0];
+  await fs.rm(path.join(projectRoot, "plugins", "workbuddy", "catalog", missingId), {
+    recursive: true,
+  });
+
+  await assert.rejects(
+    buildDesktopResources({ projectRoot, outRoot: path.join(projectRoot, "build", "missing-workbuddy-catalog") }),
+    (error) => error.code === "DESKTOP_BUILD_CATALOG_MISMATCH"
+      && error.details.catalogRoot === "plugins/workbuddy/catalog"
+      && error.details.missing.length === 1
+      && error.details.missing[0] === missingId
+      && error.details.extra.length === 0,
+  );
+});
+
 test("desktop resource builder rejects Studio and runtime mirrors that drift from plugin resources", async (t) => {
   const projectRoot = await sourceFixture(t);
   await fs.writeFile(path.join(projectRoot, "registry", "components.v1.json"), '{"components":[{"id":"drift"}]}\n');
@@ -184,6 +275,21 @@ test("desktop resource builder rejects Studio and runtime mirrors that drift fro
     (error) => error.code === "DESKTOP_BUILD_SOURCE_MISMATCH"
       && error.details.sourcePath === "registry/components.v1.json"
       && error.details.canonicalPath === "plugins/trae/resources/components.v1.json",
+  );
+});
+
+test("desktop resource builder rejects a WorkBuddy compatibility CSS mirror that drifts", async (t) => {
+  const projectRoot = await sourceFixture(t);
+  await fs.writeFile(
+    path.join(projectRoot, "plugins", "workbuddy", "assets", "trae-skin.css"),
+    ":root{--drift:1}\n",
+  );
+
+  await assert.rejects(
+    buildDesktopResources({ projectRoot, outRoot: path.join(projectRoot, "build", "workbuddy-css-drift") }),
+    (error) => error.code === "DESKTOP_BUILD_SOURCE_MISMATCH"
+      && error.details.sourcePath === "plugins/workbuddy/assets/trae-skin.css"
+      && error.details.canonicalPath === "plugins/workbuddy/assets/workbuddy-skin.css",
   );
 });
 
@@ -228,6 +334,15 @@ test("desktop resource manifests are deterministic and a rebuild replaces stale 
   const secondRuntimeManifest = await fs.readFile(path.join(secondRoot, "runtime", TRAE_RUNTIME_NAMESPACE, RUNTIME_MANIFEST_FILE), "utf8");
   assert.equal(firstManifest, secondManifest);
   assert.equal(firstRuntimeManifest, secondRuntimeManifest);
+  const firstWorkBuddyRuntimeManifest = await fs.readFile(
+    path.join(firstRoot, "runtime", WORKBUDDY_RUNTIME_NAMESPACE, RUNTIME_MANIFEST_FILE),
+    "utf8",
+  );
+  const secondWorkBuddyRuntimeManifest = await fs.readFile(
+    path.join(secondRoot, "runtime", WORKBUDDY_RUNTIME_NAMESPACE, RUNTIME_MANIFEST_FILE),
+    "utf8",
+  );
+  assert.equal(firstWorkBuddyRuntimeManifest, secondWorkBuddyRuntimeManifest);
 
   await fs.writeFile(path.join(firstRoot, "stale-secret.txt"), "stale\n");
   await buildDesktopResources({ projectRoot, outRoot: firstRoot });
@@ -257,6 +372,30 @@ test("desktop and runtime manifests both detect tampered packaged files", async 
     installer.install({ sourceRoot: runtimeSource }),
     (error) => error.code === "RUNTIME_PACKAGE_INTEGRITY_FAILED"
       && error.details.path === "scripts/injector.mjs",
+  );
+});
+
+test("desktop and WorkBuddy runtime manifests detect tampered WorkBuddy files", async (t) => {
+  const projectRoot = await sourceFixture(t);
+  const outRoot = path.join(projectRoot, "build", "workbuddy-tamper");
+  await buildDesktopResources({ projectRoot, outRoot });
+  const runtimeSource = path.join(outRoot, "runtime", WORKBUDDY_RUNTIME_NAMESPACE);
+  const tamperedPath = "plugins/workbuddy/assets/workbuddy-skin.css";
+  await fs.writeFile(path.join(runtimeSource, ...tamperedPath.split("/")), "tampered\n");
+
+  await assert.rejects(
+    validateDesktopResourceManifest({ resourceRoot: outRoot }),
+    (error) => error.code === "RESOURCE_INTEGRITY_FAILED"
+      && error.details.path === `runtime/${WORKBUDDY_RUNTIME_NAMESPACE}/${tamperedPath}`,
+  );
+  const installer = new VersionedRuntimeInstaller({
+    runtimeRoot: path.join(projectRoot, "user-data", "runtime"),
+    namespace: WORKBUDDY_RUNTIME_NAMESPACE,
+  });
+  await assert.rejects(
+    installer.install({ sourceRoot: runtimeSource }),
+    (error) => error.code === "RUNTIME_PACKAGE_INTEGRITY_FAILED"
+      && error.details.path === tamperedPath,
   );
 });
 

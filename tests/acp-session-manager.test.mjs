@@ -39,6 +39,7 @@ test("MCP server defaults to Node development mode under the injected project ro
     TRAE_DREAM_SKIN_PROJECT_ROOT: projectRoot,
     TRAE_DREAM_SKIN_THEMES_ROOT: path.resolve("/state/themes"),
     TRAE_DREAM_SKIN_TOOL_HOME: path.resolve("/state/data"),
+    DREAMSKIN_TOOL_BACKUPS_ROOT: path.resolve("/state/data/backups"),
     DREAMSKIN_TOOL_PLUGIN_ID: "dreamskin.trae",
     DREAMSKIN_TOOL_THEME_ID: "theme-one",
   });
@@ -61,6 +62,43 @@ test("MCP server pins the Studio-selected revision and overrides an untrusted co
     "revision-selected-by-studio",
   ));
   assert.equal(pinned.DREAMSKIN_TOOL_EXPECTED_REVISION, "revision-selected-by-studio");
+});
+
+test("MCP server selects the theme repository from the composite plugin and theme scope", () => {
+  const manager = new AcpSessionManager({
+    agentRegistry: {},
+    projectRoot: "/bundle",
+    themesRoot: "/state/themes/trae",
+    themeRoots: {
+      "dreamskin.trae": "/state/themes/trae",
+      "dreamskin.workbuddy": "/state/themes/workbuddy",
+    },
+    pluginRoots: {
+      "dreamskin.trae": "/bundle/plugins/trae",
+      "dreamskin.workbuddy": "/bundle/plugins/workbuddy",
+    },
+    dataRoots: {
+      "dreamskin.trae": "/state/data/trae",
+      "dreamskin.workbuddy": "/state/data/workbuddy",
+    },
+    backupRoots: {
+      "dreamskin.trae": "/state/backups/trae",
+      "dreamskin.workbuddy": "/state/backups/workbuddy",
+    },
+    dataRoot: "/state/data",
+  });
+
+  const trae = environment(manager.mcpServer("shared-theme", "dreamskin.trae"));
+  const workBuddy = environment(manager.mcpServer("shared-theme", "dreamskin.workbuddy"));
+  assert.equal(trae.TRAE_DREAM_SKIN_THEMES_ROOT, path.resolve("/state/themes/trae"));
+  assert.equal(workBuddy.TRAE_DREAM_SKIN_THEMES_ROOT, path.resolve("/state/themes/workbuddy"));
+  assert.equal(workBuddy.DREAMSKIN_TOOL_PLUGIN_ROOT, path.resolve("/bundle/plugins/workbuddy"));
+  assert.equal(workBuddy.DREAMSKIN_TOOL_PLUGIN_ID, "dreamskin.workbuddy");
+  assert.equal(workBuddy.DREAMSKIN_TOOL_THEME_ID, "shared-theme");
+  assert.equal(trae.TRAE_DREAM_SKIN_TOOL_HOME, path.resolve("/state/data/trae"));
+  assert.equal(workBuddy.TRAE_DREAM_SKIN_TOOL_HOME, path.resolve("/state/data/workbuddy"));
+  assert.equal(trae.DREAMSKIN_TOOL_BACKUPS_ROOT, path.resolve("/state/backups/trae"));
+  assert.equal(workBuddy.DREAMSKIN_TOOL_BACKUPS_ROOT, path.resolve("/state/backups/workbuddy"));
 });
 
 test("MCP server accepts an Electron executable, arguments, and node-mode environment", () => {

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "harbor-focus",
+  "name": "Harbor Focus",
+  "description": "雾蓝海港与海玻璃色界面构成的安静工作空间，清晰区分对话、结果与状态信息。",
+  "layout": "classic",
+  "brandSubtitle": "WORKBUDDY / HARBOR",
+  "tagline": "A clear horizon for focused work.",
+  "statusText": "CALM & CONNECTED",
+  "quote": "MAKE SPACE FOR THE NEXT GOOD IDEA",
+  "image": "background.png",
+  "colors": {
+    "background": "#DDE8E9",
+    "panel": "#F8FBFA",
+    "panelAlt": "#E7F0EF",
+    "accent": "#207E83",
+    "accentAlt": "#CF665B",
+    "secondary": "#426E91",
+    "highlight": "#B17B2C",
+    "onAccent": "#FFFFFF",
+    "success": "#397D65",
+    "warning": "#A96F25",
+    "danger": "#BC5156",
+    "info": "#3F7898",
+    "disabled": "#98A8AA",
+    "text": "#1D3035",
+    "muted": "#61777B",
+    "line": "rgba(31, 77, 82, 0.20)",
+    "selection": "rgba(32, 126, 131, 0.18)",
+    "terminal": "#17282D"
+  },
+  "states": {
+    "surfaceHover": "rgba(32, 126, 131, 0.10)",
+    "surfaceActive": "rgba(207, 102, 91, 0.15)",
+    "focus": "#207E83",
+    "tooltipBackground": "#203C42",
+    "tooltipText": "#F8FBFA"
+  },
+  "visual": {
+    "motif": "editorial",
+    "iconTreatment": "tile",
+    "surfaceTreatment": "glass",
+    "accentPlacement": "rail",
+    "cardTreatment": "split",
+    "ornament": "rules"
+  },
+  "appearance": {
+    "treatment": "sunlit-immersive",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(221, 232, 233, 0.10)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.92,
+    "surfaceOpacity": 0.82,
+    "sidebarOpacity": 0.91,
+    "blur": 16,
+    "saturation": 0.82,
+    "radius": 7,
+    "shadow": "soft",
+    "colorScheme": "light"
+  }
+}

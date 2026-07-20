@@ -195,6 +195,50 @@ async function installPackagedRuntime(layout, pluginId) {
   });
 }
 
+function normalizeDesktopTargetDefinitions({
+  pluginId,
+  pluginResourceDirectory,
+  targetDefinitions,
+}) {
+  const configured = targetDefinitions === undefined
+    ? [{ pluginId, pluginResourceDirectory }]
+    : targetDefinitions;
+  if (!Array.isArray(configured) || configured.length === 0) {
+    throw new ToolError("INVALID_ARGUMENT", "Desktop startup requires at least one target definition.");
+  }
+  const seen = new Set();
+  const normalized = configured.map((target, index) => {
+    if (!target || typeof target !== "object" || Array.isArray(target)) {
+      throw new ToolError("INVALID_ARGUMENT", `Desktop target at index ${index} must be an object.`);
+    }
+    const targetPluginId = target.pluginId;
+    const resourceDirectory = target.pluginResourceDirectory;
+    if (typeof targetPluginId !== "string" || !targetPluginId) {
+      throw new ToolError("INVALID_ARGUMENT", `Desktop target at index ${index} requires pluginId.`);
+    }
+    if (
+      typeof resourceDirectory !== "string"
+      || !/^[a-z0-9](?:[a-z0-9._-]{0,126}[a-z0-9])?$/.test(resourceDirectory)
+      || resourceDirectory === "."
+      || resourceDirectory === ".."
+    ) {
+      throw new ToolError(
+        "INVALID_ARGUMENT",
+        `Desktop target '${targetPluginId}' has an invalid plugin resource directory.`,
+      );
+    }
+    if (seen.has(targetPluginId)) {
+      throw new ToolError("INVALID_ARGUMENT", `Desktop target '${targetPluginId}' is configured more than once.`);
+    }
+    seen.add(targetPluginId);
+    return Object.freeze({ pluginId: targetPluginId, pluginResourceDirectory: resourceDirectory });
+  });
+  if (!seen.has(pluginId)) {
+    throw new ToolError("INVALID_ARGUMENT", `Default desktop target '${pluginId}' is not configured.`);
+  }
+  return Object.freeze(normalized);
+}
+
 export async function startDesktopApplication({
   electron,
   createBackend,
@@ -203,6 +247,7 @@ export async function startDesktopApplication({
   preloadPath,
   pluginId = "dreamskin.trae",
   pluginResourceDirectory = "trae",
+  targetDefinitions,
   platform = process.platform,
   development = false,
   logger = console,
@@ -225,6 +270,12 @@ export async function startDesktopApplication({
   if (exitApplication !== null && typeof exitApplication !== "function") {
     throw new ToolError("INVALID_ARGUMENT", "Desktop exitApplication must be a function when provided.");
   }
+
+  const desktopTargets = normalizeDesktopTargetDefinitions({
+    pluginId,
+    pluginResourceDirectory,
+    targetDefinitions,
+  });
 
   const terminateApplication = exitApplication || ((code) => {
     if (typeof app.exit === "function") app.exit(code);
@@ -426,7 +477,7 @@ export async function startDesktopApplication({
       userDataPath: app.getPath("userData"),
       developmentResourcesPath: path.resolve(developmentResourcesPath),
     });
-    await layout.ensureMutableRoots(pluginId);
+    await Promise.all(desktopTargets.map((target) => layout.ensureMutableRoots(target.pluginId)));
     if (stopping()) return;
     resourceValidation = await validateResourceManifest(layout);
     const appVersion = app.getVersion();
@@ -437,18 +488,33 @@ export async function startDesktopApplication({
       });
     }
     if (stopping()) return;
-    const runtimeInstallation = await installPackagedRuntime(layout, pluginId);
-    if (layout.isPackaged && runtimeInstallation?.version !== appVersion) {
-      throw new ToolError("RUNTIME_VERSION_MISMATCH", "The bundled runtime does not match the application version.", {
-        expected: appVersion,
-        actual: runtimeInstallation?.version || null,
-      });
+    const runtimeInstallations = new Map(await Promise.all(desktopTargets.map(async (target) => [
+      target.pluginId,
+      await installPackagedRuntime(layout, target.pluginId),
+    ])));
+    for (const target of desktopTargets) {
+      const installation = runtimeInstallations.get(target.pluginId);
+      if (layout.isPackaged && installation?.version !== appVersion) {
+        throw new ToolError("RUNTIME_VERSION_MISMATCH", "A bundled target runtime does not match the application version.", {
+          pluginId: target.pluginId,
+          expected: appVersion,
+          actual: installation?.version || null,
+        });
+      }
     }
-    desktopConfig = createDesktopBackendConfig({
-      layout,
-      pluginId,
-      pluginResourceDirectory,
-      activeRuntimeRoot: runtimeInstallation?.root || null,
+    const targetConfigs = Object.fromEntries(desktopTargets.map((target) => {
+      const installation = runtimeInstallations.get(target.pluginId);
+      return [target.pluginId, createDesktopBackendConfig({
+        layout,
+        pluginId: target.pluginId,
+        pluginResourceDirectory: target.pluginResourceDirectory,
+        activeRuntimeRoot: installation?.root || null,
+      })];
+    }));
+    const defaultConfig = targetConfigs[pluginId];
+    desktopConfig = Object.freeze({
+      ...defaultConfig,
+      targets: Object.freeze(targetConfigs),
     });
     await assertStudioBuild(desktopConfig.paths.studioDistRoot);
     if (stopping()) return;
@@ -486,7 +552,11 @@ export async function startDesktopApplication({
         packaged: Boolean(app.isPackaged),
         platform,
         resourcesVerified: Boolean(resourceValidation?.valid),
-        runtimeVersion: runtimeInstallation?.version || null,
+        runtimeVersion: runtimeInstallations.get(pluginId)?.version || null,
+        runtimeVersions: Object.fromEntries(desktopTargets.map((target) => [
+          target.pluginId,
+          runtimeInstallations.get(target.pluginId)?.version || null,
+        ])),
       }),
     });
     if (stopping()) {

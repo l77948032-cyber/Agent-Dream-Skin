@@ -38,6 +38,32 @@ test("ACP policy allows only the scoped DreamSkin Tool action", () => {
   assert.equal(permission({ command: "node", args: ["script.mjs"] }).outcome.optionId, "reject");
 });
 
+test("ACP policy resolves an omitted plugin id from the WorkBuddy session scope", () => {
+  const workBuddyPolicy = {
+    pluginId: "dreamskin.workbuddy",
+    themeId: "harbor-focus-copy",
+    expectedRevision: "revision-workbuddy-1",
+  };
+  const call = (action, argumentsInput = {}) => ({
+    server: "dreamskin-tool-compat",
+    tool: "dreamskin_theme",
+    arguments: { action, ...argumentsInput },
+  });
+
+  assert.equal(permission(call("inspect"), workBuddyPolicy).outcome.optionId, "allow");
+  assert.equal(permission(call("read", {
+    themeId: workBuddyPolicy.themeId,
+  }), workBuddyPolicy).outcome.optionId, "allow");
+  assert.equal(permission(call("update", {
+    themeId: workBuddyPolicy.themeId,
+    expectedRevision: workBuddyPolicy.expectedRevision,
+    themePatch: {},
+  }), workBuddyPolicy).outcome.optionId, "allow");
+  assert.equal(permission(call("inspect", {
+    pluginId: "dreamskin.trae",
+  }), workBuddyPolicy).outcome.optionId, "reject");
+});
+
 test("ACP response text prefers the final answer over progress messages", () => {
   const updates = [
     { sessionUpdate: "agent_message_chunk", content: { type: "text", text: "Checking..." } },

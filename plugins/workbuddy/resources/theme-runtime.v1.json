@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "target": "workbuddy",
+  "selectorProfile": "5.2",
+  "colors": {
+    "background": "--dreamskin-bg",
+    "panel": "--dreamskin-panel",
+    "panelAlt": "--dreamskin-panel-alt",
+    "accent": "--dreamskin-accent",
+    "accentAlt": "--dreamskin-accent-alt",
+    "secondary": "--dreamskin-secondary",
+    "highlight": "--dreamskin-highlight",
+    "onAccent": "--dreamskin-on-accent",
+    "success": "--dreamskin-success",
+    "warning": "--dreamskin-warning",
+    "danger": "--dreamskin-danger",
+    "info": "--dreamskin-info",
+    "disabled": "--dreamskin-disabled",
+    "text": "--dreamskin-text",
+    "muted": "--dreamskin-muted",
+    "line": "--dreamskin-line",
+    "selection": "--dreamskin-selection",
+    "terminal": "--dreamskin-terminal"
+  },
+  "states": {
+    "focus": "--dreamskin-focus",
+    "surfaceHover": "--dreamskin-hover",
+    "surfaceActive": "--dreamskin-active",
+    "tooltipBackground": "--dreamskin-tooltip-bg",
+    "tooltipText": "--dreamskin-tooltip-text"
+  },
+  "appearance": {
+    "backgroundPosition": { "variable": "--dreamskin-art-position", "format": "raw" },
+    "backgroundSize": { "variable": "--dreamskin-art-size", "format": "raw" },
+    "backgroundOpacity": { "variable": "--dreamskin-art-opacity", "format": "raw" },
+    "backgroundOverlay": { "variable": "--dreamskin-overlay", "format": "raw" },
+    "backgroundBlendMode": { "variable": "--dreamskin-art-blend", "format": "raw" },
+    "surfaceOpacity": { "variable": "--dreamskin-surface-opacity", "format": "raw" },
+    "sidebarOpacity": { "variable": "--dreamskin-sidebar-opacity", "format": "raw" },
+    "blur": { "variable": "--dreamskin-blur", "format": "px" },
+    "saturation": { "variable": "--dreamskin-saturation", "format": "raw" },
+    "radius": { "variable": "--dreamskin-radius", "format": "px" }
+  },
+  "visualAttributes": {
+    "motif": "data-workbuddy-skin-motif",
+    "iconTreatment": "data-workbuddy-skin-icon-treatment",
+    "surfaceTreatment": "data-workbuddy-skin-surface-treatment",
+    "accentPlacement": "data-workbuddy-skin-accent-placement",
+    "cardTreatment": "data-workbuddy-skin-card-treatment",
+    "ornament": "data-workbuddy-skin-ornament"
+  },
+  "nativeAliases": {
+    "shell": ["--wb-bg-primary", "--cb-bg-primary", "--vscode-editor-background"],
+    "sidebar": ["--wb-sidebar-bg", "--cb-sidebar-background", "--vscode-sideBar-background"],
+    "text": ["--wb-text-primary", "--cb-text-primary", "--vscode-foreground"],
+    "accent": ["--wb-brand-primary", "--cb-brand", "--vscode-button-background"],
+    "focus": ["--wb-border-focus", "--cb-focus-border", "--vscode-focusBorder"],
+    "status": ["--wb-status-success", "--wb-status-warning", "--wb-status-error", "--wb-status-info"]
+  }
+}

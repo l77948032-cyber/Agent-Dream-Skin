@@ -6,7 +6,11 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import path from "node:path";
 
-import { createMcpServer, isMcpEntrypoint } from "../src/mcp-server.mjs";
+import {
+  createMcpApplicationContext,
+  createMcpServer,
+  isMcpEntrypoint,
+} from "../src/mcp-server.mjs";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 
@@ -21,6 +25,61 @@ test("packaged MCP helpers use an explicit entry marker instead of relying on an
     env: {},
     moduleUrl: new URL("../src/mcp-server.mjs", import.meta.url).href,
   }), false);
+});
+
+test("ACP Tool context selects the target factory and scoped roots from pluginId", async () => {
+  const calls = [];
+  const traeFactory = async (options) => { calls.push(["trae", options]); return { target: "trae" }; };
+  const workBuddyFactory = async (options) => {
+    calls.push(["workbuddy", options]);
+    return { target: "workbuddy" };
+  };
+  const projectRoot = "/bundle/dreamskin";
+
+  assert.deepEqual(await createMcpApplicationContext({
+    env: {
+      TRAE_DREAM_SKIN_THEMES_ROOT: "/state/trae/themes",
+      TRAE_DREAM_SKIN_TOOL_HOME: "/state/trae/data",
+      DREAMSKIN_TOOL_BACKUPS_ROOT: "/state/trae/backups",
+      DREAMSKIN_TOOL_PLUGIN_ROOT: "/bundle/plugins/trae",
+    },
+    projectRoot,
+    traeFactory,
+    workBuddyFactory,
+  }), { target: "trae" });
+  assert.deepEqual(await createMcpApplicationContext({
+    env: {
+      DREAMSKIN_TOOL_PLUGIN_ID: "dreamskin.workbuddy",
+      TRAE_DREAM_SKIN_THEMES_ROOT: "/state/workbuddy/themes",
+      TRAE_DREAM_SKIN_TOOL_HOME: "/state/workbuddy/data",
+      DREAMSKIN_TOOL_BACKUPS_ROOT: "/state/workbuddy/backups",
+      DREAMSKIN_TOOL_PLUGIN_ROOT: "/wrong/trae",
+      DREAMSKIN_TOOL_WORKBUDDY_PLUGIN_ROOT: "/bundle/plugins/workbuddy",
+      WORKBUDDY_DREAM_SKIN_HOME: "/state/workbuddy/runtime",
+    },
+    projectRoot,
+    traeFactory,
+    workBuddyFactory,
+  }), { target: "workbuddy" });
+
+  assert.equal(calls[0][0], "trae");
+  assert.equal(calls[0][1].pluginRoot, path.resolve("/bundle/plugins/trae"));
+  assert.equal(calls[0][1].themesRoot, path.resolve("/state/trae/themes"));
+  assert.equal(calls[0][1].backupsRoot, path.resolve("/state/trae/backups"));
+  assert.equal(calls[1][0], "workbuddy");
+  assert.equal(calls[1][1].pluginRoot, path.resolve("/bundle/plugins/workbuddy"));
+  assert.equal(calls[1][1].themesRoot, path.resolve("/state/workbuddy/themes"));
+  assert.equal(calls[1][1].backupsRoot, path.resolve("/state/workbuddy/backups"));
+  assert.equal(calls[1][1].stateRoot, path.resolve("/state/workbuddy/runtime"));
+  await assert.rejects(
+    () => createMcpApplicationContext({
+      env: { DREAMSKIN_TOOL_PLUGIN_ID: "dreamskin.unknown" },
+      projectRoot,
+      traeFactory,
+      workBuddyFactory,
+    }),
+    (error) => error.code === "PLUGIN_NOT_FOUND",
+  );
 });
 
 test("MCP compatibility adapter exposes one DreamSkin Tool", async (t) => {
