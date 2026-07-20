@@ -1,5 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import canonicalWorkBuddyCss from "../../plugins/workbuddy/assets/workbuddy-skin.css?raw";
+import runtimeMapping from "../../plugins/workbuddy/resources/theme-runtime.v1.json";
 import workBuddyCss from "./workbuddy-preview-fixture.css?raw";
 import type { AppearanceMode, StudioTheme } from "./themes";
 
@@ -15,6 +17,7 @@ export type WorkBuddyScene =
   | "wb-components";
 
 const FRAME_WIDTH = 1200;
+type RuntimeFormat = "raw" | "percent" | "px";
 
 const symbols = `
 <svg class="wb-symbols" aria-hidden="true">
@@ -51,44 +54,69 @@ function cssValue(value: string) {
   return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"').replaceAll("\n", " ");
 }
 
+function formatAppearance(value: unknown, format: RuntimeFormat) {
+  if (format === "percent") return `${Math.round(Number(value) * 10000) / 100}%`;
+  if (format === "px") return `${Number(value)}px`;
+  return String(value);
+}
+
+function readableMix(value: number, factor: number, minimum: number, maximum: number) {
+  const percentage = Math.min(maximum, Math.max(minimum, value * factor * 100));
+  return `${Math.round(percentage * 100) / 100}%`;
+}
+
+function overlayTint(value: string) {
+  return value.replaceAll(" ", "").toLowerCase() === "rgba(4,8,18,0.28)" ? "transparent" : value;
+}
+
+function backgroundPosition(theme: StudioTheme) {
+  const configured = theme.appearance.backgroundPosition;
+  if (configured !== "center center") return configured;
+  if (/^(?:orchid-night|harbor-focus)(?:-|$)/.test(theme.id)) return "right center";
+  if (/^paper-garden(?:-|$)/.test(theme.id)) return "left center";
+  return configured;
+}
+
 function variables(theme: StudioTheme, appearanceMode: AppearanceMode) {
-  const colors = Object.entries(theme.colors).map(([key, value]) => {
-    const normalized = key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
-    return `--dreamskin-${normalized}:${value}`;
-  });
-  const states = [
-    ["surface-hover", theme.states.surfaceHover],
-    ["surface-active", theme.states.surfaceActive],
-    ["focus", theme.states.focus],
-    ["tooltip-bg", theme.states.tooltipBackground],
-    ["tooltip-text", theme.states.tooltipText],
-  ].map(([key, value]) => `--dreamskin-${key}:${value}`);
+  const entries: Array<[string, string]> = [["--dreamskin-art", `url("${cssValue(theme.imageUrl)}")`]];
+
+  for (const [key, variable] of Object.entries(runtimeMapping.colors)) {
+    entries.push([variable, theme.colors[key as keyof StudioTheme["colors"]]]);
+  }
+  for (const [key, variable] of Object.entries(runtimeMapping.states)) {
+    entries.push([variable, theme.states[key as keyof StudioTheme["states"]]]);
+  }
+  for (const [key, descriptor] of Object.entries(runtimeMapping.appearance)) {
+    let value = theme.appearance[key as keyof StudioTheme["appearance"]];
+    if (key === "backgroundOverlay" && typeof value === "string") value = overlayTint(value);
+    if (key === "backgroundPosition") value = backgroundPosition(theme);
+    entries.push([descriptor.variable, formatAppearance(value, descriptor.format as RuntimeFormat)]);
+  }
+
   const scheme = theme.appearance.colorScheme === "system" ? appearanceMode : theme.appearance.colorScheme;
-  return [
-    ...colors,
-    ...states,
-    `--dreamskin-bg:${theme.colors.background}`,
-    `--dreamskin-hover:${theme.states.surfaceHover}`,
-    `--dreamskin-active:${theme.states.surfaceActive}`,
-    `--dreamskin-art:url("${cssValue(theme.imageUrl)}")`,
-    `--dreamskin-art-position:${cssValue(theme.appearance.backgroundPosition)}`,
-    `--dreamskin-art-size:${cssValue(theme.appearance.backgroundSize)}`,
-    `--dreamskin-art-opacity:${theme.appearance.backgroundOpacity}`,
-    `--dreamskin-overlay:${theme.appearance.backgroundOverlay}`,
-    `--dreamskin-art-blend:${cssValue(theme.appearance.backgroundBlendMode)}`,
-    `--dreamskin-surface-mix:${theme.appearance.surfaceOpacity}`,
-    `--dreamskin-sidebar-mix:${theme.appearance.sidebarOpacity}`,
-    `--dreamskin-surface-opacity:${theme.appearance.surfaceOpacity}`,
-    `--dreamskin-sidebar-opacity:${theme.appearance.sidebarOpacity}`,
-    `--dreamskin-blur:${theme.appearance.blur}px`,
-    `--dreamskin-saturation:${theme.appearance.saturation}`,
-    `--dreamskin-radius:${theme.appearance.radius}px`,
-    `--dreamskin-color-scheme:${scheme}`,
-  ].join(";");
+  entries.push(
+    ["--dreamskin-background", theme.colors.background],
+    ["--dreamskin-surface-hover", theme.states.surfaceHover],
+    ["--dreamskin-surface-active", theme.states.surfaceActive],
+    ["--dreamskin-surface-mix", String(theme.appearance.surfaceOpacity)],
+    ["--dreamskin-sidebar-mix", String(theme.appearance.sidebarOpacity)],
+    ["--dreamskin-reading-mix", readableMix(theme.appearance.surfaceOpacity, 0.5, 24, 44)],
+    ["--dreamskin-composer-mix", readableMix(theme.appearance.surfaceOpacity, 0.82, 64, 76)],
+    ["--dreamskin-sidebar-readable-mix", readableMix(theme.appearance.sidebarOpacity, 0.7, 48, 68)],
+    ["--dreamskin-overlay-tint", overlayTint(theme.appearance.backgroundOverlay)],
+    ["--dreamskin-color-scheme", scheme],
+  );
+  return entries.map(([name, value]) => `${name}:${value}`).join(";");
+}
+
+function runtimeVisualAttributes(theme: StudioTheme) {
+  return Object.entries(runtimeMapping.visualAttributes)
+    .map(([key, attribute]) => `${attribute}="${escapeHtml(theme.visual[key as keyof StudioTheme["visual"]])}"`)
+    .join(" ");
 }
 
 function tagged(id: string, body: string, className = "") {
-  return `<div class="${className}" data-dreamskin-component="${id}">${body}</div>`;
+  return `<div class="${className}" data-dreamskin-component="${id}" data-workbuddy-skin-component="${id}">${body}</div>`;
 }
 
 function titlebar(title: string, subtitle: string) {
@@ -96,7 +124,7 @@ function titlebar(title: string, subtitle: string) {
     <div class="wb-title-copy"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(subtitle)}</span></div>
     <label class="wb-global-search">${icon("search")}<span>搜索任务、技能与文件</span><kbd>⌘ K</kbd></label>
     <div class="wb-title-actions"><button aria-label="通知">${icon("bell")}<i></i></button><button aria-label="设置">${icon("settings")}</button><span class="wb-avatar">A</span></div>
-  `, "wb-titlebar");
+  `, "wb-titlebar workbuddy-topbar");
 }
 
 function sidebar(active: string) {
@@ -108,7 +136,7 @@ function sidebar(active: string) {
     ["automation", "auto", "自动化"],
   ].map(([id, iconName, label]) => `<button class="${active === id ? "is-active" : ""}" aria-current="${active === id ? "page" : "false"}">${icon(iconName)}<span>${label}</span>${id === "chat" ? "<b>3</b>" : ""}</button>`).join("");
   return `
-    <aside class="wb-sidebar">
+    <aside class="wb-sidebar conversation-sidebar" data-view-id="sidebar">
       <div class="wb-brand"><span>${icon("spark")}</span><strong>WorkBuddy</strong></div>
       ${tagged("sidebar.navigation", `<nav>${nav}</nav>`, "wb-nav")}
       <div class="wb-side-label"><span>工作空间</span><button aria-label="新建项目">${icon("plus")}</button></div>
@@ -122,7 +150,8 @@ function sidebar(active: string) {
 }
 
 function shell(active: string, title: string, subtitle: string, content: string) {
-  return tagged("shell.workspace", `<div class="wb-shell-art"></div>${sidebar(active)}<section class="wb-main">${titlebar(title, subtitle)}${content}</section>`, "wb-shell");
+  const mainClass = active === "chat" ? " main-content--chat" : "";
+  return tagged("shell.workspace", `${sidebar(active)}<section class="wb-main teams-content-wrapper main-content${mainClass}" data-view-id="main-content">${titlebar(title, subtitle)}${content}</section>`, "wb-shell teams-container is-mac");
 }
 
 function homeModePill() {
@@ -138,7 +167,7 @@ function homeHero() {
 }
 
 function quickAction(iconName: string, title: string, detail: string, accent: string) {
-  return tagged("home.quickAction", `<span class="wb-quick-icon ${accent}">${icon(iconName)}</span><div><strong>${title}</strong><small>${detail}</small></div><button aria-label="打开">${icon("chevron")}</button>`, "wb-quick-card");
+  return tagged("home.quickAction", `<span class="wb-quick-icon ${accent}">${icon(iconName)}</span><div><strong>${title}</strong><small>${detail}</small></div><button aria-label="打开">${icon("chevron")}</button>`, "wb-quick-card quick-actions__item");
 }
 
 function homeScene() {
@@ -150,18 +179,18 @@ function homeScene() {
 }
 
 function composer() {
-  return tagged("composer.surface", `<div class="wb-composer-editor">继续告诉 WorkBuddy 需要做什么...</div><footer><div>${tagged("composer.tool", `<button aria-label="添加附件">${icon("paperclip")}</button><button>${icon("spark")}深度思考</button><button>Agent Pro ${icon("chevron")}</button>`, "wb-composer-tools")}</div><button class="wb-send" aria-label="发送">${icon("send")}</button></footer>`, "wb-composer");
+  return tagged("composer.surface", `<div class="wb-composer-editor">继续告诉 WorkBuddy 需要做什么...</div><footer><div>${tagged("composer.tool", `<button aria-label="添加附件">${icon("paperclip")}</button><button>${icon("spark")}深度思考</button><button>Agent Pro ${icon("chevron")}</button>`, "wb-composer-tools")}</div><button class="wb-send" aria-label="发送">${icon("send")}</button></footer>`, "wb-composer wb-input-footer");
 }
 
 function threadScene() {
   const content = `<div class="wb-task-shell"><aside class="wb-task-list"><header><div><strong>任务</strong><span>今天</span></div><button>${icon("plus")}</button></header><label>${icon("search")}搜索任务</label><button class="is-selected"><span class="wb-task-type is-blue">${icon("file")}</span><div><strong>整理产品发布资料</strong><small>正在生成发布清单...</small></div><time>刚刚</time></button><button><span class="wb-task-type is-red">${icon("design")}</span><div><strong>生成首页视觉方案</strong><small>已完成 6 张设计稿</small></div><time>12:40</time></button><button><span class="wb-task-type is-teal">${icon("code")}</span><div><strong>检查构建失败</strong><small>已修复类型错误</small></div><time>昨天</time></button></aside>
-    <section class="wb-conversation"><header><div><strong>整理产品发布资料</strong><span><i></i>Agent 正在工作</span></div><button>${icon("more")}</button></header>${tagged("chat.timeline", `
+    <section class="wb-conversation chat-container wb-cb-chat"><header><div><strong>整理产品发布资料</strong><span><i></i>Agent 正在工作</span></div><button>${icon("more")}</button></header>${tagged("chat.timeline", `
       ${tagged("chat.message.user", `<p>读取产品发布计划和会议纪要，整理一份本周发布清单，按负责人归类。</p><time>14:18</time>`, "wb-message is-user")}
       ${tagged("chat.message.agent", `<span class="wb-agent-mark">${icon("spark")}</span><div><strong>WorkBuddy</strong><p>我会先读取项目里的相关资料，再将任务按负责人和截止时间合并。</p></div>`, "wb-message is-agent")}
       ${tagged("chat.toolCall", `<header><span>${icon("folder")}读取项目资料</span><span class="wb-status-success">已完成</span></header><div><span>${icon("file")}发布计划.docx</span><span>${icon("file")}周会纪要.md</span><span>${icon("file")}负责人清单.xlsx</span></div>`, "wb-tool-call")}
       ${tagged("chat.message.agent", `<span class="wb-agent-mark">${icon("check")}</span><div><strong>WorkBuddy</strong><p>发布清单已经整理完成。我标记了 2 个缺少负责人、1 个临近截止时间的事项，并在右侧生成了可编辑表格。</p><div class="wb-inline-actions"><button>查看结果</button><button>继续完善</button></div></div>`, "wb-message is-agent")}
     `, "wb-timeline")}${composer()}</section>
-    ${tagged("result.shell", `<header>${tagged("result.tabs", `<button class="is-active">发布清单</button><button>来源</button><button>运行记录</button>`, "wb-result-tabs")}<button>${icon("more")}</button></header>${tagged("result.artifact", `<div class="wb-table"><div><strong>事项</strong><strong>负责人</strong><strong>截止</strong><strong>状态</strong></div><div><span>上线公告</span><span>Lin</span><span>7/22</span><b class="is-progress">进行中</b></div><div><span>应用商店素材</span><span>Mia</span><span>7/21</span><b class="is-warning">待确认</b></div><div><span>版本回归</span><span>Chen</span><span>7/23</span><b class="is-done">已安排</b></div></div>`, "wb-result-preview")}`, "wb-result-side")}
+    ${tagged("result.shell", `<header>${tagged("result.tabs", `<button class="is-active">发布清单</button><button>来源</button><button>运行记录</button>`, "wb-result-tabs")}<button>${icon("more")}</button></header>${tagged("result.artifact", `<div class="wb-table"><div><strong>事项</strong><strong>负责人</strong><strong>截止</strong><strong>状态</strong></div><div><span>上线公告</span><span>Lin</span><span>7/22</span><b class="is-progress">进行中</b></div><div><span>应用商店素材</span><span>Mia</span><span>7/21</span><b class="is-warning">待确认</b></div><div><span>版本回归</span><span>Chen</span><span>7/23</span><b class="is-done">已安排</b></div></div>`, "wb-result-preview")}`, "wb-result-side detail-panel-container")}
   </div>`;
   return shell("chat", "任务", "对话与执行", content);
 }
@@ -233,7 +262,7 @@ function overlaysScene() {
 }
 
 function cell(id: string, title: string, body: string, className = "") {
-  return `<section class="wb-component-cell ${className}" data-dreamskin-component="${id}"><header><strong>${title}</strong><code>${id}</code></header><div class="wb-component-demo">${body}</div></section>`;
+  return `<section class="wb-component-cell ${className}" data-dreamskin-component="${id}" data-workbuddy-skin-component="${id}"><header><strong>${title}</strong><code>${id}</code></header><div class="wb-component-demo">${body}</div></section>`;
 }
 
 function componentsScene() {
@@ -299,7 +328,8 @@ function sceneMarkup(scene: WorkBuddyScene) {
 }
 
 function previewDocument(scene: WorkBuddyScene, theme: StudioTheme, appearanceMode: AppearanceMode, interactive: boolean) {
-  const source = `<!doctype html><html data-dreamskin-target="workbuddy" data-dreamskin-theme="${escapeHtml(theme.id)}" data-dreamskin-scene="${scene}" data-dreamskin-shell="${appearanceMode}" data-workbuddy-skin-motif="${theme.visual.motif}" data-workbuddy-skin-icon-treatment="${theme.visual.iconTreatment}" data-workbuddy-skin-surface-treatment="${theme.visual.surfaceTreatment}" data-workbuddy-skin-accent-placement="${theme.visual.accentPlacement}" data-workbuddy-skin-card-treatment="${theme.visual.cardTreatment}" data-workbuddy-skin-ornament="${theme.visual.ornament}" style="${escapeHtml(variables(theme, appearanceMode))}"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob:; script-src 'none'; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light dark"><style>${workBuddyCss.replaceAll("</style", "<\\/style")}</style>${interactive ? `<style>html[data-dreamskin-interactive=true] [data-dreamskin-component]{cursor:pointer}html[data-dreamskin-interactive=true] [data-dreamskin-component]:hover{outline:2px solid color-mix(in srgb,var(--dreamskin-accent) 72%,white);outline-offset:2px}html[data-dreamskin-interactive=true] [data-dreamskin-component]:focus-visible,html[data-dreamskin-interactive=true] [data-dreamskin-selected=true]{outline:3px solid var(--dreamskin-focus)!important;outline-offset:3px!important}</style>` : ""}</head><body>${symbols}${sceneMarkup(scene)}</body></html>`;
+  const visualAttributes = runtimeVisualAttributes(theme);
+  const source = `<!doctype html><html class="workbuddy-dream-skin" data-dreamskin-preview="true" data-dreamskin-target="workbuddy" data-dreamskin-theme="${escapeHtml(theme.id)}" data-dreamskin-scene="${scene}" data-dreamskin-shell="${appearanceMode}" data-workbuddy-skin-compat="5.2" data-workbuddy-skin-treatment="${escapeHtml(theme.appearance.treatment)}" ${visualAttributes} style="${escapeHtml(variables(theme, appearanceMode))}"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob:; script-src 'none'; font-src 'none'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="color-scheme" content="light dark"><style>${canonicalWorkBuddyCss.replaceAll("</style", "<\\/style")}</style><style>${workBuddyCss.replaceAll("</style", "<\\/style")}</style>${interactive ? `<style>html[data-dreamskin-interactive=true] [data-dreamskin-component]{cursor:pointer}html[data-dreamskin-interactive=true] [data-dreamskin-component]:hover{outline:2px solid color-mix(in srgb,var(--dreamskin-accent) 72%,white);outline-offset:2px}html[data-dreamskin-interactive=true] [data-dreamskin-component]:focus-visible,html[data-dreamskin-interactive=true] [data-dreamskin-selected=true]{outline:3px solid var(--dreamskin-focus)!important;outline-offset:3px!important}</style>` : ""}</head><body class="workbuddy-dream-skin-body">${symbols}${sceneMarkup(scene)}</body></html>`;
   return source;
 }
 

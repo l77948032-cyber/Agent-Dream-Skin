@@ -93,6 +93,9 @@ type RawTheme = Omit<StudioTheme, "imageUrl" | "builtIn" | "experimental" | "app
 
 function createTheme(config: unknown, imageUrl: string, experimental = false): StudioTheme {
   const raw = config as RawTheme;
+  const backgroundOverlay = raw.appearance.backgroundOverlay === "rgba(4, 8, 18, 0.28)"
+    ? "transparent"
+    : raw.appearance.backgroundOverlay || "transparent";
   return {
     id: raw.id,
     name: raw.name,
@@ -119,7 +122,7 @@ function createTheme(config: unknown, imageUrl: string, experimental = false): S
       backgroundPosition: raw.appearance.backgroundPosition || "center center",
       backgroundSize: raw.appearance.backgroundSize || "cover",
       backgroundOpacity: raw.appearance.backgroundOpacity ?? 1,
-      backgroundOverlay: raw.appearance.backgroundOverlay || "rgba(4, 8, 18, 0.28)",
+      backgroundOverlay,
       backgroundBlendMode: raw.appearance.backgroundBlendMode || "normal",
       surfaceOpacity: raw.appearance.surfaceOpacity ?? 0.88,
       sidebarOpacity: raw.appearance.sidebarOpacity ?? 0.84,

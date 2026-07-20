@@ -109,17 +109,6 @@ html[data-workbuddy-skin-ornament="facets"] .wb-main::before {
   background: var(--dreamskin-background);
   overflow: hidden;
 }
-.wb-shell-art {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  background-image: var(--dreamskin-art);
-  background-size: var(--dreamskin-art-size, cover);
-  background-position: var(--dreamskin-art-position, center);
-  background-blend-mode: var(--dreamskin-art-blend, normal);
-  filter: saturate(var(--dreamskin-saturation, 1));
-  opacity: var(--dreamskin-art-opacity, 1);
-}
 .wb-shell::after {
   position: absolute;
   inset: 0;
@@ -238,7 +227,7 @@ html[data-workbuddy-skin-ornament="facets"] .wb-main::before {
 .wb-quick-card > button .wb-icon { width: 12px; transform: rotate(-90deg); }
 
 .wb-dashboard-grid, .wb-code-board { display: grid; grid-template-columns: 1.55fr .8fr; gap: 13px; min-height: 0; }
-.wb-agenda, .wb-progress, .wb-code-board > section, .wb-design-gallery, .wb-automation-layout > section, .wb-automation-layout > aside { min-height: 0; overflow: hidden; border: 1px solid var(--dreamskin-line); border-radius: min(var(--dreamskin-radius), 8px); background: color-mix(in srgb, var(--dreamskin-panel) 93%, transparent); }
+.wb-agenda, .wb-progress, .wb-code-board > section, .wb-design-gallery, .wb-automation-layout > section, .wb-automation-layout > aside { min-height: 0; overflow: hidden; border: 1px solid var(--dreamskin-line); border-radius: min(var(--dreamskin-radius), 8px); background: color-mix(in srgb, var(--dreamskin-panel) calc(var(--dreamskin-surface-mix) * 100%), transparent); }
 .wb-agenda > header, .wb-design-gallery > header, .wb-code-board section > header { display: flex; align-items: center; justify-content: space-between; height: 43px; padding: 0 14px; border-bottom: 1px solid var(--dreamskin-line); }
 .wb-agenda > header div, .wb-design-gallery > header div { display: flex; align-items: baseline; gap: 8px; }
 .wb-agenda header strong, .wb-design-gallery header strong, .wb-code-board header strong { font-size: 10px; }
@@ -695,16 +684,16 @@ html[data-workbuddy-skin-ornament="facets"] .wb-main::before {
 .demo-timeline i { position: absolute; top: 3px; left: 2px; width: 7px; height: 7px; border-radius: 50%; background: var(--dreamskin-accent); box-shadow: 0 0 0 3px var(--dreamskin-selection); }
 .demo-timeline span { height: 6px; border-radius: 3px; background: var(--dreamskin-panel-alt); }
 .demo-timeline span:nth-child(3) { width: 70%; background: var(--dreamskin-selection); }
-.demo-user-message { justify-self: end; max-width: 170px; padding: 9px 10px; border-radius: 8px 8px 3px 8px; color: var(--dreamskin-on-accent); background: var(--dreamskin-accent); font-size: 8px; }
+.demo-user-message { justify-self: end; max-width: 170px; padding: 9px 10px; border: 1px solid color-mix(in srgb, var(--dreamskin-accent) 24%, transparent); border-radius: 8px 8px 3px 8px; color: var(--dreamskin-text); background: color-mix(in srgb, var(--dreamskin-accent) 18%, transparent); font-size: 8px; }
 .demo-agent-message { display: flex; align-items: start; gap: 7px; max-width: 190px; }
 .demo-agent-message span { display: grid; place-items: center; width: 25px; height: 25px; flex: 0 0 auto; border-radius: 7px; color: var(--dreamskin-on-accent); background: var(--dreamskin-secondary); }
 .demo-agent-message .wb-icon { width: 12px; }
-.demo-agent-message p { margin: 3px 0 0; color: var(--dreamskin-muted); font-size: 8px; line-height: 1.45; }
+.demo-agent-message p { margin: 3px 0 0; color: var(--dreamskin-text); font-size: 8px; line-height: 1.45; text-shadow: 0 1px 2px color-mix(in srgb, var(--dreamskin-background) 78%, transparent), 0 0 8px color-mix(in srgb, var(--dreamskin-background) 48%, transparent); }
 .demo-tool { width: 100%; overflow: hidden; border: 1px solid var(--dreamskin-line); border-radius: 6px; background: var(--dreamskin-panel-alt); }
 .demo-tool > span { display: flex; align-items: center; gap: 6px; height: 31px; padding: 0 9px; border-bottom: 1px solid var(--dreamskin-line); font-size: 8px; }
 .demo-tool > b { display: flex; align-items: center; gap: 5px; padding: 8px 9px; color: var(--dreamskin-success); font-size: 7px; }
 .demo-tool .wb-icon { width: 11px; }
-.demo-composer { display: flex; align-items: end; width: 100%; height: 78px; padding: 12px; border: 1px solid var(--dreamskin-line); border-radius: 8px; color: var(--dreamskin-muted); background: var(--dreamskin-panel); box-shadow: 0 5px 16px color-mix(in srgb, var(--dreamskin-terminal) 7%, transparent); font-size: 8px; }
+.demo-composer { display: flex; align-items: end; width: 100%; height: 78px; padding: 12px; border: 1px solid var(--dreamskin-line); border-radius: 8px; color: var(--dreamskin-muted); background: color-mix(in srgb, var(--dreamskin-panel) var(--dreamskin-composer-mix), transparent); box-shadow: 0 5px 16px color-mix(in srgb, var(--dreamskin-terminal) 7%, transparent); backdrop-filter: blur(calc(var(--dreamskin-blur) * .65)); font-size: 8px; }
 .demo-composer button { display: grid; place-items: center; width: 27px; height: 27px; margin-left: auto; padding: 0; border-radius: 7px; color: var(--dreamskin-on-accent); background: var(--dreamskin-accent); }
 .demo-composer .wb-icon { width: 12px; }
 .demo-tools button, .demo-actions button { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 9px; border: 1px solid var(--dreamskin-line); border-radius: 6px; color: var(--dreamskin-muted); background: var(--dreamskin-panel-alt); font-size: 7px; }
@@ -797,6 +786,116 @@ html[data-workbuddy-skin-ornament="facets"] .wb-main::before {
 .demo-empty small { font-size: 6px; }
 .demo-empty button { display: inline-flex; align-items: center; gap: 4px; height: 23px; margin-top: 2px; padding: 0 7px; border-radius: 5px; color: var(--dreamskin-on-accent); background: var(--dreamskin-accent); font-size: 6px; }
 .demo-empty button .wb-icon { width: 9px; }
+
+/* Preview-only geometry follows the native WorkBuddy 5.2 shell while the
+   canonical runtime stylesheet above this fixture remains the visual source. */
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] body.workbuddy-dream-skin-body {
+  background: transparent !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-shell.teams-container {
+  background: var(--dreamskin-background) !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-shell::before {
+  z-index: 0;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-shell::after {
+  z-index: 1;
+  background:
+    linear-gradient(var(--dreamskin-overlay-tint), var(--dreamskin-overlay-tint)),
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--dreamskin-background) 32%, transparent),
+      color-mix(in srgb, var(--dreamskin-background) 18%, transparent) 54%,
+      color-mix(in srgb, var(--dreamskin-background) 8%, transparent)) !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] :is(.wb-sidebar, .wb-main) {
+  position: relative;
+  z-index: 2;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-sidebar.conversation-sidebar {
+  background: color-mix(in srgb, var(--dreamskin-panel) var(--dreamskin-sidebar-readable-mix), transparent) !important;
+  backdrop-filter: blur(calc(var(--dreamskin-blur) * .7)) saturate(var(--dreamskin-saturation, 1)) !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-main.main-content,
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-main.main-content--chat {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-titlebar.workbuddy-topbar {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-home-hero {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-home-hero .wb-hero-art {
+  display: none;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-home-hero .wb-hero-scrim {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--dreamskin-panel) var(--dreamskin-reading-mix), transparent),
+    color-mix(in srgb, var(--dreamskin-background) 12%, transparent) 56%,
+    transparent 82%);
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-task-list {
+  background: color-mix(in srgb, var(--dreamskin-panel-alt) var(--dreamskin-sidebar-readable-mix), transparent) !important;
+  backdrop-filter: blur(calc(var(--dreamskin-blur) * .55));
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-conversation.chat-container,
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-conversation.chat-container > header,
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-timeline {
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-message.is-user[data-dreamskin-component="chat.message.user"] {
+  width: fit-content;
+  max-width: 84%;
+  color: var(--dreamskin-text) !important;
+  border: 1px solid color-mix(in srgb, var(--dreamskin-accent) 24%, transparent);
+  background: color-mix(in srgb, var(--dreamskin-accent) 18%, transparent) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(calc(var(--dreamskin-blur) * .35));
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-message.is-user time {
+  color: var(--dreamskin-muted);
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-message.is-agent[data-dreamskin-component="chat.message.agent"],
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-message.is-agent[data-dreamskin-component="chat.message.agent"] > div,
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-message.is-agent[data-dreamskin-component="chat.message.agent"] p {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-message.is-agent p {
+  color: var(--dreamskin-text);
+  text-shadow:
+    0 1px 2px color-mix(in srgb, var(--dreamskin-background) 82%, transparent),
+    0 0 10px color-mix(in srgb, var(--dreamskin-background) 52%, transparent);
+}
+
+html.workbuddy-dream-skin[data-dreamskin-preview="true"] .wb-composer.wb-input-footer {
+  background: color-mix(in srgb, var(--dreamskin-panel) var(--dreamskin-composer-mix), transparent) !important;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--dreamskin-terminal) 12%, transparent) !important;
+  backdrop-filter: blur(calc(var(--dreamskin-blur) * .7)) saturate(var(--dreamskin-saturation, 1)) !important;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }

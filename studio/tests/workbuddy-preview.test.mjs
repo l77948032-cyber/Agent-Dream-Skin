@@ -10,6 +10,13 @@ async function source(file) {
   return fs.readFile(path.join(studioRoot, "src", file), "utf8");
 }
 
+function ruleBodiesFor(css, selectorToken) {
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((match) => match[1].includes(selectorToken))
+    .map((match) => match[2])
+    .join("\n");
+}
+
 const workBuddySceneRegistry = JSON.parse(
   await fs.readFile(path.resolve(studioRoot, "../plugins/workbuddy/resources/studio-scenes.v1.json"), "utf8"),
 );
@@ -99,6 +106,37 @@ test("WorkBuddy preview covers the complete semantic component registry", async 
   assert.match(preview, /成功/);
   assert.match(preview, /警告/);
   assert.match(preview, /还没有内容/);
+});
+
+test("WorkBuddy preview reuses canonical skin CSS and keeps chat surfaces single-layered", async () => {
+  const [preview, fixture] = await Promise.all([
+    source("WorkBuddyPreview.tsx"),
+    source("workbuddy-preview-fixture.css"),
+  ]);
+
+  assert.match(
+    preview,
+    /import canonicalWorkBuddyCss from "\.\.\/\.\.\/plugins\/workbuddy\/assets\/workbuddy-skin\.css\?raw"/,
+  );
+  assert.match(preview, /<style>\$\{canonicalWorkBuddyCss\.replaceAll/);
+  assert.match(preview, /class="workbuddy-dream-skin"/);
+  assert.match(preview, /data-workbuddy-skin-compat="5\.2"/);
+
+  const conversationCss = ruleBodiesFor(fixture, ".wb-conversation.chat-container");
+  assert.match(conversationCss, /background:\s*transparent\s*!important/);
+  assert.match(conversationCss, /box-shadow:\s*none\s*!important/);
+
+  const assistantCss = ruleBodiesFor(
+    fixture,
+    '.wb-message.is-agent[data-dreamskin-component="chat.message.agent"]',
+  );
+  assert.match(assistantCss, /background:\s*transparent\s*!important/);
+  assert.match(assistantCss, /box-shadow:\s*none\s*!important/);
+
+  const composerCss = ruleBodiesFor(fixture, ".wb-composer.wb-input-footer");
+  assert.match(composerCss, /background:\s*color-mix\([^;]*--dreamskin-composer-mix/);
+  const editorCss = ruleBodiesFor(fixture, ".wb-composer-editor");
+  assert.doesNotMatch(editorCss, /background:\s*(?!transparent)/);
 });
 
 test("Studio theme identity and API calls are scoped by plugin", async () => {

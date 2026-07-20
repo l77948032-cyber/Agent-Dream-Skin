@@ -37,8 +37,12 @@
     "--trae-skin-art-opacity",
     "--trae-skin-art-blend",
     "--trae-skin-overlay",
+    "--trae-skin-overlay-tint",
     "--trae-skin-surface-mix",
     "--trae-skin-sidebar-mix",
+    "--trae-skin-reading-mix",
+    "--trae-skin-composer-mix",
+    "--trae-skin-sidebar-readable-mix",
     "--trae-skin-blur",
     "--trae-skin-saturation",
     "--trae-skin-radius",
@@ -163,8 +167,10 @@
       setVariable(root, name, states[key]);
     }
     for (const [key, descriptor] of Object.entries(RUNTIME_MAPPING.appearance || {})) {
-      const raw = appearance[key];
+      let raw = appearance[key];
       if (raw === undefined || raw === null) continue;
+      // Migrate themes created before overlays became an optional tint layer.
+      if (key === "backgroundOverlay" && raw === "rgba(4, 8, 18, 0.28)") raw = "transparent";
       const value = descriptor.format === "percent"
         ? `${Math.round(Number(raw) * 10000) / 100}%`
         : descriptor.format === "px"
@@ -172,6 +178,15 @@
           : raw;
       setVariable(root, descriptor.variable, value);
     }
+
+    const percentage = (value) => `${Math.round(value * 10000) / 100}%`;
+    const rawSurface = Number(appearance.surfaceOpacity);
+    const rawSidebar = Number(appearance.sidebarOpacity);
+    const surface = Number.isFinite(rawSurface) ? Math.min(1, Math.max(0, rawSurface)) : 0.88;
+    const sidebar = Number.isFinite(rawSidebar) ? Math.min(1, Math.max(0, rawSidebar)) : 0.84;
+    setVariable(root, "--trae-skin-reading-mix", percentage(Math.min(0.44, Math.max(0.24, surface * 0.5))));
+    setVariable(root, "--trae-skin-composer-mix", percentage(Math.min(0.76, Math.max(0.64, surface * 0.82))));
+    setVariable(root, "--trae-skin-sidebar-readable-mix", percentage(Math.min(0.68, Math.max(0.48, sidebar * 0.7))));
 
     const shell = appearance.colorScheme === "system" ? detectShellMode() : appearance.colorScheme;
     const shadow = appearance.shadow === "deep"

@@ -63,9 +63,19 @@ function runtimeVariables(theme: StudioTheme, appearanceMode: AppearanceMode) {
     entries.push([variable, theme.states[key as keyof StudioTheme["states"]]]);
   }
   for (const [key, descriptor] of Object.entries(runtimeMapping.appearance)) {
-    const value = theme.appearance[key as keyof StudioTheme["appearance"]];
+    let value = theme.appearance[key as keyof StudioTheme["appearance"]];
+    if (key === "backgroundOverlay" && value === "rgba(4, 8, 18, 0.28)") value = "transparent";
     entries.push([descriptor.variable, formatAppearance(value, descriptor.format as RuntimeFormat)]);
   }
+
+  const percentage = (value: number) => `${Math.round(value * 10000) / 100}%`;
+  const surface = Math.min(1, Math.max(0, theme.appearance.surfaceOpacity));
+  const sidebar = Math.min(1, Math.max(0, theme.appearance.sidebarOpacity));
+  entries.push(
+    ["--trae-skin-reading-mix", percentage(Math.min(0.44, Math.max(0.24, surface * 0.5)))],
+    ["--trae-skin-composer-mix", percentage(Math.min(0.76, Math.max(0.64, surface * 0.82)))],
+    ["--trae-skin-sidebar-readable-mix", percentage(Math.min(0.68, Math.max(0.48, sidebar * 0.7)))],
+  );
 
   const scheme = theme.appearance.colorScheme === "system" ? appearanceMode : theme.appearance.colorScheme;
   const shadow = theme.appearance.shadow === "deep"

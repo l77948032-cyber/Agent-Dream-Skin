@@ -91,6 +91,43 @@ test("runtime recipes follow treatment identity so copied template ids keep thei
   assert.equal(runtimeCss.includes("data-trae-skin-theme="), false);
 });
 
+test("Trae keeps the theme artwork visible behind transparent reading surfaces", async () => {
+  const [runtimeCss, pluginCss, runtimeMapping, pluginMapping] = await Promise.all([
+    fs.readFile(path.join(ROOT, "assets", "trae-skin.css"), "utf8"),
+    fs.readFile(path.join(ROOT, "plugins", "trae", "assets", "trae-skin.css"), "utf8"),
+    fs.readFile(path.join(ROOT, "registry", "theme-runtime.v1.json"), "utf8").then(JSON.parse),
+    fs.readFile(path.join(ROOT, "plugins", "trae", "resources", "theme-runtime.v1.json"), "utf8").then(JSON.parse),
+  ]);
+
+  assert.equal(pluginCss, runtimeCss, "source and packaged runtime CSS must remain byte-identical");
+  assert.equal(runtimeMapping.appearance.backgroundOverlay.variable, "--trae-skin-overlay-tint");
+  assert.equal(pluginMapping.appearance.backgroundOverlay.variable, "--trae-skin-overlay-tint");
+
+  const sessionCss = ruleBodiesFor(runtimeCss, ".session-panel");
+  assert.match(sessionCss, /background:\s*transparent\s*!important/);
+  assert.match(sessionCss, /box-shadow:\s*none\s*!important/);
+  assert.match(sessionCss, /backdrop-filter:\s*none\s*!important/);
+
+  const sparkWorkCss = ruleBodiesFor(
+    runtimeCss,
+    '[data-trae-skin-treatment="spark-collage"][data-trae-skin-mode="work"]',
+  );
+  assert.doesNotMatch(sparkWorkCss, /--trae-skin-art-opacity\s*:/);
+
+  const nestedComposerCss = ruleBodiesFor(runtimeCss, ".chat-input-v2-container");
+  assert.match(nestedComposerCss, /background:\s*transparent\s*!important/);
+  assert.match(nestedComposerCss, /border:\s*0\s*!important/);
+  assert.match(nestedComposerCss, /box-shadow:\s*none\s*!important/);
+  assert.doesNotMatch(nestedComposerCss, /background:\s*color-mix/);
+
+  const composerSurfaceCss = ruleBodiesFor(runtimeCss, '[data-trae-skin-surface="composer"]');
+  assert.match(composerSurfaceCss, /background:\s*color-mix\([^;]*--trae-skin-composer-mix/);
+
+  const userTurnCss = ruleBodiesFor(runtimeCss, ".turn__user-message");
+  assert.match(userTurnCss, /background:\s*transparent\s*!important/);
+  assert.match(userTurnCss, /box-shadow:\s*none\s*!important/);
+});
+
 test("distinct treatment recipes derive editable component colors from semantic variables", async () => {
   const css = await fs.readFile(path.join(ROOT, "assets", "trae-skin.css"), "utf8");
   const requiredVariables = {

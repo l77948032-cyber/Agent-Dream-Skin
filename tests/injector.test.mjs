@@ -574,7 +574,8 @@ test("renderer injection is reentrant and remove restores every owned DOM change
   assert.equal(document.documentElement.getAttribute("data-trae-skin-icon-treatment"), "outline");
   assert.equal(document.documentElement.getAttribute("data-trae-skin-layout"), "studio-collage");
   assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-art-blend"), "normal");
-  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-overlay"), "rgba(4, 8, 18, 0.28)");
+  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-overlay-tint"), "transparent");
+  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-overlay"), "");
   assert.equal(document.querySelector(".chat-input-v2-editor-part")
     .getAttribute("data-trae-skin-surface"), "composer");
   assert.match(document.querySelector(".messageInputContainer")
@@ -631,6 +632,7 @@ test("renderer injection is reentrant and remove restores every owned DOM change
   assert.equal(document.documentElement.getAttribute("data-trae-skin-motif"), null);
   assert.equal(document.documentElement.getAttribute("data-trae-skin-layout"), null);
   assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-art-blend"), "");
+  assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-overlay-tint"), "");
   assert.equal(document.documentElement.style.getPropertyValue("--trae-skin-overlay"), "");
   assert.equal(document.getElementById("trae-dream-skin-chrome"), null);
   for (const variableName of Object.values(SEMANTIC_COLOR_VARIABLES)) {

@@ -46,7 +46,7 @@
   },
   "appearance": {
     "treatment": "violet-rift",
-    "backgroundPosition": "center center",
+    "backgroundPosition": "right center",
     "backgroundSize": "cover",
     "backgroundOverlay": "rgba(5, 8, 20, 0.22)",
     "backgroundBlendMode": "normal",

@@ -46,7 +46,7 @@
   },
   "appearance": {
     "treatment": "paper-wash",
-    "backgroundPosition": "center center",
+    "backgroundPosition": "left center",
     "backgroundSize": "cover",
     "backgroundOverlay": "rgba(242, 244, 240, 0.06)",
     "backgroundBlendMode": "normal",

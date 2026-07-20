@@ -63,7 +63,7 @@ export const APPEARANCE_DEFAULTS = Object.freeze({
   treatment: "midnight-neon",
   backgroundPosition: "center center",
   backgroundSize: "cover",
-  backgroundOverlay: "rgba(4, 8, 18, 0.28)",
+  backgroundOverlay: "transparent",
   backgroundBlendMode: "normal",
   backgroundOpacity: 1,
   surfaceOpacity: 0.88,
@@ -74,6 +74,8 @@ export const APPEARANCE_DEFAULTS = Object.freeze({
   shadow: "soft",
   colorScheme: "dark",
 });
+
+const LEGACY_BACKGROUND_OVERLAY = "rgba(4, 8, 18, 0.28)";
 
 export const THEME_VARIABLES = Object.freeze([
   "--trae-skin-art",
@@ -106,8 +108,12 @@ export const THEME_VARIABLES = Object.freeze([
   "--trae-skin-art-opacity",
   "--trae-skin-art-blend",
   "--trae-skin-overlay",
+  "--trae-skin-overlay-tint",
   "--trae-skin-surface-mix",
   "--trae-skin-sidebar-mix",
+  "--trae-skin-reading-mix",
+  "--trae-skin-composer-mix",
+  "--trae-skin-sidebar-readable-mix",
   "--trae-skin-blur",
   "--trae-skin-saturation",
   "--trae-skin-radius",
@@ -214,7 +220,10 @@ export function normalizeTheme(raw, source = "theme.json") {
     treatment: treatments.has(requestedTreatment) ? requestedTreatment : APPEARANCE_DEFAULTS.treatment,
     backgroundPosition: safePosition(raw.appearance?.backgroundPosition, APPEARANCE_DEFAULTS.backgroundPosition),
     backgroundSize: safeBackgroundSize(raw.appearance?.backgroundSize, APPEARANCE_DEFAULTS.backgroundSize),
-    backgroundOverlay: validColor(raw.appearance?.backgroundOverlay, APPEARANCE_DEFAULTS.backgroundOverlay),
+    backgroundOverlay: (() => {
+      const overlay = validColor(raw.appearance?.backgroundOverlay, APPEARANCE_DEFAULTS.backgroundOverlay);
+      return overlay === LEGACY_BACKGROUND_OVERLAY ? APPEARANCE_DEFAULTS.backgroundOverlay : overlay;
+    })(),
     backgroundBlendMode: blends.has(requestedBlend) ? requestedBlend : APPEARANCE_DEFAULTS.backgroundBlendMode,
     backgroundOpacity: rangedNumber(raw.appearance?.backgroundOpacity, APPEARANCE_DEFAULTS.backgroundOpacity, 0, 1),
     surfaceOpacity: rangedNumber(raw.appearance?.surfaceOpacity, APPEARANCE_DEFAULTS.surfaceOpacity, 0, 1),

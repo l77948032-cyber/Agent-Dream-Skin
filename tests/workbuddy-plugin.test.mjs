@@ -63,6 +63,30 @@ async function readJson(filePath) {
   return JSON.parse(await fs.readFile(filePath, "utf8"));
 }
 
+function ruleBodiesFor(css, selectorToken) {
+  return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((match) => match[1].includes(selectorToken))
+    .map((match) => match[2])
+    .join("\n");
+}
+
+function topLevelSelectors(selectorText) {
+  const selectors = [];
+  let start = 0;
+  let depth = 0;
+  for (let index = 0; index < selectorText.length; index += 1) {
+    const character = selectorText[index];
+    if (character === "(" || character === "[") depth += 1;
+    else if (character === ")" || character === "]") depth -= 1;
+    else if (character === "," && depth === 0) {
+      selectors.push(selectorText.slice(start, index));
+      start = index + 1;
+    }
+  }
+  selectors.push(selectorText.slice(start));
+  return selectors.map((selector) => selector.replace(/\/\*[\s\S]*?\*\//g, "").trim()).filter(Boolean);
+}
+
 test("WorkBuddy manifest registers as a macOS target with complete plugin resources", async () => {
   const manifest = await loadWorkBuddyPluginManifest();
   assert.equal(manifest.id, "dreamskin.workbuddy");
@@ -265,7 +289,66 @@ test("WorkBuddy structural CSS is version guarded and mirrored for ThemeLoader c
   assert.match(canonical, /data-workbuddy-skin-icon-treatment/);
   assert.match(canonical, /data-workbuddy-skin-surface-treatment/);
   assert.match(canonical, /data-workbuddy-skin-card-treatment/);
-  assert.doesNotMatch(canonical, /(^|[,{]\s*)(?:\.conversation-sidebar|\.wb-home-page|\.workbuddy-topbar)\b/m);
+  const hostSelectors = [...canonical.matchAll(/([^{}]+)\{[^{}]*\}/g)]
+    .flatMap((match) => topLevelSelectors(match[1]))
+    .filter((selector) => /(?:\.conversation-sidebar|\.wb-home-page|\.workbuddy-topbar)\b/.test(selector));
+  assert.ok(hostSelectors.length > 0);
+  assert.ok(hostSelectors.every((selector) => selector.startsWith("html.workbuddy-dream-skin")));
+});
+
+test("WorkBuddy consumes theme opacity without covering the conversation artwork", async () => {
+  const [canonical, compatibility, renderer] = await Promise.all([
+    fs.readFile(path.join(WORKBUDDY_PLUGIN_ROOT, "assets", "workbuddy-skin.css"), "utf8"),
+    fs.readFile(path.join(WORKBUDDY_PLUGIN_ROOT, "assets", "trae-skin.css"), "utf8"),
+    fs.readFile(path.join(ROOT, "assets", "workbuddy-renderer-inject.js"), "utf8"),
+  ]);
+  assert.equal(compatibility, canonical, "the compatibility asset must mirror canonical WorkBuddy CSS");
+
+  const artworkLayerCss = ruleBodiesFor(canonical, ".teams-container::before");
+  assert.match(artworkLayerCss, /background-image:\s*var\(--dreamskin-art\)/);
+  assert.match(artworkLayerCss, /opacity:\s*var\(--dreamskin-art-opacity/);
+
+  for (const selector of [
+    ".teams-content-wrapper",
+    ".main-content--chat",
+    ".chat-container",
+    ".ai-chat-content",
+    ".wb-home-page",
+    "[data-view-id]:not(.conversation-sidebar):not(.detail-panel-container)",
+    "*:has(> .teams-content-wrapper)",
+  ]) {
+    const structureCss = ruleBodiesFor(canonical, selector);
+    assert.match(structureCss, /background:\s*transparent/, `${selector} must not paint over the theme artwork`);
+    if (!selector.startsWith("*:has")) {
+      assert.match(structureCss, /backdrop-filter:\s*none/, `${selector} must not add a second glass layer`);
+    }
+  }
+
+  const shellAliases = ruleBodiesFor(canonical, ".teams-container.is-mac");
+  assert.match(shellAliases, /--wb-home-bg-primary:\s*transparent/);
+  assert.match(shellAliases, /--wb-home-bg-secondary:\s*transparent/);
+
+  const assistantCss = ruleBodiesFor(canonical, 'data-workbuddy-skin-runtime-role~="assistant.prose"');
+  assert.match(assistantCss, /border:\s*0/);
+  assert.match(assistantCss, /background:\s*transparent/);
+  assert.match(assistantCss, /box-shadow:\s*none/);
+  assert.match(assistantCss, /backdrop-filter:\s*none/);
+
+  const composerCss = ruleBodiesFor(canonical, 'data-workbuddy-skin-runtime-role~="composer.surface"');
+  assert.match(composerCss, /background:\s*var\(--ds-composer-surface\)/);
+  assert.match(composerCss, /--cb-input-background:\s*transparent/);
+  assert.match(composerCss, /backdrop-filter:\s*none/);
+
+  for (const variable of [
+    "--dreamskin-reading-mix",
+    "--dreamskin-composer-mix",
+    "--dreamskin-sidebar-readable-mix",
+  ]) {
+    assert.ok(canonical.includes(`var(${variable}`), `${variable} must be consumed by canonical CSS`);
+    assert.ok(renderer.includes(`"${variable}"`), `${variable} must be produced by the renderer`);
+  }
+  assert.match(renderer, /surfacePercent\s*=\s*Number\(theme\.appearance\.surfaceOpacity\)\s*\*\s*100/);
+  assert.match(renderer, /sidebarPercent\s*=\s*Number\(theme\.appearance\.sidebarOpacity\)\s*\*\s*100/);
 });
 
 test("WorkBuddy blank recipe and factory fail closed on missing host input", async () => {

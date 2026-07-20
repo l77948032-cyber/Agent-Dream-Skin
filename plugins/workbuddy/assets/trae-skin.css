@@ -21,6 +21,16 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --ds-focus: var(--dreamskin-focus, var(--ds-accent));
   --ds-radius: var(--dreamskin-radius, 7px);
   --ds-blur: var(--dreamskin-blur, 12px);
+  --ds-reading-surface: color-mix(in srgb,
+    var(--ds-panel) var(--dreamskin-reading-mix, 40%), transparent);
+  --ds-reading-surface-alt: color-mix(in srgb,
+    var(--ds-panel-alt) var(--dreamskin-reading-mix, 40%), transparent);
+  --ds-composer-surface: color-mix(in srgb,
+    var(--ds-panel) var(--dreamskin-composer-mix, 68%), transparent);
+  --ds-component-surface: color-mix(in srgb, var(--ds-panel) 78%, transparent);
+  --ds-component-surface-alt: color-mix(in srgb, var(--ds-panel-alt) 78%, transparent);
+  --ds-sidebar: color-mix(in srgb,
+    var(--ds-panel) var(--dreamskin-sidebar-readable-mix, 64%), transparent);
   --ds-shadow-soft: 0 10px 30px rgba(11, 24, 31, 0.12);
   --ds-shadow-float: 0 18px 46px rgba(11, 24, 31, 0.2);
 
@@ -46,7 +56,7 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --wb-color-mask-color: color-mix(in srgb, var(--ds-bg) 62%, transparent);
   --wb-home-bg-primary: var(--ds-bg);
   --wb-home-bg-secondary: var(--ds-panel-alt);
-  --wb-sidebar-bg: color-mix(in srgb, var(--ds-panel) 91%, transparent);
+  --wb-sidebar-bg: var(--ds-sidebar);
   --wb-sidebar-border: var(--ds-line);
   --wb-sidebar-mask-end: transparent;
   --wb-border-base: var(--ds-line);
@@ -145,7 +155,7 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --wb-checkbox-icon-selected: var(--ds-on-accent);
   --wb-quick-action-item-bg-hover: var(--ds-hover);
   --wb-quick-action-item-border-hover: color-mix(in srgb, var(--ds-accent) 48%, var(--ds-line));
-  --wb-quick-action-sub-item-bg: color-mix(in srgb, var(--ds-panel) 86%, transparent);
+  --wb-quick-action-sub-item-bg: var(--ds-reading-surface);
   --wb-status-success: var(--dreamskin-success);
   --wb-status-warning: var(--dreamskin-warning);
   --wb-status-error: var(--dreamskin-danger);
@@ -179,8 +189,8 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --cb-bg-elevated: var(--ds-panel);
   --cb-content-background: var(--ds-panel);
   --cb-main-area-background: var(--ds-panel);
-  --cb-sidebar-background: color-mix(in srgb, var(--ds-panel) 91%, transparent);
-  --cb-sidebar-bg: color-mix(in srgb, var(--ds-panel) 91%, transparent);
+  --cb-sidebar-background: var(--ds-sidebar);
+  --cb-sidebar-bg: var(--ds-sidebar);
   --cb-sidebar-border: var(--ds-line);
   --cb-sidebar-foreground: var(--ds-text);
   --cb-sidebar-text: var(--ds-text);
@@ -213,10 +223,10 @@ html.workbuddy-dream-skin [class~="vscode-dark"] {
   --cb-button-ghost-foreground: var(--ds-text);
   --cb-user-bubble-bg: var(--ds-accent);
   --cb-user-bubble-color: var(--ds-on-accent);
-  --cb-assistant-bubble-bg: color-mix(in srgb, var(--ds-panel-alt) 76%, transparent);
+  --cb-assistant-bubble-bg: transparent;
   --cb-assistant-bubble-color: var(--ds-text);
-  --cb-input-background: color-mix(in srgb, var(--ds-panel) 92%, transparent);
-  --cb-input-bg: color-mix(in srgb, var(--ds-panel) 92%, transparent);
+  --cb-input-background: var(--ds-composer-surface);
+  --cb-input-bg: var(--ds-composer-surface);
   --cb-input-border: var(--ds-line);
   --cb-input-border-color: var(--ds-line);
   --cb-input-focus-border-color: var(--ds-focus);
@@ -293,28 +303,63 @@ html.workbuddy-dream-skin :focus-visible {
   outline-color: var(--ds-focus);
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] body,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] #root,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] body {
   color: var(--ds-text);
   background-color: var(--ds-bg);
 }
 
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] #root,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container {
-  background-image: linear-gradient(var(--dreamskin-overlay), var(--dreamskin-overlay)), var(--dreamskin-art);
-  background-position: center, var(--dreamskin-art-position);
-  background-size: cover, var(--dreamskin-art-size);
+  color: var(--ds-text);
+  background: transparent;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container {
+  position: relative;
+  isolation: isolate;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container.is-mac {
+  --wb-home-bg-primary: transparent;
+  --wb-home-bg-secondary: transparent;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container::before,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container::before {
+  z-index: -2;
+  background-image: var(--dreamskin-art);
+  background-position: var(--dreamskin-art-position);
+  background-size: var(--dreamskin-art-size);
   background-repeat: no-repeat;
   background-attachment: fixed;
-  background-blend-mode: normal, var(--dreamskin-art-blend, normal);
+  background-blend-mode: var(--dreamskin-art-blend, normal);
+  filter: saturate(var(--dreamskin-saturation, 1));
+  opacity: var(--dreamskin-art-opacity, 1);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container::after {
+  z-index: -1;
+  background: var(--dreamskin-overlay);
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-content-wrapper,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-main-content,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .main-content,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .main-content--chat,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .chat-container,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .ai-chat-content,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-home-page,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container.is-mac [data-view-id]:not(.conversation-sidebar):not(.detail-panel-container),
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-cb-chat {
   background: transparent;
+  backdrop-filter: none;
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container *:has(> .conversation-sidebar),
@@ -326,7 +371,7 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .teams-container *:h
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .conversation-sidebar {
   position: relative;
   border-right: 1px solid var(--ds-line);
-  background: color-mix(in srgb, var(--ds-panel) 91%, transparent);
+  background: var(--ds-sidebar);
   box-shadow: 10px 0 28px rgba(10, 28, 34, 0.06);
   backdrop-filter: blur(var(--ds-blur)) saturate(var(--dreamskin-saturation, 1));
 }
@@ -419,7 +464,7 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .conversation-item[a
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .workbuddy-topbar {
   border-bottom: 1px solid color-mix(in srgb, var(--ds-line) 72%, transparent);
-  background: color-mix(in srgb, var(--ds-panel) 82%, transparent);
+  background: var(--ds-reading-surface);
   backdrop-filter: blur(calc(var(--ds-blur) * 0.8));
 }
 
@@ -475,7 +520,7 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .quick-actions__item
   overflow: hidden;
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius);
-  background: color-mix(in srgb, var(--ds-panel) 86%, transparent);
+  background: var(--ds-composer-surface);
   box-shadow: 0 5px 18px rgba(11, 24, 31, 0.07);
   backdrop-filter: blur(calc(var(--ds-blur) * 0.72));
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
@@ -502,7 +547,7 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .quick-actions__item
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-home-composer__input-slot {
   color: var(--ds-text);
   border-radius: calc(var(--ds-radius) + 1px);
-  background: color-mix(in srgb, var(--ds-panel) 92%, transparent);
+  background: transparent;
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-home-composer__input-slot div:has(> div > [data-slate-editor="true"][contenteditable="true"]) {
@@ -536,17 +581,38 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-home-composer__input-slot > section,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-input-footer,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .chat-container section:has([data-slate-editor="true"][contenteditable="true"]) {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="composer.surface"] {
+  --cb-content-background: transparent;
+  --cb-main-area-background: transparent;
+  --cb-input-background: transparent;
+  --cb-input-bg: transparent;
   border: 1px solid color-mix(in srgb, var(--ds-accent) 28%, var(--ds-line));
   border-radius: calc(var(--ds-radius) + 3px);
-  background: color-mix(in srgb, var(--ds-panel) 91%, transparent);
+  background: var(--ds-composer-surface);
   box-shadow: 0 12px 36px rgba(11, 24, 31, 0.12), inset 0 1px color-mix(in srgb, white 42%, transparent);
   backdrop-filter: blur(var(--ds-blur)) saturate(var(--dreamskin-saturation, 1));
 }
 
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="composer.surface"] :where(
+  [class*="_content_"],
+  [class*="_contentWrapper_"],
+  [class*="_contentOverlayWrapper_"],
+  [class*="_mainArea_"],
+  [class*="_editable_"],
+  [data-slate-editor="true"]
+) {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="composer.surface"] [data-slate-editor="true"][contenteditable="true"] {
+  background: transparent;
+  backdrop-filter: none;
+}
+
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-home-composer:focus-within .wb-home-composer__input-slot > section,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .wb-input-footer:focus-within,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .chat-container section:has([data-slate-editor="true"][contenteditable="true"]):focus-within {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="composer.surface"]:focus-within {
   border-color: var(--ds-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ds-focus) 20%, transparent), var(--ds-shadow-soft);
 }
@@ -556,7 +622,7 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-slate-placehol
   opacity: 0.78 !important;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role="home.notice"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="home.notice"] {
   color: var(--ds-text) !important;
   border: 1px solid var(--ds-line) !important;
   background: linear-gradient(135deg,
@@ -565,22 +631,22 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin
   box-shadow: var(--ds-shadow-soft) !important;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role="home.notice"] :where(span, button) {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="home.notice"] :where(span, button) {
   color: var(--ds-text) !important;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role="home.notice"] button:not([aria-label]) {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="home.notice"] button:not([aria-label]) {
   border: 1px solid var(--ds-line) !important;
   background: var(--ds-panel) !important;
   box-shadow: var(--wb-shadow-sm) !important;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role="home.notice"] button[aria-label] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="home.notice"] button[aria-label] {
   color: var(--ds-muted) !important;
   background: transparent !important;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role="home.notice"] button[aria-label] svg path {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-runtime-role~="home.notice"] button[aria-label] svg path {
   fill: currentColor !important;
 }
 
@@ -601,32 +667,50 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"
   background: transparent;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] [data-workbuddy-skin-component="chat.message.user"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] [data-workbuddy-skin-component~="chat.message.user"] {
   color: inherit;
   background: transparent;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] > div > [data-workbuddy-skin-component="chat.message.user"] > [data-workbuddy-skin-component="chat.message.user"]:first-child {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] [class*="_userMessageWrapper_"] {
+  background: transparent;
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] [class*="_userMessageBubble_"] {
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 36%, transparent);
   border-radius: calc(var(--ds-radius) + 5px) calc(var(--ds-radius) + 5px) 3px calc(var(--ds-radius) + 5px);
-  color: var(--ds-on-accent);
-  background: var(--ds-accent);
-  box-shadow: 0 7px 20px color-mix(in srgb, var(--ds-accent) 20%, transparent);
+  color: var(--ds-text);
+  background: color-mix(in srgb, var(--ds-accent) 20%, transparent);
+  box-shadow: 0 7px 20px color-mix(in srgb, var(--ds-accent) 10%, transparent);
+  backdrop-filter: blur(calc(var(--ds-blur) * 0.35)) saturate(var(--dreamskin-saturation, 1));
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] > div > [data-workbuddy-skin-component="chat.message.user"] > [data-workbuddy-skin-component="chat.message.user"]:first-child [data-workbuddy-skin-component="chat.message.user"],
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] > div > [data-workbuddy-skin-component="chat.message.user"] > [data-workbuddy-skin-component="chat.message.user"]:first-child [data-slate-editor="true"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] [class*="_userMessageBubble_"] *,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] [class*="_userMessageBubble_"] [data-slate-editor="true"] {
   color: inherit;
   background: transparent;
+  backdrop-filter: none;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] > div > [data-workbuddy-skin-component="chat.message.user"] > [data-workbuddy-skin-component="chat.message.user"]:not(:first-child),
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] > div > [data-workbuddy-skin-component="chat.message.user"] > [data-workbuddy-skin-component="chat.message.user"]:not(:first-child) * {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [id^="user-message-"] :where(
+  [class*="_userMessageWrapper_"] ~ *,
+  [class*="_messageTime_"],
+  [class*="_messageActions_"]
+) {
   color: var(--ds-muted);
   background: transparent;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="chat.message.agent"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="chat.message.agent"] {
   color: var(--ds-text);
+}
+
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .chat-container [class*="_assistantTextContent_"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .chat-container [data-workbuddy-skin-runtime-role~="assistant.prose"] {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .artifact-slot-panel__action-btn {
@@ -644,20 +728,20 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .chat-container [cla
   color: var(--ds-muted);
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="chat.toolCall"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="chat.toolCall"],
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="tool-call"],
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="toolCall"] {
   border: 1px solid var(--ds-line);
   border-left: 3px solid var(--ds-accent-alt);
   border-radius: var(--ds-radius);
-  background: color-mix(in srgb, var(--ds-panel-alt) 82%, transparent);
+  background: var(--ds-component-surface-alt);
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="result.shell"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="result.shell"],
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] .detail-panel-container,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="artifact-detail"] {
   border-left-color: var(--ds-line);
-  background: color-mix(in srgb, var(--ds-panel) 88%, transparent);
+  background: var(--ds-component-surface);
   backdrop-filter: blur(calc(var(--ds-blur) * 0.75));
 }
 
@@ -677,33 +761,33 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="tablist"] [ro
   box-shadow: inset 0 -2px var(--ds-accent);
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="market.card"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="market.card"],
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="market-card"],
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="skill-card"],
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="automation.task"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="automation.task"],
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="automation-card"],
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="project.card"],
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="project.card"],
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="project-card"] {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--ds-line);
   border-radius: var(--ds-radius);
-  background: color-mix(in srgb, var(--ds-panel) 88%, transparent);
+  background: var(--ds-component-surface);
   box-shadow: 0 5px 18px rgba(11, 24, 31, 0.07);
   transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="market.card"]:hover,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="market.card"]:hover,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="market-card"]:hover,
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [class*="skill-card"]:hover,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component="project.card"]:hover {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin-component~="project.card"]:hover {
   border-color: color-mix(in srgb, var(--ds-accent) 46%, var(--ds-line));
   box-shadow: var(--ds-shadow-soft);
   transform: translateY(-2px);
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="poster"] [data-workbuddy-skin-component="market.card"]::before,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="poster"] [data-workbuddy-skin-component="project.card"]::before {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="poster"] [data-workbuddy-skin-component~="market.card"]::before,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="poster"] [data-workbuddy-skin-component~="project.card"]::before {
   position: absolute;
   top: 10px;
   right: -13px;
@@ -714,8 +798,8 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-
   transform: rotate(38deg);
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="split"] [data-workbuddy-skin-component="market.card"]::after,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="split"] [data-workbuddy-skin-component="project.card"]::after {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="split"] [data-workbuddy-skin-component~="market.card"]::after,
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-card-treatment="split"] [data-workbuddy-skin-component~="project.card"]::after {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -733,7 +817,7 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [role="combobox"] {
   border-color: var(--ds-line);
   border-radius: var(--ds-radius);
   caret-color: var(--ds-accent);
-  background: color-mix(in srgb, var(--ds-panel) 90%, transparent);
+  background: var(--ds-composer-surface);
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] input:hover,
@@ -827,12 +911,27 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"] [data-workbuddy-skin
   background: color-mix(in srgb, var(--ds-panel-alt) 78%, var(--ds-line));
 }
 
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="glass"] [data-workbuddy-skin-component] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="glass"] :where(
+  .conversation-sidebar,
+  .workbuddy-topbar,
+  .quick-actions__item,
+  [data-workbuddy-skin-runtime-role~="composer.surface"],
+  [data-workbuddy-skin-component~="chat.toolCall"],
+  [data-workbuddy-skin-component~="result.shell"],
+  [data-workbuddy-skin-component~="market.card"],
+  [data-workbuddy-skin-component~="automation.task"],
+  [data-workbuddy-skin-component~="project.card"],
+  [role="menu"],
+  [role="listbox"],
+  [role="dialog"],
+  [class*="toast"],
+  [class*="notification"]
+) {
   backdrop-filter: blur(var(--ds-blur)) saturate(var(--dreamskin-saturation, 1));
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="paper"] .quick-actions__item,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="paper"] [data-workbuddy-skin-component="market.card"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-surface-treatment="paper"] [data-workbuddy-skin-component~="market.card"] {
   border-color: color-mix(in srgb, var(--ds-line) 72%, var(--ds-highlight));
   background: var(--ds-panel);
   box-shadow: 2px 3px 0 color-mix(in srgb, var(--ds-line) 58%, transparent);
@@ -843,13 +942,13 @@ html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-motif="prism"] .quick-actions__item,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-motif="prism"] [data-workbuddy-skin-component="market.card"] {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-motif="prism"] [data-workbuddy-skin-component~="market.card"] {
   border-color: color-mix(in srgb, var(--ds-accent-alt) 30%, var(--ds-line));
   box-shadow: 0 8px 26px color-mix(in srgb, var(--ds-accent) 12%, transparent);
 }
 
 html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-ornament="tape"] .quick-actions__item::before,
-html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-ornament="tape"] [data-workbuddy-skin-component="market.card"]::before {
+html.workbuddy-dream-skin[data-workbuddy-skin-compat="5.2"][data-workbuddy-skin-ornament="tape"] [data-workbuddy-skin-component~="market.card"]::before {
   position: absolute;
   top: -3px;
   left: 50%;

@@ -21,6 +21,17 @@
     for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
     return URL.createObjectURL(new Blob([bytes], { type: mime }));
   })();
+  const clamp = (minimum, value, maximum) => Math.min(maximum, Math.max(minimum, value));
+  const percentage = (value) => `${Math.round(value * 100) / 100}%`;
+  const surfacePercent = Number(theme.appearance.surfaceOpacity) * 100;
+  const sidebarPercent = Number(theme.appearance.sidebarOpacity) * 100;
+  const themeId = String(theme.id || "").trim().toLowerCase();
+  const configuredBackgroundPosition = theme.appearance.backgroundPosition;
+  const backgroundPosition = configuredBackgroundPosition === "center center"
+    ? (/^(?:orchid-night|harbor-focus)(?:-|$)/.test(themeId)
+      ? "right center"
+      : (/^paper-garden(?:-|$)/.test(themeId) ? "left center" : configuredBackgroundPosition))
+    : configuredBackgroundPosition;
   const variables = {
     "--dreamskin-art": `url("${artUrl}")`,
     "--dreamskin-bg": theme.colors.background,
@@ -46,7 +57,7 @@
     "--dreamskin-focus": theme.states.focus,
     "--dreamskin-tooltip-bg": theme.states.tooltipBackground,
     "--dreamskin-tooltip-text": theme.states.tooltipText,
-    "--dreamskin-art-position": theme.appearance.backgroundPosition,
+    "--dreamskin-art-position": backgroundPosition,
     "--dreamskin-art-size": theme.appearance.backgroundSize,
     "--dreamskin-art-opacity": String(theme.appearance.backgroundOpacity),
     "--dreamskin-art-blend": theme.appearance.backgroundBlendMode,
@@ -56,6 +67,9 @@
     "--dreamskin-saturation": String(theme.appearance.saturation),
     "--dreamskin-surface-opacity": String(theme.appearance.surfaceOpacity),
     "--dreamskin-sidebar-opacity": String(theme.appearance.sidebarOpacity),
+    "--dreamskin-reading-mix": percentage(clamp(24, surfacePercent * 0.5, 44)),
+    "--dreamskin-composer-mix": percentage(clamp(64, surfacePercent * 0.82, 76)),
+    "--dreamskin-sidebar-readable-mix": percentage(clamp(48, sidebarPercent * 0.7, 68)),
     "--dreamskin-color-scheme": theme.appearance.colorScheme,
   };
 
@@ -89,25 +103,57 @@
   };
 
   const markComponents = () => {
+    const componentAssignments = new Map();
+    const roleAssignments = new Map();
+    const assign = (assignments, node, value) => {
+      if (!(node instanceof Element)) return;
+      const values = assignments.get(node) || new Set();
+      values.add(value);
+      assignments.set(node, values);
+    };
+
+    for (const node of queryAll(`[${COMPONENT_ATTRIBUTE}]`)) node.removeAttribute(COMPONENT_ATTRIBUTE);
+    for (const node of queryAll(`[${RUNTIME_ROLE_ATTRIBUTE}]`)) node.removeAttribute(RUNTIME_ROLE_ATTRIBUTE);
+
     for (const [component, selector] of Object.entries(componentSelectors)) {
-      for (const node of queryAll(selector)) node.setAttribute(COMPONENT_ATTRIBUTE, component);
+      for (const node of queryAll(selector)) assign(componentAssignments, node, component);
+    }
+
+    for (const node of queryAll('[class*="_assistantTextContent_"], [class*="assistantTextContent"]')) {
+      assign(componentAssignments, node, "chat.message.agent");
+      assign(roleAssignments, node, "assistant.prose");
+    }
+
+    for (const editor of queryAll('[data-slate-editor="true"][contenteditable="true"]')) {
+      const surface = editor.closest("section");
+      if (!surface) continue;
+      assign(componentAssignments, surface, "composer.surface");
+      assign(roleAssignments, surface, "composer.surface");
     }
 
     const composer = query(".wb-home-composer__input-slot");
-    if (!composer) return;
-    for (const button of composer.querySelectorAll("button[aria-label]")) {
-      let node = button.parentElement;
-      while (node && node !== composer) {
-        const rect = node.getBoundingClientRect();
-        const computed = getComputedStyle(node);
-        if (rect.width >= 160 && rect.width <= 320 && rect.height >= 80 && rect.height <= 180 &&
-          computed.backgroundImage !== "none" && node.children.length >= 2) {
-          node.setAttribute(COMPONENT_ATTRIBUTE, "status.toast");
-          node.setAttribute(RUNTIME_ROLE_ATTRIBUTE, "home.notice");
-          break;
+    if (composer) {
+      for (const button of composer.querySelectorAll("button[aria-label]")) {
+        let node = button.parentElement;
+        while (node && node !== composer) {
+          const rect = node.getBoundingClientRect();
+          const computed = getComputedStyle(node);
+          if (rect.width >= 160 && rect.width <= 320 && rect.height >= 80 && rect.height <= 180 &&
+            computed.backgroundImage !== "none" && node.children.length >= 2) {
+            assign(componentAssignments, node, "status.toast");
+            assign(roleAssignments, node, "home.notice");
+            break;
+          }
+          node = node.parentElement;
         }
-        node = node.parentElement;
       }
+    }
+
+    for (const [node, values] of componentAssignments) {
+      node.setAttribute(COMPONENT_ATTRIBUTE, [...values].join(" "));
+    }
+    for (const [node, values] of roleAssignments) {
+      node.setAttribute(RUNTIME_ROLE_ATTRIBUTE, [...values].join(" "));
     }
   };
 
