@@ -3,6 +3,11 @@ const { contextBridge, ipcRenderer } = require("electron");
 const channels = Object.freeze({
   desktopInfo: "dreamskin:desktop-info",
   studioApi: "dreamskin:studio-api",
+  softwareUpdateState: "dreamskin:software-update-state",
+  softwareUpdateGetState: "dreamskin:software-update-get-state",
+  softwareUpdateCheck: "dreamskin:software-update-check",
+  softwareUpdateDownload: "dreamskin:software-update-download",
+  softwareUpdateInstall: "dreamskin:software-update-install",
 });
 
 function desktopError(error = {}) {
@@ -23,6 +28,18 @@ const studio = (operation, input = {}) => call(channels.studioApi, operation, in
 const scoped = (input, pluginId) => pluginId ? { ...input, pluginId } : input;
 const api = Object.freeze({
   getInfo: () => call(channels.desktopInfo),
+  updates: Object.freeze({
+    getState: () => call(channels.softwareUpdateGetState),
+    check: () => call(channels.softwareUpdateCheck),
+    download: () => call(channels.softwareUpdateDownload),
+    install: () => call(channels.softwareUpdateInstall),
+    subscribe: (listener) => {
+      if (typeof listener !== "function") throw new TypeError("Software update listener must be a function.");
+      const handler = (_event, state) => listener(state);
+      ipcRenderer.on(channels.softwareUpdateState, handler);
+      return () => ipcRenderer.removeListener(channels.softwareUpdateState, handler);
+    },
+  }),
   studio: Object.freeze({
     bootstrap: () => studio("bootstrap"),
     listCatalog: (pluginId) => studio("catalog.list", scoped({}, pluginId)),

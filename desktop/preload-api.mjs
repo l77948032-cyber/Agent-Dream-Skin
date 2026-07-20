@@ -12,8 +12,11 @@ function desktopError(error = {}) {
   return result;
 }
 
-export function createPreloadApi({ invoke }) {
+export function createPreloadApi({ invoke, on = () => {}, removeListener = () => {} }) {
   if (typeof invoke !== "function") throw new TypeError("createPreloadApi requires an invoke function.");
+  if (typeof on !== "function" || typeof removeListener !== "function") {
+    throw new TypeError("createPreloadApi update events require listener functions.");
+  }
 
   const call = async (channel, ...args) => {
     const envelope = await invoke(channel, ...args);
@@ -25,6 +28,18 @@ export function createPreloadApi({ invoke }) {
 
   return freeze({
     getInfo: () => call(IPC_CHANNELS.desktopInfo),
+    updates: freeze({
+      getState: () => call(IPC_CHANNELS.softwareUpdateGetState),
+      check: () => call(IPC_CHANNELS.softwareUpdateCheck),
+      download: () => call(IPC_CHANNELS.softwareUpdateDownload),
+      install: () => call(IPC_CHANNELS.softwareUpdateInstall),
+      subscribe: (listener) => {
+        if (typeof listener !== "function") throw new TypeError("Software update listener must be a function.");
+        const handler = (_event, state) => listener(state);
+        on(IPC_CHANNELS.softwareUpdateState, handler);
+        return () => removeListener(IPC_CHANNELS.softwareUpdateState, handler);
+      },
+    }),
     studio: freeze({
       bootstrap: () => studio("bootstrap"),
       listCatalog: (pluginId) => studio("catalog.list", scoped({}, pluginId)),

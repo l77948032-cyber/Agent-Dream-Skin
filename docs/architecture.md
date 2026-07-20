@@ -1,6 +1,6 @@
 # Agent Dream Skin 架构
 
-本文描述 `0.2.0` 的可交付架构。它区分稳定产品边界、Trae 与 WorkBuddy 两个第一方
+本文描述 `0.3.0` 的可交付架构。它区分稳定产品边界、Trae 与 WorkBuddy 两个第一方
 target plugin、隐藏兼容层和尚未交付的扩展能力。
 
 ## 1. 设计原则
@@ -377,6 +377,22 @@ DreamSkin Studio.app/Contents/Resources/dreamskin/
 ```
 
 Windows 使用 Electron 返回的 userData 根，不应在文档或代码中硬编码盘符。
+
+macOS 正常桌面启动还使用两个与应用版本无关的目标运行目录：
+
+```text
+~/Library/Application Support/TraeDreamSkin/
+~/Library/Application Support/WorkBuddyDreamSkin/
+```
+
+这些目录保存当前已应用主题、owned process 和备份状态，因此关闭或更新 Studio 不会隐式恢复
+目标应用。首次升级会以不覆盖方式合并旧 Electron 预览版与 Web Studio 数据，并通过
+`legacy-migration.v1.json` 记录每个迁移操作；部分失败只重试失败项，避免用户已经删除的主题在
+后续启动时复活。
+
+显式 `--user-data-dir` 用于打包验收和隔离调试。该模式拥有独立的主题与 runtime 文件，但 macOS
+用户级 `launchd` label 仍是全局资源，因此后端把 target runtime 设为只读：可以浏览和编辑隔离
+主题，不能 preview、apply、verify 或 restore 真实 Trae/WorkBuddy 会话。
 
 ## 10. 当前支持边界
 

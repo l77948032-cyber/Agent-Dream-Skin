@@ -121,6 +121,7 @@ export class StudioBackend {
     backupsRoot,
     targets,
     defaultPluginId = runtimeManager?.defaultPluginId || "dreamskin.trae",
+    runtimeMutationsEnabled = true,
   }) {
     this.tool = tool;
     this.runtimeManager = runtimeManager;
@@ -166,6 +167,7 @@ export class StudioBackend {
     this.registryPath = defaultTarget.registryPath;
     this.themesRoot = defaultTarget.themesRoot;
     this.previewRoot = path.join(path.resolve(dataRoot), "previews");
+    this.runtimeMutationsEnabled = runtimeMutationsEnabled;
     this.registries = new Map();
     this.themeLifecycleQueue = Promise.resolve();
   }
@@ -209,9 +211,27 @@ export class StudioBackend {
     return operation;
   }
 
+  assertRuntimeMutationsEnabled(pluginId = this.defaultPluginId) {
+    this.target(pluginId);
+    if (this.runtimeMutationsEnabled) return;
+    throw new ToolError(
+      "RUNTIME_PROFILE_READ_ONLY",
+      "Runtime theme changes are disabled while Studio uses an isolated user data directory.",
+      { pluginId, reason: "isolated-user-data" },
+    );
+  }
+
   async runtimeStatus({ failClosed = false, pluginId = this.defaultPluginId } = {}) {
     try {
       this.target(pluginId);
+      if (!this.runtimeMutationsEnabled) {
+        return {
+          available: false,
+          session: "off",
+          themeId: null,
+          reason: "isolated-user-data",
+        };
+      }
       const status = await this.runtimeManager.status(pluginId);
       if (failClosed && (
         !status
@@ -361,6 +381,7 @@ export class StudioBackend {
   }
 
   async applyTheme(id, pluginId = this.defaultPluginId) {
+    this.assertRuntimeMutationsEnabled(pluginId);
     const target = this.target(pluginId);
     return this.themeLifecycleOperation(async () => {
       const before = await target.library.read(id);
@@ -386,6 +407,7 @@ export class StudioBackend {
 
   async previewTheme(id, rawInput = {}, explicitPluginId) {
     const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
+    this.assertRuntimeMutationsEnabled(pluginId);
     const target = this.target(pluginId);
     return this.themeLifecycleOperation(async () => {
       await target.library.read(id);
@@ -519,7 +541,7 @@ export class StudioBackend {
 
   verify(rawInput = {}, explicitPluginId) {
     const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
-    this.target(pluginId);
+    this.assertRuntimeMutationsEnabled(pluginId);
     return this.runtimeManager.verify(this.screenshotOptions(input, {
       defaultScreenshot: false,
       prefix: "verify",
@@ -527,7 +549,7 @@ export class StudioBackend {
   }
 
   restore(pluginId = this.defaultPluginId) {
-    this.target(pluginId);
+    this.assertRuntimeMutationsEnabled(pluginId);
     return this.themeLifecycleOperation(() => this.runtimeManager.restore(pluginId));
   }
 
@@ -555,6 +577,7 @@ export async function createStudioBackend({
   applicationContext,
   defaultPluginId,
   targetOptions = {},
+  runtimeMutationsEnabled = true,
 } = {}) {
   const context = applicationContext || await createTraeApplicationContext({
     themesRoot: userThemesRoot,
@@ -680,5 +703,6 @@ export async function createStudioBackend({
     targets: studioTargets,
     defaultPluginId: resolvedDefaultPluginId,
     dataRoot,
+    runtimeMutationsEnabled,
   });
 }

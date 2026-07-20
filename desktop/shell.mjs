@@ -5,9 +5,10 @@ import { DesktopPathLayout } from "../src/core/desktop-layout.mjs";
 import { ToolError } from "../src/core/errors.mjs";
 import { VersionedRuntimeInstaller } from "../src/core/versioned-runtime-installer.mjs";
 import { DesktopStudioApiRouter } from "./api-router.mjs";
-import { DREAMSKIN_HOST, DREAMSKIN_SCHEME, DREAMSKIN_START_URL } from "./constants.mjs";
+import { DREAMSKIN_HOST, DREAMSKIN_SCHEME, DREAMSKIN_START_URL, IPC_CHANNELS } from "./constants.mjs";
 import { createSenderValidator, registerDesktopIpc } from "./ipc.mjs";
 import { createDreamSkinProtocolHandler, DESKTOP_PROTOCOL_PRIVILEGES } from "./protocol-router.mjs";
+import { createDisabledSoftwareUpdate } from "./software-update.mjs";
 
 function isTrustedStudioUrl(rawUrl) {
   try {
@@ -250,12 +251,24 @@ export async function startDesktopApplication({
   targetDefinitions,
   platform = process.platform,
   development = false,
+  createSoftwareUpdate = ({ app: electronApp }) => createDisabledSoftwareUpdate({
+    app: electronApp,
+    reason: "unavailable",
+  }),
   logger = console,
   shutdownTimeoutMs = 10_000,
   exitApplication = null,
 } = {}) {
   const { app, BrowserWindow, ipcMain, protocol, session } = electron || {};
-  if (!app || !BrowserWindow || !ipcMain || !protocol || !session || typeof createBackend !== "function") {
+  if (
+    !app
+    || !BrowserWindow
+    || !ipcMain
+    || !protocol
+    || !session
+    || typeof createBackend !== "function"
+    || typeof createSoftwareUpdate !== "function"
+  ) {
     throw new ToolError("INVALID_ARGUMENT", "Desktop startup is missing Electron or backend dependencies.");
   }
   if (!developmentResourcesPath || !preloadPath || (app.isPackaged && !resourcesPath)) {
@@ -293,6 +306,7 @@ export async function startDesktopApplication({
   let protocolTarget = null;
   let protocolHandler = null;
   let ipcRegistration = null;
+  let softwareUpdate = null;
   let desktopConfig = null;
   let resourceValidation = null;
   let initializationPromise = null;
@@ -388,6 +402,11 @@ export async function startDesktopApplication({
         registration?.unregister();
       } catch (error) {
         logger.error?.("DreamSkin desktop IPC cleanup failed.", error);
+      }
+      try {
+        softwareUpdate?.close?.();
+      } catch (error) {
+        logger.error?.("DreamSkin software update cleanup failed.", error);
       }
       if (destroyRenderer) destroyWindow();
       const completed = await settleWithin([
@@ -541,10 +560,31 @@ export async function startDesktopApplication({
     const assertTrustedSender = createSenderValidator({
       allowedWebContentsIds: () => allowedWebContentsIds,
     });
+    softwareUpdate = await createSoftwareUpdate({
+      app,
+      platform,
+      development,
+      logger,
+      beforeInstall: () => shutdown({ destroyRenderer: false }),
+    });
+    if (
+      !softwareUpdate
+      || typeof softwareUpdate.initialize !== "function"
+      || typeof softwareUpdate.close !== "function"
+    ) {
+      throw new ToolError("INVALID_ARGUMENT", "Desktop software update factory returned an invalid manager.");
+    }
+    await softwareUpdate.initialize();
     ipcRegistration = registerDesktopIpc({
       ipcMain,
       router,
       assertTrustedSender,
+      softwareUpdate,
+      sendSoftwareUpdateState: (state) => {
+        if (!mainWindow || mainWindow.isDestroyed?.()) return;
+        if (!allowedWebContentsIds.has(mainWindow.webContents.id)) return;
+        mainWindow.webContents.send?.(IPC_CHANNELS.softwareUpdateState, state);
+      },
       getDesktopInfo: () => ({
         appVersion,
         electronVersion: process.versions.electron || null,
@@ -594,6 +634,7 @@ export async function startDesktopApplication({
     started: true,
     getWindow: () => mainWindow,
     getDesktopConfig: () => desktopConfig,
+    getSoftwareUpdate: () => softwareUpdate,
     shutdown: () => shutdown({ destroyRenderer: true }),
     finalExit,
     quit: () => app.quit(),

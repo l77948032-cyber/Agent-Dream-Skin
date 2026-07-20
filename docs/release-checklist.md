@@ -1,6 +1,6 @@
 # DreamSkin Studio 发布检查清单
 
-本清单面向 `0.2.x` 的 macOS arm64 交付。勾选完成前，不应把本地构建描述为正式可下载版本。
+本清单面向 `0.3.x` 的 macOS arm64 交付。勾选完成前，不应把本地构建描述为正式可下载版本。
 
 ## 1. 当前发布边界
 
@@ -99,7 +99,7 @@ dist-desktop/mac-arm64/DreamSkin Studio.app
 - [ ] `Info.plist` 包含 `ElectronAsarIntegrity`。
 - [ ] 没有宽泛 `NSAppTransportSecurity`、相机、麦克风、音频采集或蓝牙 usage description。
 - [ ] 资源清单和两个 runtime 清单位于 `Contents/Resources/dreamskin`。
-- [ ] 首次启动会将 Trae 与 WorkBuddy runtime `0.2.0` 分别安装到 userData 的版本目录。
+- [ ] 首次启动会将 Trae 与 WorkBuddy runtime `0.3.0` 分别安装到 userData 的版本目录。
 - [ ] `--skip-agent` 下的 preload、资源校验、双 target Studio bootstrap、主题卡片和优雅退出 smoke 通过。
 - [ ] 默认模式下的真实 Codex ACP 对话修改了隔离主题的 revision 和预期字段。
 
@@ -191,6 +191,10 @@ store。
 `desktop:release:mac` 使用 `forceCodeSigning=true`；找不到有效签名 identity 时必须失败，
 不能降级发布 ad-hoc 应用。
 
+`build.dmg.sign=true` 会让 electron-builder 在临时签名 keychain 仍然可用时，用同一套
+Developer ID Application identity 签署最终 DMG。后续公证步骤只验证既有签名，不会猜测或
+重新导入另一张证书。
+
 ### 6.3 GitHub Actions 证书 secret
 
 仓库的 `macos-release` Environment 必须配置以下 secret：
@@ -267,13 +271,17 @@ npm run desktop:release:mac
 2. 生成 macOS arm64 app；
 3. 在 `afterPack` 中修改 fuses 并收敛 Info.plist；
 4. 使用 Developer ID Application 完成 hardened runtime 签名；
-5. 通过 Apple notary service 公证；
-6. 生成 `DreamSkin-Studio-<version>-mac-arm64.dmg` 和 ZIP。
-7. 对 unpacked `.app` 执行打包态 UI、资源和优雅退出 smoke，再验证正式签名、公证与 artifact。
+5. 提交 app 到 Apple notary service，并把公证票据 staple 到 app；
+6. 生成 `DreamSkin-Studio-<version>-mac-arm64.dmg` 和 ZIP，并用 Developer ID 签署最终 DMG；
+7. 单独提交最终 DMG，等待 `notarytool` 返回 `Accepted`，再把票据 staple 到 DMG；
+8. 重新生成 DMG blockmap，并同步 `latest-mac.yml` 中的最终大小与 SHA-512；
+9. 对 unpacked `.app` 执行打包态 UI、资源和优雅退出 smoke，再严格验证 app、ZIP 和 DMG。
 
 - [ ] 构建日志明确显示使用 Developer ID，而不是 skipped/ad-hoc。
-- [ ] 构建日志显示 `notarization successful`。
+- [ ] app 公证成功，最终 DMG 的独立提交也返回 `Accepted` 和 submission ID。
+- [ ] 最终 DMG 的 `stapler validate` 与 `spctl --assess --type open --context context:primary-signature` 均通过。
 - [ ] DMG 和 ZIP 名称、版本、架构符合预期。
+- [ ] `latest-mac.yml` 精确描述当前稳定版本，并同时列出 ZIP 与 DMG；两份 blockmap 均存在。
 - [ ] 构建日志和 artifact 中不包含凭据。
 
 ### 8.1 GitHub Actions 手动测试包
@@ -293,16 +301,18 @@ npm run desktop:release:mac
 
 ### 8.2 `v*` tag 正式发布
 
-推送 `v*` tag 时才会执行 `signed-release`。发布前：
+推送 `v*` tag 时才会执行 `signed-release`。当前自动更新契约只发布稳定版本，更新元数据固定为
+`latest-mac.yml`；带 `-alpha`、`-beta`、`-rc` 等 prerelease 标识的版本会被流水线明确拒绝，
+不能借用 stable channel 发布。发布前：
 
-- [ ] `package.json` 中的版本与 tag 精确一致，例如 `0.2.1` 对应 `v0.2.1`；
+- [ ] `package.json` 中的版本与 tag 精确一致，例如 `0.3.0` 对应 `v0.3.0`；
 - [ ] tag 指向已完成代码审查和第 1-12 节检查的 commit；
 - [ ] `macos-release` Environment 的保护规则与五个 secret 均有效；
 - [ ] GitHub Actions 的 workflow permissions 允许该 job 写入 Releases。
 
 ```bash
-git tag -a v0.2.1 -m "DreamSkin Studio v0.2.1"
-git push origin v0.2.1
+git tag -a v0.3.0 -m "DreamSkin Studio v0.3.0"
+git push origin v0.3.0
 ```
 
 签名 job 会运行 `npm run desktop:release:mac`，因此找不到 Developer ID、签名降级、公证失败、
@@ -310,15 +320,16 @@ Gatekeeper/stapler 校验失败或打包态 smoke 失败都会在发布前终止
 安装结构、生成 smoke 截图与 `SHA256SUMS.txt`，先保存 Actions artifact，最后才通过 GitHub
 CLI 创建 Release 并上传 DMG、ZIP、校验和与截图。任何前置步骤失败都不会创建 Release。
 
-若某个 tag job 失败，修正原因后发布新的版本 tag，不要复用已经公开的版本号，也不要用未验证
-的本地文件手工补齐一个看似成功的正式 Release。
+若 job 在创建草稿后失败，同一 tag 重跑时会先删除旧草稿并从已经重新验证的本地资产完整重建；
+若该 tag 已经公开，流水线会拒绝覆盖。公开版本出现问题时应修正原因并发布新的版本 tag，不要复用
+已经公开的版本号，也不要用未验证的本地文件手工补齐一个看似成功的正式 Release。
 
 ## 9. 正式 artifact 验证
 
 对 DMG：
 
 ```bash
-hdiutil verify "dist-desktop/DreamSkin-Studio-0.2.0-mac-arm64.dmg"
+hdiutil verify "dist-desktop/DreamSkin-Studio-0.3.0-mac-arm64.dmg"
 ```
 
 挂载 DMG 后，对其中的 app 执行：
@@ -361,6 +372,7 @@ npx electron-fuses read --app "/Volumes/DreamSkin Studio/DreamSkin Studio.app"
 - [ ] 安全说明明确回环不是认证：端口开启期间，同机其他进程仍可尝试访问 CDP。
 - [ ] verify 返回正确的 owned process、browser identity 和主题状态。
 - [ ] Trae restore 后注入样式、watcher 和 CDP listener 均清理，Trae 正常模式重启。
+- [ ] Trae 的 owned app、watcher、listener 或进程身份失效时状态为 `degraded`，不能误报 active。
 - [ ] WorkBuddy 应用后关闭 Studio，独立托管会话和当前皮肤仍保持 active。
 - [ ] 用户退出 WorkBuddy 后状态为 `degraded`，不能误报 active，也不宣传或依赖自动复活。
 - [ ] degraded 状态再次应用能安全重建 owned WorkBuddy app/watcher/CDP 会话。
@@ -385,8 +397,8 @@ Trae runtime 实机基线是 Trae `0.1.36`。WorkBuddy runtime 实机基线是 W
 - [ ] 保留上一版本 artifact 和 runtime rollback 测试记录。
 
 ```bash
-shasum -a 256 dist-desktop/DreamSkin-Studio-0.2.0-mac-arm64.dmg
-shasum -a 256 dist-desktop/DreamSkin-Studio-0.2.0-mac-arm64.zip
+shasum -a 256 dist-desktop/DreamSkin-Studio-0.3.0-mac-arm64.dmg
+shasum -a 256 dist-desktop/DreamSkin-Studio-0.3.0-mac-arm64.zip
 ```
 
 ## 12. 必须停止发布的情况

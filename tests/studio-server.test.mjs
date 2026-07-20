@@ -631,6 +631,44 @@ test("Studio backend generates screenshot paths only inside its data root", asyn
   assert.deepEqual(calls[2][1], { screenshot: false });
 });
 
+test("Studio isolated user data mode reports an offline runtime and blocks all runtime mutations", async () => {
+  const calls = [];
+  const backend = new StudioBackend({
+    tool: {
+      validateTheme: async () => { calls.push("validate"); },
+    },
+    runtimeManager: {
+      status: async () => { calls.push("status"); },
+      apply: async () => { calls.push("apply"); },
+      preview: async () => { calls.push("preview"); },
+      verify: async () => { calls.push("verify"); },
+      restore: async () => { calls.push("restore"); },
+    },
+    pluginManager: { list: () => [] },
+    library: {
+      read: async () => { calls.push("read"); },
+    },
+    sessions: {},
+    runtimeMutationsEnabled: false,
+  });
+
+  assert.deepEqual(await backend.runtimeStatus(), {
+    available: false,
+    session: "off",
+    themeId: null,
+    reason: "isolated-user-data",
+  });
+  const isReadOnlyError = (error) => error instanceof ToolError
+    && error.code === "RUNTIME_PROFILE_READ_ONLY"
+    && error.details.pluginId === "dreamskin.trae"
+    && error.details.reason === "isolated-user-data";
+  await assert.rejects(() => backend.applyTheme("theme-one"), isReadOnlyError);
+  await assert.rejects(() => backend.previewTheme("theme-one"), isReadOnlyError);
+  assert.throws(() => backend.verify(), isReadOnlyError);
+  assert.throws(() => backend.restore(), isReadOnlyError);
+  assert.deepEqual(calls, []);
+});
+
 function deferred() {
   let resolve;
   const promise = new Promise((resolvePromise) => { resolve = resolvePromise; });

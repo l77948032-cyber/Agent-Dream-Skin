@@ -1,5 +1,5 @@
 # This lifecycle is statically checked on macOS; release it only after a real Windows Trae smoke test.
-$Script:TraeSkinVersion = '0.2.0'
+$Script:TraeSkinVersion = '0.3.0'
 $Script:TraeSkinDefaultPort = 9342
 $Script:TraeSkinDefaultTheme = 'neon-portal'
 $Script:TraeSkinProjectRoot = Split-Path -Parent $PSScriptRoot

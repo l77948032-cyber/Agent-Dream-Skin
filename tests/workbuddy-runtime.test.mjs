@@ -230,6 +230,10 @@ test("WorkBuddy state validation rejects truncated state before status reads fie
 
   const status = await fs.readFile(path.join(ROOT, "scripts", "status-workbuddy-skin-macos.sh"), "utf8");
   const stop = await fs.readFile(path.join(ROOT, "scripts", "stop-workbuddy-skin-macos.sh"), "utf8");
+  assert.ok(status.indexOf("discover_workbuddy_app") < status.indexOf('if [ ! -f "$STATE_PATH" ]'));
+  assert.match(status, /if DISCOVERED_WORKBUDDY_EXE="\$\([\s\S]*discover_workbuddy_app/);
+  assert.equal(status.match(/workbuddy_is_running/g)?.length, 2);
+  assert.doesNotMatch(status, /APP_JOB_PID/);
   assert.match(status, /if ! workbuddy_state_is_trustworthy; then[\s\S]*SESSION_STATUS="orphaned-unverified"/);
   assert.ok(status.indexOf("workbuddy_state_is_trustworthy") < status.indexOf('PORT="$(state_field port)"'));
   assert.match(stop, /if \[ "\$STATE_TRUSTWORTHY" != "true" \]; then[\s\S]*stop_launchd_owned_session true/);

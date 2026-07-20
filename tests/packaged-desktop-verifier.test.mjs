@@ -180,6 +180,36 @@ test("packaged verifier always stops the app and removes temp data after rendere
   assert.equal(calls[2][1], "/tmp/dreamskin-verifier-fixture");
 });
 
+test("packaged verifier preserves a caller-owned data root for restart checks", async () => {
+  const child = fakeChild();
+  const calls = [];
+  const dataRoot = "/tmp/dreamskin-caller-owned-user-data";
+
+  await assert.rejects(() => verifyPackagedDesktop({
+    appPath: "/tmp/DreamSkin Studio.app",
+    dataRoot,
+    runAgent: false,
+  }, {
+    platform: "darwin",
+    access: async () => {},
+    ensureDirectory: async (target) => calls.push(["ensure", target]),
+    makeTempDirectory: async () => assert.fail("caller-owned data must not create a temporary root"),
+    reservePort: async () => 43123,
+    spawnProcess: () => child,
+    waitForRenderer: async () => { throw new Error("expected discovery failure"); },
+    stopProcess: async () => {
+      calls.push(["stop"]);
+      return { forced: false };
+    },
+    removeDirectory: async () => assert.fail("caller-owned data must not be removed"),
+  }), /expected discovery failure/);
+
+  assert.deepEqual(calls, [
+    ["ensure", dataRoot],
+    ["stop"],
+  ]);
+});
+
 test("packaged verifier retains the primary error when cleanup also fails", async () => {
   const primary = new Error("primary verification failure");
   const child = fakeChild();

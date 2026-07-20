@@ -2,6 +2,7 @@ import { execFile as execFileCallback } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import { createReadStream } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -12,7 +13,10 @@ export const DEFAULT_PROJECT_ROOT = path.resolve(path.dirname(SCRIPT_PATH), ".."
 
 export const MAC_RELEASE_COMMANDS = Object.freeze({
   codesign: "/usr/bin/codesign",
+  ditto: "/usr/bin/ditto",
   hdiutil: "/usr/bin/hdiutil",
+  lipo: "/usr/bin/lipo",
+  plutil: "/usr/bin/plutil",
   spctl: "/usr/sbin/spctl",
   unzip: "/usr/bin/unzip",
   xcrun: "/usr/bin/xcrun",
@@ -156,6 +160,7 @@ async function runRequiredCommand(runner, { code, label, command, args }) {
 export function parseDeveloperIdSignature(output) {
   const text = String(output || "");
   const adHoc = /^Signature=adhoc$/im.test(text) || /^flags=.*\badhoc\b/im.test(text);
+  const hardenedRuntime = /^flags=.*\bruntime\b/im.test(text);
   const authority = [...text.matchAll(/^Authority=(.+)$/gim)]
     .map((match) => match[1].trim())
     .find((value) => value.startsWith("Developer ID Application:"));
@@ -179,7 +184,43 @@ export function parseDeveloperIdSignature(output) {
       { authority, authorityTeam, teamIdentifier },
     );
   }
-  return Object.freeze({ authority, teamIdentifier });
+  if (!hardenedRuntime) {
+    throw new MacReleaseVerificationError(
+      "MAC_RELEASE_HARDENED_RUNTIME_MISSING",
+      "The app signature must enable the hardened runtime.",
+      { authority, teamIdentifier, hardenedRuntime },
+    );
+  }
+  return Object.freeze({ authority, teamIdentifier, hardenedRuntime });
+}
+
+function parseBundleExecutable(output, appPath) {
+  const executableName = String(output || "").trim();
+  if (
+    !executableName
+    || executableName === "."
+    || executableName === ".."
+    || path.basename(executableName) !== executableName
+  ) {
+    throw new MacReleaseVerificationError(
+      "MAC_RELEASE_EXECUTABLE_INVALID",
+      "The app bundle must declare a safe main executable name.",
+      { path: appPath, executableName: executableName || null },
+    );
+  }
+  return path.join(appPath, "Contents", "MacOS", executableName);
+}
+
+export function parseArm64Architecture(output, executablePath) {
+  const architectures = String(output || "").trim().split(/\s+/).filter(Boolean);
+  if (architectures.length !== 1 || architectures[0] !== "arm64") {
+    throw new MacReleaseVerificationError(
+      "MAC_RELEASE_ARCHITECTURE_INVALID",
+      "The macOS release executable must be thin arm64.",
+      { path: executablePath, architectures },
+    );
+  }
+  return "arm64";
 }
 
 async function sha256File(filePath) {
@@ -194,6 +235,68 @@ async function sha256File(filePath) {
     bytes,
     sha256: hash.digest("hex"),
   });
+}
+
+async function verifyZipAppTrust(runner, { app, zip }) {
+  const temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-release-zip-"));
+  const zipApp = path.join(temporaryRoot, path.basename(app));
+  let primaryError = null;
+  let result = null;
+  try {
+    await runRequiredCommand(runner, {
+      code: "MAC_RELEASE_ZIP_EXTRACTION_FAILED",
+      label: "ZIP extraction",
+      command: MAC_RELEASE_COMMANDS.ditto,
+      args: ["-x", "-k", zip, temporaryRoot],
+    });
+    await requireArtifact(zipApp, "app");
+    await runRequiredCommand(runner, {
+      code: "MAC_RELEASE_ZIP_CODESIGN_FAILED",
+      label: "ZIP app strict code-signature verification",
+      command: MAC_RELEASE_COMMANDS.codesign,
+      args: ["--verify", "--deep", "--strict", "--verbose=4", zipApp],
+    });
+    await runRequiredCommand(runner, {
+      code: "MAC_RELEASE_ZIP_GATEKEEPER_FAILED",
+      label: "ZIP app Gatekeeper assessment",
+      command: MAC_RELEASE_COMMANDS.spctl,
+      args: ["--assess", "--type", "execute", "--verbose=4", zipApp],
+    });
+    await runRequiredCommand(runner, {
+      code: "MAC_RELEASE_ZIP_NOTARIZATION_FAILED",
+      label: "ZIP app notarization ticket validation",
+      command: MAC_RELEASE_COMMANDS.xcrun,
+      args: ["stapler", "validate", zipApp],
+    });
+    result = Object.freeze({
+      appName: path.basename(zipApp),
+      codesign: "valid",
+      gatekeeper: "accepted",
+      notarizationTicket: "valid",
+    });
+  } catch (error) {
+    primaryError = error;
+  }
+
+  try {
+    await fs.rm(temporaryRoot, { recursive: true, force: true });
+  } catch (error) {
+    if (primaryError) {
+      primaryError.details = {
+        ...(primaryError.details || {}),
+        cleanupError: { message: error.message, code: error.code || null },
+      };
+    } else {
+      primaryError = new MacReleaseVerificationError(
+        "MAC_RELEASE_ZIP_CLEANUP_FAILED",
+        "The release verifier could not remove the extracted ZIP payload.",
+        { path: temporaryRoot, code: error.code || null },
+        { cause: error },
+      );
+    }
+  }
+  if (primaryError) throw primaryError;
+  return result;
 }
 
 export async function verifyMacRelease({
@@ -233,6 +336,29 @@ export async function verifyMacRelease({
   });
   const signature = parseDeveloperIdSignature(commandOutput(signatureDetails));
 
+  const bundleExecutableResult = await runRequiredCommand(runner, {
+    code: "MAC_RELEASE_EXECUTABLE_INSPECTION_FAILED",
+    label: "Bundle executable inspection",
+    command: MAC_RELEASE_COMMANDS.plutil,
+    args: [
+      "-extract",
+      "CFBundleExecutable",
+      "raw",
+      "-o",
+      "-",
+      path.join(resolved.app, "Contents", "Info.plist"),
+    ],
+  });
+  const executablePath = parseBundleExecutable(bundleExecutableResult.stdout, resolved.app);
+  await requireArtifact(executablePath, "executable");
+  const architectureResult = await runRequiredCommand(runner, {
+    code: "MAC_RELEASE_ARCHITECTURE_INSPECTION_FAILED",
+    label: "Main executable architecture inspection",
+    command: MAC_RELEASE_COMMANDS.lipo,
+    args: ["-archs", executablePath],
+  });
+  const architecture = parseArm64Architecture(architectureResult.stdout, executablePath);
+
   await runRequiredCommand(runner, {
     code: "MAC_RELEASE_CODESIGN_FAILED",
     label: "Strict code-signature verification",
@@ -258,25 +384,50 @@ export async function verifyMacRelease({
     args: ["verify", resolved.dmg],
   });
   await runRequiredCommand(runner, {
+    code: "MAC_RELEASE_DMG_GATEKEEPER_FAILED",
+    label: "DMG Gatekeeper assessment",
+    command: MAC_RELEASE_COMMANDS.spctl,
+    args: [
+      "--assess",
+      "--type",
+      "open",
+      "--context",
+      "context:primary-signature",
+      "--verbose=4",
+      resolved.dmg,
+    ],
+  });
+  await runRequiredCommand(runner, {
+    code: "MAC_RELEASE_DMG_NOTARIZATION_FAILED",
+    label: "DMG notarization ticket validation",
+    command: MAC_RELEASE_COMMANDS.xcrun,
+    args: ["stapler", "validate", resolved.dmg],
+  });
+  await runRequiredCommand(runner, {
     code: "MAC_RELEASE_ZIP_VERIFICATION_FAILED",
     label: "ZIP container verification",
     command: MAC_RELEASE_COMMANDS.unzip,
     args: ["-t", resolved.zip],
   });
+  const zipTrust = await verifyZipAppTrust(runner, resolved);
 
   const [dmg, zip] = await Promise.all([sha256File(resolved.dmg), sha256File(resolved.zip)]);
   return Object.freeze({
     ok: true,
     platform: "darwin",
-    architecture: "arm64",
+    architecture,
     app: Object.freeze({
       path: resolved.app,
+      executablePath,
       ...signature,
       codesign: "valid",
       gatekeeper: "accepted",
       notarizationTicket: "valid",
     }),
-    artifacts: Object.freeze({ dmg, zip }),
+    artifacts: Object.freeze({
+      dmg: Object.freeze({ ...dmg, gatekeeper: "accepted", notarizationTicket: "valid" }),
+      zip: Object.freeze({ ...zip, ...zipTrust }),
+    }),
   });
 }
 

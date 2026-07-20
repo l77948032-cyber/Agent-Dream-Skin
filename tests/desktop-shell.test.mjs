@@ -319,6 +319,57 @@ test("final exit keeps the renderer alive until logical cleanup completes and te
   assert.deepEqual(exits, [0]);
 });
 
+test("software update installation drains the app and releases quit interception before updater restart", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-update-install-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.mkdir(path.join(root, "studio", "dist"), { recursive: true });
+  await fs.writeFile(path.join(root, "studio", "dist", "index.html"), "studio");
+  const electron = electronFixture({ appPath: root, userDataPath: path.join(root, "user-data") });
+  let beforeInstall;
+  let updateClosed = false;
+  let backendClosed = false;
+  const exits = [];
+  const controller = await startDesktopApplication({
+    electron,
+    createBackend: async () => ({ close: async () => { backendClosed = true; } }),
+    createSoftwareUpdate: (options) => {
+      beforeInstall = options.beforeInstall;
+      const state = {
+        enabled: true,
+        phase: "ready",
+        canCheck: false,
+        canDownload: false,
+        canInstall: true,
+      };
+      return {
+        initialize: async () => state,
+        getState: () => state,
+        check: async () => state,
+        download: async () => state,
+        install: () => state,
+        subscribe: () => () => {},
+        close: () => { updateClosed = true; },
+      };
+    },
+    developmentResourcesPath: root,
+    preloadPath: "/tmp/preload.cjs",
+    exitApplication: (code) => exits.push(code),
+  });
+
+  assert.equal(controller.started, true);
+  assert.equal(electron.app.listenerCount("before-quit"), 1);
+  await beforeInstall();
+  assert.equal(backendClosed, true);
+  assert.equal(updateClosed, true);
+  assert.equal(electron.app.listenerCount("before-quit"), 0);
+  assert.deepEqual(exits, []);
+
+  let prevented = false;
+  electron.app.emit("before-quit", { preventDefault: () => { prevented = true; } });
+  assert.equal(prevented, false);
+  assert.deepEqual(exits, []);
+});
+
 test("desktop shell exits before backend startup when another instance owns the lock", async () => {
   const electron = electronFixture({ lock: false });
   let backendCreated = false;

@@ -2,17 +2,54 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow, dialog, ipcMain, protocol, session } from "electron";
+import electronUpdater from "electron-updater";
 
 import { preferredCodexPath } from "./agent-paths.mjs";
 import { createDesktopProcessTerminator } from "./process-lifecycle.mjs";
+import {
+  configureDesktopProductIdentity,
+  migrateLegacyDreamSkinData,
+} from "./product-identity.mjs";
 import { startDesktopApplication } from "./shell.mjs";
 import { reportDesktopStartupFailure } from "./startup-diagnostics.mjs";
+import { createSoftwareUpdateManager } from "./software-update.mjs";
 
 const desktopRoot = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(desktopRoot, "..");
+const productIdentity = configureDesktopProductIdentity({ app });
 const processTerminator = createDesktopProcessTerminator({ app });
+const { autoUpdater } = electronUpdater;
+let legacyMigrationPromise = null;
+
+function ensureLegacyDataMigrated() {
+  if (!productIdentity.migrationEnabled) return Promise.resolve(null);
+  if (!legacyMigrationPromise) {
+    legacyMigrationPromise = migrateLegacyDreamSkinData({
+      legacyUserDataPath: productIdentity.legacyUserDataPath,
+      legacyStudioPath: productIdentity.legacyStudioPath,
+      userDataPath: productIdentity.userDataPath,
+    }).then((result) => {
+      if (result.warnings?.length) {
+        console.warn("DreamSkin legacy data migration completed with warnings.", result.warnings);
+      }
+      return result;
+    }).catch((error) => {
+      console.error("DreamSkin legacy data migration failed; startup will continue with preserved source data.", error);
+      return Object.freeze({ migrated: false, reason: "migration-failed", error });
+    });
+  }
+  return legacyMigrationPromise;
+}
+
+function targetRuntimeStateRoot(directoryName) {
+  if (productIdentity.migrationEnabled) {
+    return path.join(productIdentity.appDataPath, directoryName);
+  }
+  return path.join(productIdentity.userDataPath, "runtime-state", directoryName);
+}
 
 async function createDesktopBackend(config) {
+  await ensureLegacyDataMigrated();
   const targetConfigs = config.targets || { [config.pluginId]: config };
   const traeConfig = targetConfigs["dreamskin.trae"];
   const workBuddyConfig = targetConfigs["dreamskin.workbuddy"];
@@ -24,6 +61,7 @@ async function createDesktopBackend(config) {
   process.env.TRAE_DREAM_SKIN_PROJECT_ROOT = config.paths.resourceRoot;
   process.env.TRAE_DREAM_SKIN_THEMES_ROOT = traeConfig.paths.userThemesRoot;
   process.env.TRAE_DREAM_SKIN_TOOL_HOME = traeConfig.paths.stateRoot;
+  process.env.TRAE_DREAM_SKIN_HOME = targetRuntimeStateRoot("TraeDreamSkin");
   process.env.DREAMSKIN_STUDIO_HOME = config.layout.dataRoot;
   process.env.DREAMSKIN_STUDIO_THEMES_ROOT = config.layout.themesRoot;
   const [
@@ -63,7 +101,7 @@ async function createDesktopBackend(config) {
       ...registrationOptions(workBuddyConfig),
       cssPath: path.join(workBuddyConfig.paths.pluginRoot, "assets", "workbuddy-skin.css"),
       templatePath: path.join(config.paths.resourceRoot, "assets", "workbuddy-renderer-inject.js"),
-      stateRoot: path.join(workBuddyConfig.paths.stateRoot, "runtime"),
+      stateRoot: targetRuntimeStateRoot("WorkBuddyDreamSkin"),
     },
   });
   const targetOptions = Object.fromEntries(Object.entries(targetConfigs).map(([pluginId, target]) => [
@@ -83,6 +121,7 @@ async function createDesktopBackend(config) {
     defaultPluginId: config.pluginId,
     targetOptions,
     dataRoot: config.layout.dataRoot,
+    runtimeMutationsEnabled: productIdentity.migrationEnabled,
     agentRegistryOptions: {
       projectRoot: appRoot,
       executablePath: process.execPath,
@@ -113,6 +152,11 @@ void startDesktopApplication({
   developmentResourcesPath: projectRoot,
   resourcesPath: process.resourcesPath,
   preloadPath: path.join(desktopRoot, "preload.cjs"),
+  createSoftwareUpdate: (options) => createSoftwareUpdateManager({
+    ...options,
+    updater: autoUpdater,
+    executablePath: process.execPath,
+  }),
   targetDefinitions: [
     { pluginId: "dreamskin.trae", pluginResourceDirectory: "trae" },
     { pluginId: "dreamskin.workbuddy", pluginResourceDirectory: "workbuddy" },

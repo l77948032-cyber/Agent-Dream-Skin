@@ -4,6 +4,14 @@ set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd -P)/common-workbuddy-macos.sh"
 
 [ "$(/usr/bin/uname -s)" = "Darwin" ] || fail "This launcher requires macOS."
+DISCOVERED_WORKBUDDY_EXE=""
+if DISCOVERED_WORKBUDDY_EXE="$(
+  discover_workbuddy_app 2>/dev/null
+  printf '%s' "$WORKBUDDY_EXE"
+)"; then
+  WORKBUDDY_EXE="$DISCOVERED_WORKBUDDY_EXE"
+  export WORKBUDDY_EXE
+fi
 ensure_state_root
 acquire_operation_lock
 trap release_operation_lock EXIT
@@ -14,9 +22,7 @@ if [ ! -f "$STATE_PATH" ]; then
   workbuddy_launch_agent_path_is_owned && OWNED_APP_JOB="true"
   launch_agent_path_is_owned && OWNED_WATCHER_JOB="true"
   WORKBUDDY_RUNNING="false"
-  APP_JOB_PID="$(workbuddy_launch_agent_pid)"
-  [ -n "$APP_JOB_PID" ] && /bin/kill -0 "$APP_JOB_PID" 2>/dev/null \
-    && WORKBUDDY_RUNNING="true"
+  [ -n "$DISCOVERED_WORKBUDDY_EXE" ] && workbuddy_is_running && WORKBUDDY_RUNNING="true"
   SESSION_STATUS="off"
   if [ "$OWNED_APP_JOB" = "true" ] || [ "$OWNED_WATCHER_JOB" = "true" ]; then
     SESSION_STATUS="orphaned"
@@ -33,9 +39,7 @@ if ! workbuddy_state_is_trustworthy; then
   workbuddy_launch_agent_path_is_owned && OWNED_APP_JOB="true"
   launch_agent_path_is_owned && OWNED_WATCHER_JOB="true"
   WORKBUDDY_RUNNING="false"
-  APP_JOB_PID="$(workbuddy_launch_agent_pid)"
-  [ -n "$APP_JOB_PID" ] && /bin/kill -0 "$APP_JOB_PID" 2>/dev/null \
-    && WORKBUDDY_RUNNING="true"
+  [ -n "$DISCOVERED_WORKBUDDY_EXE" ] && workbuddy_is_running && WORKBUDDY_RUNNING="true"
   SESSION_STATUS="off"
   if [ "$OWNED_APP_JOB" = "true" ] || [ "$OWNED_WATCHER_JOB" = "true" ]; then
     SESSION_STATUS="orphaned-unverified"

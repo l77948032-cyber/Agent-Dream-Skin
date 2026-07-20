@@ -1609,6 +1609,80 @@ button:active:not(:disabled) {
 .diagnostic-row span i { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
 .diagnostic-row strong { color: var(--muted); font-size: 9px; font-weight: 550; }
 
+.update-channel {
+  margin-left: auto;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: rgba(65, 156, 207, 0.1);
+  color: #287fae;
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.software-update-panel {
+  display: grid;
+  min-height: 72px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 14px;
+}
+
+.software-update-icon {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(65, 156, 207, 0.1);
+  color: #287fae;
+}
+
+.software-update-panel.is-ready .software-update-icon,
+.software-update-panel.is-up-to-date .software-update-icon {
+  background: rgba(75, 155, 105, 0.1);
+  color: #398256;
+}
+
+.software-update-panel.is-error .software-update-icon {
+  background: rgba(194, 62, 65, 0.09);
+  color: #b33c40;
+}
+
+.software-update-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.software-update-copy strong,
+.software-update-copy small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.software-update-copy strong { font-size: 10px; }
+.software-update-copy small { color: var(--muted); font-size: 9px; }
+.software-update-panel.is-error .software-update-copy small { color: #a8494c; }
+.software-update-panel > button { flex: 0 0 auto; }
+
+.software-update-progress {
+  height: 3px;
+  overflow: hidden;
+  background: #e8ebed;
+}
+
+.software-update-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 0 2px 2px 0;
+  background: #419ccf;
+  transition: width 180ms var(--ease);
+}
+
 .settings-target-tabs {
   display: flex;
   width: max-content;

@@ -140,6 +140,40 @@ export interface RuntimeRestoreResponse {
   [key: string]: unknown;
 }
 
+export type SoftwareUpdatePhase =
+  | "disabled"
+  | "idle"
+  | "checking"
+  | "available"
+  | "downloading"
+  | "ready"
+  | "up-to-date"
+  | "installing"
+  | "error";
+
+export interface SoftwareUpdateState {
+  enabled: boolean;
+  reason: string | null;
+  phase: SoftwareUpdatePhase;
+  currentVersion: string;
+  prerelease: boolean;
+  update: {
+    version: string | null;
+    releaseName: string | null;
+    releaseDate: string | null;
+  } | null;
+  progress: {
+    percent: number;
+    transferred: number;
+    total: number;
+    bytesPerSecond: number;
+  } | null;
+  error: { code: string; message: string } | null;
+  canCheck: boolean;
+  canDownload: boolean;
+  canInstall: boolean;
+}
+
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
@@ -194,6 +228,13 @@ export interface DreamSkinStudioBridge {
 
 export interface DreamSkinDesktopBridge {
   getInfo(): Promise<Record<string, unknown>>;
+  updates: {
+    getState(): Promise<SoftwareUpdateState>;
+    check(): Promise<SoftwareUpdateState>;
+    download(): Promise<SoftwareUpdateState>;
+    install(): Promise<SoftwareUpdateState>;
+    subscribe(listener: (state: SoftwareUpdateState) => void): () => void;
+  };
   studio: DreamSkinStudioBridge;
 }
 

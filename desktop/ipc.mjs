@@ -86,9 +86,27 @@ async function invokeSafely(callback) {
   }
 }
 
-export function registerDesktopIpc({ ipcMain, router, assertTrustedSender, getDesktopInfo }) {
+export function registerDesktopIpc({
+  ipcMain,
+  router,
+  assertTrustedSender,
+  getDesktopInfo,
+  softwareUpdate,
+  sendSoftwareUpdateState = () => {},
+}) {
   if (!ipcMain || !router || typeof assertTrustedSender !== "function" || typeof getDesktopInfo !== "function") {
     throw new ToolError("INVALID_ARGUMENT", "Desktop IPC registration is missing required dependencies.");
+  }
+  if (
+    !softwareUpdate
+    || typeof softwareUpdate.getState !== "function"
+    || typeof softwareUpdate.check !== "function"
+    || typeof softwareUpdate.download !== "function"
+    || typeof softwareUpdate.install !== "function"
+    || typeof softwareUpdate.subscribe !== "function"
+    || typeof sendSoftwareUpdateState !== "function"
+  ) {
+    throw new ToolError("INVALID_ARGUMENT", "Desktop IPC registration requires a software update manager.");
   }
 
   const inFlight = new Set();
@@ -112,10 +130,44 @@ export function registerDesktopIpc({ ipcMain, router, assertTrustedSender, getDe
     return router.invoke(operation, input);
   })));
 
+  ipcMain.handle(IPC_CHANNELS.softwareUpdateGetState, (event) => track(invokeSafely(async () => {
+    assertTrustedSender(event);
+    return softwareUpdate.getState();
+  })));
+
+  ipcMain.handle(IPC_CHANNELS.softwareUpdateCheck, (event) => track(invokeSafely(async () => {
+    assertTrustedSender(event);
+    return softwareUpdate.check();
+  })));
+
+  ipcMain.handle(IPC_CHANNELS.softwareUpdateDownload, (event) => track(invokeSafely(async () => {
+    assertTrustedSender(event);
+    return softwareUpdate.download();
+  })));
+
+  ipcMain.handle(IPC_CHANNELS.softwareUpdateInstall, (event) => track(invokeSafely(async () => {
+    assertTrustedSender(event);
+    return softwareUpdate.install();
+  })));
+
+  const unsubscribeUpdate = softwareUpdate.subscribe((state) => {
+    try {
+      assertSafeIpcPayload(state);
+      sendSoftwareUpdateState(state);
+    } catch {
+      // Never forward malformed state across the trusted renderer boundary.
+    }
+  });
+
   return {
     unregister() {
+      unsubscribeUpdate();
       ipcMain.removeHandler(IPC_CHANNELS.desktopInfo);
       ipcMain.removeHandler(IPC_CHANNELS.studioApi);
+      ipcMain.removeHandler(IPC_CHANNELS.softwareUpdateGetState);
+      ipcMain.removeHandler(IPC_CHANNELS.softwareUpdateCheck);
+      ipcMain.removeHandler(IPC_CHANNELS.softwareUpdateDownload);
+      ipcMain.removeHandler(IPC_CHANNELS.softwareUpdateInstall);
     },
     async drain() {
       while (inFlight.size) await Promise.allSettled([...inFlight]);

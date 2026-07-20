@@ -8,7 +8,7 @@ INJECTOR="$SCRIPT_DIR/injector.mjs"
 THEMES_ROOT="${TRAE_DREAM_SKIN_THEMES_ROOT:-$PROJECT_ROOT/themes}"
 DEFAULT_THEME_ID="neon-portal"
 DEFAULT_PORT="9342"
-SKIN_VERSION="0.2.0"
+SKIN_VERSION="0.3.0"
 
 STATE_ROOT="${TRAE_DREAM_SKIN_HOME:-$HOME/Library/Application Support/TraeDreamSkin}"
 STATE_PATH="$STATE_ROOT/state.json"
@@ -416,6 +416,63 @@ state_field() {
     const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))[process.argv[2]];
     if (value !== undefined && value !== null) process.stdout.write(String(value));
   ' "$STATE_PATH" "$key"
+}
+
+trae_state_is_trustworthy() {
+  local schema_version=""
+  local session=""
+  local owns_session=""
+  local port=""
+  local browser_id=""
+  local injector_pid=""
+  local injector_started_at=""
+  local trae_pid=""
+  local trae_started_at=""
+  local trae_bundle=""
+  local trae_exe=""
+  local theme_id=""
+  local theme_revision=""
+  local watcher_label=""
+  local watcher_plist=""
+  local app_label=""
+  local app_plist=""
+  [ -f "$STATE_PATH" ] || return 1
+  schema_version="$(state_field schemaVersion)" || return 1
+  session="$(state_field session)" || return 1
+  owns_session="$(state_field ownsSession)" || return 1
+  port="$(state_field port)" || return 1
+  browser_id="$(state_field browserId)" || return 1
+  injector_pid="$(state_field injectorPid)" || return 1
+  injector_started_at="$(state_field injectorStartedAt)" || return 1
+  trae_pid="$(state_field traePid)" || return 1
+  trae_started_at="$(state_field traeStartedAt)" || return 1
+  trae_bundle="$(state_field traeBundle)" || return 1
+  trae_exe="$(state_field traeExe)" || return 1
+  theme_id="$(state_field themeId)" || return 1
+  theme_revision="$(state_field themeRevision 2>/dev/null || true)"
+  watcher_label="$(state_field launchAgentLabel)" || return 1
+  watcher_plist="$(state_field launchAgentPlist)" || return 1
+  app_label="$(state_field appLaunchAgentLabel)" || return 1
+  app_plist="$(state_field appLaunchAgentPlist)" || return 1
+
+  [ "$schema_version" = "1" ] && [ "$session" = "active" ] && [ "$owns_session" = "true" ] \
+    || return 1
+  case "$port" in ''|*[!0-9]*) return 1 ;; esac
+  [ "$port" -ge 1024 ] && [ "$port" -le 65535 ] || return 1
+  case "$browser_id" in ''|*[!A-Za-z0-9._-]*) return 1 ;; esac
+  case "$injector_pid" in ''|0|*[!0-9]*) return 1 ;; esac
+  case "$trae_pid" in ''|0|*[!0-9]*) return 1 ;; esac
+  [ -n "$injector_started_at" ] && [ -n "$trae_started_at" ] || return 1
+  case "$theme_id" in ''|*[!A-Za-z0-9_-]*) return 1 ;; esac
+  if [ -n "$theme_revision" ] && [[ ! "$theme_revision" =~ ^[a-f0-9]{64}$ ]]; then
+    return 1
+  fi
+  case "$trae_bundle" in /*.app) ;; *) return 1 ;; esac
+  case "$trae_exe" in "$trae_bundle"/Contents/MacOS/*) ;; *) return 1 ;; esac
+  [ "$watcher_label" = "$LAUNCH_AGENT_LABEL" ] \
+    && [ "$watcher_plist" = "$LAUNCH_AGENT_PLIST" ] \
+    && [ "$app_label" = "$TRAE_LAUNCH_AGENT_LABEL" ] \
+    && [ "$app_plist" = "$TRAE_LAUNCH_AGENT_PLIST" ]
 }
 
 resolve_theme_dir() {

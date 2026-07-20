@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
+import { execFile as execFileCallback } from "node:child_process";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+const execFile = promisify(execFileCallback);
 
 async function source(relativePath) {
   return fs.readFile(path.join(ROOT, relativePath), "utf8");
@@ -58,6 +62,58 @@ test("macOS stop performs live cleanup, closes the owned session, and relaunches
   const status = await source("scripts/status-trae-skin-macos.sh");
   assert.match(status, /orphaned/);
   assert.match(status, /ownedAppJob/);
+  assert.match(status, /SESSION_STATUS="degraded"/);
+  assert.match(status, /process_identity_matches "\$TRAE_PID" "\$TRAE_STARTED_AT"/);
+  assert.match(status, /"\$LISTENER_TRAE_PID" = "\$TRAE_PID"/);
+  assert.match(status, /"\$OWNED_APP_JOB" != "true"/);
+  assert.match(status, /"\$OWNED_WATCHER_JOB" != "true"/);
+});
+
+test("Trae state validation rejects truncated state before status reads fields", async (t) => {
+  const stateRoot = await fs.mkdtemp(path.join(os.tmpdir(), "trae-state-validation-"));
+  t.after(() => fs.rm(stateRoot, { recursive: true, force: true }));
+  const statePath = path.join(stateRoot, "state.json");
+  const commonPath = path.join(ROOT, "scripts", "common-macos.sh");
+  const validate = () => execFile("/bin/bash", ["-c", [
+    'source "$COMMON_PATH"',
+    'run_node() { "$TEST_NODE" "$@"; }',
+    "trae_state_is_trustworthy",
+  ].join("; ")], {
+    env: {
+      ...process.env,
+      COMMON_PATH: commonPath,
+      TEST_NODE: process.execPath,
+      TRAE_DREAM_SKIN_HOME: stateRoot,
+    },
+  });
+
+  await fs.writeFile(statePath, '{"session":"active"');
+  await assert.rejects(validate);
+
+  await fs.writeFile(statePath, JSON.stringify({
+    schemaVersion: 1,
+    session: "active",
+    ownsSession: true,
+    port: 9342,
+    browserId: "browser-1",
+    injectorPid: 101,
+    injectorStartedAt: "Sun Jul 20 12:00:00 2026",
+    traePid: 102,
+    traeStartedAt: "Sun Jul 20 12:00:00 2026",
+    traeBundle: "/Applications/Trae.app",
+    traeExe: "/Applications/Trae.app/Contents/MacOS/Trae",
+    themeId: "sunlit-spark",
+    themeRevision: "a".repeat(64),
+    launchAgentLabel: "local.trae-dream-skin.injector",
+    launchAgentPlist: path.join(stateRoot, "injector-launch-agent.plist"),
+    appLaunchAgentLabel: "local.trae-dream-skin.trae",
+    appLaunchAgentPlist: path.join(stateRoot, "trae-launch-agent.plist"),
+  }));
+  await validate();
+
+  const status = await source("scripts/status-trae-skin-macos.sh");
+  assert.match(status, /if ! trae_state_is_trustworthy; then[\s\S]*SESSION_STATUS="orphaned-unverified"/);
+  assert.ok(status.indexOf("trae_state_is_trustworthy") < status.indexOf('PORT="$(state_field port)"'));
 });
 
 test("Finder entry points expose start, switch, and stop without patching the app bundle", async () => {

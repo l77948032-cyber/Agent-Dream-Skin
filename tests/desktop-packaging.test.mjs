@@ -73,8 +73,47 @@ test("desktop package metadata and release channel belong to the current reposit
     provider: "github",
     owner: "l77948032-cyber",
     repo: "Agent-Dream-Skin",
+    channel: "latest",
     releaseType: "release",
   });
   assert.match(manifest.scripts["desktop:installer:mac"], /CSC_IDENTITY_AUTO_DISCOVERY=false/);
-  assert.match(manifest.scripts["desktop:installer:mac"], /desktop:verify:installer$/);
+  assert.match(manifest.scripts["desktop:installer:mac"], /desktop:verify:installer/);
+  assert.match(manifest.scripts["desktop:installer:mac"], /desktop:verify:installed -- --screenshot dist-desktop\/installed-smoke\.png$/);
+  assert.match(manifest.scripts["desktop:release:mac"], /electron-builder --mac --arm64 --publish never/);
+  assert.match(manifest.scripts["desktop:release:mac"], /desktop:verify:installed -- --screenshot dist-desktop\/installed-smoke\.png$/);
+  assert.equal(manifest.dependencies["electron-updater"], "^6.8.9");
+  assert.equal(manifest.build.generateUpdatesFilesForAllChannels, undefined);
+});
+
+test("macOS release workflow publishes only the stable latest channel after draft validation", async () => {
+  const source = await fs.readFile(path.join(PROJECT_ROOT, ".github", "workflows", "release-macos.yml"), "utf8");
+  assert.match(source, /dist-desktop\/latest-mac\.yml/);
+  assert.match(source, /dist-desktop\/\*\.dmg\.blockmap/);
+  assert.match(source, /dist-desktop\/\*\.zip\.blockmap/);
+  assert.match(source, /docs\/releases\/\$\{GITHUB_REF_NAME\}\.md/);
+  assert.match(source, /--notes-file/);
+  assert.match(source, /--generate-notes/);
+  assert.match(source, /only publishes stable versions with latest-mac\.yml/);
+  assert.match(source, /--prerelease=false/);
+  assert.doesNotMatch(source, /steps\.release\.outputs\.prerelease/);
+  const createDraft = source.indexOf("Create draft GitHub Release");
+  const validateAssets = source.indexOf("Validate draft release assets");
+  const publishRelease = source.indexOf("Publish verified GitHub Release");
+  assert.equal(createDraft > 0, true);
+  assert.equal(validateAssets > createDraft, true);
+  assert.equal(publishRelease > validateAssets, true);
+});
+
+test("macOS release workflow rebuilds an existing draft but refuses to replace a published release", async () => {
+  const source = await fs.readFile(path.join(PROJECT_ROOT, ".github", "workflows", "release-macos.yml"), "utf8");
+  const inspectExisting = source.indexOf("existing_release=\"$(gh release view");
+  const rejectPublished = source.indexOf("is already published; refusing to replace it");
+  const deleteDraft = source.indexOf("gh release delete");
+  const createDraft = source.indexOf("release create \"${GITHUB_REF_NAME}\"");
+  assert.equal(inspectExisting > 0, true);
+  assert.equal(rejectPublished > inspectExisting, true);
+  assert.equal(deleteDraft > rejectPublished, true);
+  assert.equal(createDraft > deleteDraft, true);
+  assert.match(source, /gh release delete "\$\{GITHUB_REF_NAME\}" --repo "\$\{GITHUB_REPOSITORY\}" --yes/);
+  assert.match(source, /release not found\|HTTP 404/);
 });

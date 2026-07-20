@@ -15,6 +15,32 @@ function senderEvent({ id = 7, url = "dreamskin://studio/", subframe = false } =
   return { sender, senderFrame: subframe ? { url } : mainFrame };
 }
 
+function softwareUpdateFixture() {
+  const listeners = new Set();
+  const state = {
+    enabled: false,
+    reason: "development",
+    phase: "disabled",
+    currentVersion: "0.2.0",
+    prerelease: false,
+    update: null,
+    progress: null,
+    error: null,
+    canCheck: false,
+    canDownload: false,
+    canInstall: false,
+  };
+  return {
+    state,
+    getState: () => state,
+    check: async () => state,
+    download: async () => state,
+    install: () => state,
+    subscribe: (listener) => { listeners.add(listener); return () => listeners.delete(listener); },
+    emit: (next) => listeners.forEach((listener) => listener(next)),
+  };
+}
+
 test("desktop IPC sender validation requires the registered Studio main frame", () => {
   const allowed = new Set([7]);
   const validate = createSenderValidator({ allowedWebContentsIds: () => allowed });
@@ -46,11 +72,15 @@ test("IPC registration envelopes backend results and rejects untrusted senders",
     handle: (channel, handler) => handlers.set(channel, handler),
     removeHandler: (channel) => handlers.delete(channel),
   };
+  const softwareUpdate = softwareUpdateFixture();
+  const updateStates = [];
   const registration = registerDesktopIpc({
     ipcMain,
     router: { invoke: async (operation, input) => ({ operation, input }) },
     assertTrustedSender: createSenderValidator({ allowedWebContentsIds: () => new Set([7]) }),
     getDesktopInfo: () => ({ platform: "darwin" }),
+    softwareUpdate,
+    sendSoftwareUpdateState: (state) => updateStates.push(state),
   });
 
   assert.deepEqual(await handlers.get(IPC_CHANNELS.desktopInfo)(senderEvent()), {
@@ -61,6 +91,12 @@ test("IPC registration envelopes backend results and rejects untrusted senders",
     ok: true,
     result: { operation: "themes.read", input: { themeId: "sunlit-spark" } },
   });
+  assert.deepEqual(await handlers.get(IPC_CHANNELS.softwareUpdateGetState)(senderEvent()), {
+    ok: true,
+    result: softwareUpdate.state,
+  });
+  softwareUpdate.emit(softwareUpdate.state);
+  assert.deepEqual(updateStates, [softwareUpdate.state]);
   const rejected = await handlers.get(IPC_CHANNELS.studioApi)(senderEvent({ id: 9 }), "themes.list", {});
   assert.equal(rejected.ok, false);
   assert.equal(rejected.error.code, "INVALID_IPC_SENDER");
@@ -81,6 +117,7 @@ test("preload bridge exposes explicit frozen methods instead of raw Electron IPC
 
   assert.equal(Object.isFrozen(api), true);
   assert.equal(Object.isFrozen(api.studio), true);
+  assert.equal(Object.isFrozen(api.updates), true);
   assert.equal("invoke" in api, false);
   await api.studio.updateTheme("sunlit-spark", { expectedRevision: "rev", theme: { name: "New" } });
   assert.deepEqual(calls[0], [IPC_CHANNELS.studioApi, "themes.update", {
@@ -96,6 +133,23 @@ test("preload bridge exposes explicit frozen methods instead of raw Electron IPC
   assert.deepEqual(calls[2], [IPC_CHANNELS.studioApi, "runtime.restore", {
     pluginId: "dreamskin.workbuddy",
   }]);
+  await api.updates.check();
+  assert.deepEqual(calls[3], [IPC_CHANNELS.softwareUpdateCheck]);
+
+  let updateListener;
+  const eventApi = createPreloadApi({
+    invoke: async () => ({ ok: true, result: null }),
+    on: (channel, listener) => { assert.equal(channel, IPC_CHANNELS.softwareUpdateState); updateListener = listener; },
+    removeListener: (channel, listener) => {
+      assert.equal(channel, IPC_CHANNELS.softwareUpdateState);
+      assert.equal(listener, updateListener);
+    },
+  });
+  let received;
+  const unsubscribe = eventApi.updates.subscribe((state) => { received = state; });
+  updateListener({ sender: "hidden" }, { phase: "ready" });
+  assert.deepEqual(received, { phase: "ready" });
+  unsubscribe();
 
   const rejectedApi = createPreloadApi({ invoke: async () => ({
     ok: false,

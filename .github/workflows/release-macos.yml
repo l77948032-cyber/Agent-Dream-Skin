@@ -101,6 +101,7 @@ jobs:
             dist-desktop/*.zip
             dist-desktop/SHA256SUMS.txt
             dist-desktop/packaged-smoke.png
+            dist-desktop/installed-smoke.png
 
   signed-release:
     name: Build signed and notarized release
@@ -136,9 +137,14 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          expected_tag="v$(node -p "require('./package.json').version")"
+          version="$(node -p "require('./package.json').version")"
+          expected_tag="v${version}"
           if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
             echo "::error::Tag ${GITHUB_REF_NAME} does not match package version ${expected_tag}."
+            exit 1
+          fi
+          if [[ "${version}" == *-* ]]; then
+            echo "::error::The macOS release workflow only publishes stable versions with latest-mac.yml."
             exit 1
           fi
 
@@ -179,6 +185,43 @@ jobs:
             shasum -a 256 -- ./*.dmg ./*.zip > SHA256SUMS.txt
           )
 
+      - name: Verify release update assets
+        shell: bash
+        run: |
+          shopt -s nullglob
+          dmgs=(dist-desktop/*.dmg)
+          zips=(dist-desktop/*.zip)
+          dmg_blockmaps=(dist-desktop/*.dmg.blockmap)
+          zip_blockmaps=(dist-desktop/*.zip.blockmap)
+          required_singletons=(
+            "${#dmgs[@]}:DMG"
+            "${#zips[@]}:ZIP"
+            "${#dmg_blockmaps[@]}:DMG blockmap"
+            "${#zip_blockmaps[@]}:ZIP blockmap"
+          )
+          for entry in "${required_singletons[@]}"; do
+            count="${entry%%:*}"
+            label="${entry#*:}"
+            if [[ "${count}" -ne 1 ]]; then
+              echo "::error::Expected exactly one ${label} release asset, found ${count}."
+              exit 1
+            fi
+          done
+          for required in \
+            dist-desktop/latest-mac.yml \
+            dist-desktop/SHA256SUMS.txt \
+            dist-desktop/packaged-smoke.png \
+            dist-desktop/installed-smoke.png; do
+            if [[ ! -s "${required}" ]]; then
+              echo "::error::Required release asset ${required} is missing or empty."
+              exit 1
+            fi
+          done
+          if ! grep -Eq "^version: ['\"]?$(node -p "require('./package.json').version")['\"]?$" dist-desktop/latest-mac.yml; then
+            echo "::error::latest-mac.yml does not describe the package version."
+            exit 1
+          fi
+
       - name: Upload verified release artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -188,20 +231,126 @@ jobs:
           path: |
             dist-desktop/*.dmg
             dist-desktop/*.zip
+            dist-desktop/*.blockmap
+            dist-desktop/latest-mac.yml
             dist-desktop/SHA256SUMS.txt
             dist-desktop/packaged-smoke.png
+            dist-desktop/installed-smoke.png
 
-      - name: Publish GitHub Release
+      - name: Prepare stable GitHub Release metadata
+        id: release
+        shell: bash
+        run: |
+          notes_file="docs/releases/${GITHUB_REF_NAME}.md"
+          if [[ -f "${notes_file}" ]]; then
+            echo "notes_file=${notes_file}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "notes_file=" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Create draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            dist-desktop/*.dmg \
-            dist-desktop/*.zip \
-            dist-desktop/SHA256SUMS.txt \
-            dist-desktop/packaged-smoke.png \
+          if existing_release="$(gh release view "${GITHUB_REF_NAME}" \
             --repo "${GITHUB_REPOSITORY}" \
-            --verify-tag \
-            --generate-notes \
+            --json isDraft,isPrerelease 2>release-view-error.log)"; then
+            if [[ "$(jq -r '.isDraft' <<<"${existing_release}")" != "true" ]]; then
+              echo "::error::Release ${GITHUB_REF_NAME} is already published; refusing to replace it."
+              exit 1
+            fi
+            echo "Replacing the incomplete draft release from an earlier run."
+            gh release delete "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --yes
+          else
+            view_status=$?
+            if ! grep -qiE 'release not found|HTTP 404' release-view-error.log; then
+              cat release-view-error.log >&2
+              exit "${view_status}"
+            fi
+          fi
+
+          args=(
+            release create "${GITHUB_REF_NAME}"
+            --repo "${GITHUB_REPOSITORY}"
+            --verify-tag
+            --draft
             --title "DreamSkin Studio ${GITHUB_REF_NAME}"
+          )
+          if [[ -n "${{ steps.release.outputs.notes_file }}" ]]; then
+            args+=(--notes-file "${{ steps.release.outputs.notes_file }}")
+          else
+            args+=(--generate-notes)
+          fi
+          gh "${args[@]}"
+
+      - name: Upload assets to draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          assets=(
+            dist-desktop/*.dmg
+            dist-desktop/*.zip
+            dist-desktop/*.dmg.blockmap
+            dist-desktop/*.zip.blockmap
+            dist-desktop/latest-mac.yml
+            dist-desktop/SHA256SUMS.txt
+            dist-desktop/packaged-smoke.png
+            dist-desktop/installed-smoke.png
+          )
+          gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --repo "${GITHUB_REPOSITORY}"
+
+      - name: Validate draft release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          local_assets=(
+            dist-desktop/*.dmg
+            dist-desktop/*.zip
+            dist-desktop/*.dmg.blockmap
+            dist-desktop/*.zip.blockmap
+            dist-desktop/latest-mac.yml
+            dist-desktop/SHA256SUMS.txt
+            dist-desktop/packaged-smoke.png
+            dist-desktop/installed-smoke.png
+          )
+          expected="$(printf '%s\n' "${local_assets[@]##*/}" | LC_ALL=C sort)"
+          release_json="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json assets,isDraft,isPrerelease)"
+          actual="$(jq -r '.assets[].name' <<<"${release_json}" | LC_ALL=C sort)"
+          if [[ "${expected}" != "${actual}" ]]; then
+            echo "::error::Draft release assets do not match the verified local assets."
+            diff -u <(printf '%s\n' "${expected}") <(printf '%s\n' "${actual}") || true
+            exit 1
+          fi
+          if [[ "$(jq -r '.isDraft' <<<"${release_json}")" != "true" ]]; then
+            echo "::error::Release was published before asset validation."
+            exit 1
+          fi
+          if [[ "$(jq -r '.isPrerelease' <<<"${release_json}")" != "false" ]]; then
+            echo "::error::The stable draft release was unexpectedly marked as a prerelease."
+            exit 1
+          fi
+          if ! jq -e '.assets | length == 8 and all(.size > 0)' <<<"${release_json}" >/dev/null; then
+            echo "::error::Draft release contains a missing or empty asset."
+            exit 1
+          fi
+
+      - name: Publish verified GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release edit "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --draft=false \
+            --prerelease=false
+          published="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft,isPrerelease)"
+          if [[ "$(jq -r '.isDraft' <<<"${published}")" != "false" ]] \
+            || [[ "$(jq -r '.isPrerelease' <<<"${published}")" != "false" ]]; then
+            echo "::error::GitHub Release publication state is incorrect."
+            exit 1
+          fi

@@ -70,6 +70,7 @@ import {
   type InspectDto,
   type PluginDto,
   type RuntimeStatusDto,
+  type SoftwareUpdateState,
   type StudioTargetDto,
   type StudioSettings,
   ApiError,
@@ -981,8 +982,140 @@ function SettingsView({
           <div className="setting-row"><span><strong>主题存储位置</strong><small>{(selectedTarget && settings.themeRoots?.[selectedTarget.pluginId]) || settings.themesRoot || "未配置"}</small></span></div>
         </section>
         <section className="settings-section"><div className="settings-title"><strong>{targetName} 运行状态</strong></div><div className="diagnostic-row"><span><i />DreamSkin Tool</span><strong>{selectedInspect?.agentToolVersion || "未知"}</strong></div><div className="diagnostic-row"><span><i />{targetName} Runtime</span><strong>{runtimeLabel}</strong></div><div className="diagnostic-row"><span><i />组件注册表</span><strong>{selectedInspect?.registry?.components?.length ?? (isWorkBuddyTarget(selectedTarget || {}) ? Object.keys(workBuddyComponentLabels).length : componentRegistry.components.length)} 项</strong></div><button type="button" className="setting-row command-row" disabled={!runtimeCanVerify || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("verify")}><span><strong>验证当前主题</strong><small>检查 {targetName} 中的实际换肤结果</small></span>{runtimeBusy === "verify" ? <LoaderCircle className="spin" size={15} /> : <Check size={15} />}</button><button type="button" className="setting-row command-row" disabled={!runtimeCanRestore || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("restore")}><span><strong>恢复原生界面</strong><small>停止当前主题并恢复 {targetName}</small></span>{runtimeBusy === "restore" ? <LoaderCircle className="spin" size={15} /> : <RotateCcw size={15} />}</button></section>
+        <SoftwareUpdateSection />
       </div>
     </main>
+  );
+}
+
+const browserUpdateState: SoftwareUpdateState = {
+  enabled: false,
+  reason: "browser",
+  phase: "disabled",
+  currentVersion: "",
+  prerelease: false,
+  update: null,
+  progress: null,
+  error: null,
+  canCheck: false,
+  canDownload: false,
+  canInstall: false,
+};
+
+function updateDisabledLabel(reason: string | null) {
+  if (reason === "development") return "开发构建不会连接更新服务";
+  if (reason === "unsigned") return "测试安装包不会自动更新";
+  if (reason === "app-store") return "请通过 App Store 获取更新";
+  if (reason === "unsupported-platform") return "当前平台暂不支持自动更新";
+  return "安装 DreamSkin Studio 桌面版后可用";
+}
+
+function formatUpdateBytes(bytes: number) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "";
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${Math.round(bytes)} B`;
+}
+
+function SoftwareUpdateSection() {
+  const updateBridge = typeof window !== "undefined" ? window.dreamskin?.updates : undefined;
+  const [state, setState] = useState<SoftwareUpdateState>(browserUpdateState);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!updateBridge) {
+      setState(browserUpdateState);
+      return undefined;
+    }
+    let active = true;
+    const unsubscribe = updateBridge.subscribe((next) => {
+      if (active) {
+        setLocalError(null);
+        setState(next);
+      }
+    });
+    void updateBridge.getState().then((next) => {
+      if (active) setState(next);
+    }).catch((error) => {
+      if (active) setLocalError(errorMessage(error));
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [updateBridge]);
+
+  const invoke = async (action: "check" | "download" | "install") => {
+    if (!updateBridge) return;
+    setLocalError(null);
+    try {
+      const next = await updateBridge[action]();
+      setState(next);
+    } catch (error) {
+      setLocalError(errorMessage(error));
+    }
+  };
+
+  const phase = localError ? "error" : state.phase;
+  const updateVersion = state.update?.version;
+  const percent = Math.max(0, Math.min(100, state.progress?.percent || 0));
+  const progressDetail = state.progress?.total
+    ? `${formatUpdateBytes(state.progress.transferred)} / ${formatUpdateBytes(state.progress.total)}`
+    : `${Math.round(percent)}%`;
+  const currentVersion = state.currentVersion ? `版本 ${state.currentVersion}` : "";
+  const title = phase === "checking"
+    ? "正在检查更新"
+    : phase === "available"
+      ? `DreamSkin Studio ${updateVersion || "新版本"}`
+      : phase === "downloading"
+        ? `正在下载 ${updateVersion || "新版本"}`
+        : phase === "ready"
+          ? `${updateVersion || "新版本"} 已准备好`
+          : phase === "installing"
+            ? "正在准备重新启动"
+            : phase === "up-to-date"
+              ? "DreamSkin Studio 已是最新版本"
+              : phase === "error"
+                ? "无法检查更新"
+                : state.enabled
+                  ? "软件更新"
+                  : "软件更新不可用";
+  const detail = phase === "downloading"
+    ? progressDetail
+    : phase === "ready"
+      ? "重新启动后将自动完成安装"
+      : phase === "installing"
+        ? "窗口即将关闭"
+        : phase === "error"
+          ? localError || state.error?.message || "请稍后重试"
+          : phase === "up-to-date"
+            ? currentVersion
+            : phase === "available"
+              ? [state.update?.releaseName, currentVersion].filter(Boolean).join(" · ")
+              : state.enabled
+                ? currentVersion
+                : updateDisabledLabel(state.reason);
+  const statusIcon = phase === "checking" || phase === "downloading" || phase === "installing"
+    ? <LoaderCircle className="spin" size={18} />
+    : phase === "ready" || phase === "up-to-date"
+      ? <Check size={18} />
+      : phase === "error"
+        ? <CircleAlert size={18} />
+        : <CloudDownload size={18} />;
+
+  return (
+    <section className="settings-section software-update-section">
+      <div className="settings-title"><strong>软件更新</strong>{state.prerelease ? <span className="update-channel">预览版</span> : null}</div>
+      <div className={`software-update-panel is-${phase}`} aria-live="polite">
+        <span className="software-update-icon">{statusIcon}</span>
+        <div className="software-update-copy"><strong>{title}</strong><small>{detail}</small></div>
+        {phase === "idle" || phase === "up-to-date" || phase === "error" ? <button type="button" className="secondary-button" disabled={!state.canCheck || !updateBridge} onClick={() => void invoke("check")}>检查更新</button> : null}
+        {phase === "available" ? <button type="button" className="primary-button" disabled={!state.canDownload} onClick={() => void invoke("download")}><Download size={14} />下载</button> : null}
+        {phase === "ready" ? <button type="button" className="primary-button" disabled={!state.canInstall} onClick={() => void invoke("install")}><RotateCcw size={14} />重新启动并安装</button> : null}
+      </div>
+      {phase === "downloading" ? <div className="software-update-progress" role="progressbar" aria-label="软件下载进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percent)}><i style={{ width: `${percent}%` }} /></div> : null}
+    </section>
   );
 }
 

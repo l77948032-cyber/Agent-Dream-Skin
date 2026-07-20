@@ -312,6 +312,7 @@ export async function stopChild(child, {
 const DEFAULT_RUNTIME = Object.freeze({
   access: (target, mode) => fs.access(target, mode),
   createClient: (url) => new DevToolsClient(url),
+  ensureDirectory: (target) => fs.mkdir(target, { recursive: true }),
   makeTempDirectory: (prefix) => fs.mkdtemp(prefix),
   platform: process.platform,
   removeDirectory: (target) => fs.rm(target, { recursive: true, force: true }),
@@ -386,6 +387,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
   const agentId = options.agentId || "codex";
   const runAgent = options.runAgent !== false;
   const executable = executableFor(appPath, runtime.platform);
+  const ownsDataRoot = options.dataRoot === undefined;
   let dataRoot = null;
   let logs = "";
   let child = null;
@@ -395,7 +397,15 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
   let stopped = { forced: false };
   try {
     await runtime.access(executable, fs.constants.X_OK);
-    dataRoot = await runtime.makeTempDirectory(path.join(os.tmpdir(), "dreamskin-packaged-e2e-"));
+    if (ownsDataRoot) {
+      dataRoot = await runtime.makeTempDirectory(path.join(os.tmpdir(), "dreamskin-packaged-e2e-"));
+    } else {
+      if (typeof options.dataRoot !== "string" || !options.dataRoot.trim()) {
+        throw new TypeError("Packaged verification dataRoot must be a non-empty path.");
+      }
+      dataRoot = path.resolve(options.dataRoot);
+      await runtime.ensureDirectory(dataRoot);
+    }
     const port = await runtime.reservePort();
     child = runtime.spawnProcess(executable, [
       `--user-data-dir=${dataRoot}`,
@@ -479,7 +489,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
       ui,
       workBuddySmoke,
       agentResult,
-      dataRoot: options.keepData ? dataRoot : undefined,
+      dataRoot: options.keepData || !ownsDataRoot ? dataRoot : undefined,
       screenshotPath: options.screenshotPath || undefined,
     };
   } catch (error) {
@@ -499,7 +509,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
         cleanupErrors.push(error);
       }
     }
-    if (dataRoot && !options.keepData) {
+    if (dataRoot && ownsDataRoot && !options.keepData) {
       try {
         await runtime.removeDirectory(dataRoot);
       } catch (error) {

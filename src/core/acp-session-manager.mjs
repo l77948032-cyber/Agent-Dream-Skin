@@ -280,7 +280,7 @@ export class AcpSessionManager {
       state.initialized = await withTimeout(connection.initialize({
         protocolVersion: acp.PROTOCOL_VERSION,
         clientCapabilities: {},
-        clientInfo: { name: "dreamskin-studio", version: "0.2.0" },
+        clientInfo: { name: "dreamskin-studio", version: "0.3.0" },
       }), 20_000, "AGENT_CONNECT_TIMEOUT", `${agent.name} did not finish the ACP handshake.`);
     } catch (error) {
       await this.terminateState(state);
