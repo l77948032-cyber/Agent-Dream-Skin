@@ -141,6 +141,28 @@ ACP/MCP 子进程并删除临时数据。
 和隐藏 MCP stdio child。不要为了关闭它而改成复制完整 Node runtime；若执行模型改变，应先
 重新做威胁建模和端到端测试。
 
+### 5.1 本地 ad-hoc 安装包
+
+需要把构建交给测试人员安装时，不要只发送 unpacked `.app`。运行：
+
+```bash
+npm run desktop:installer:mac
+npm run desktop:verify:installer
+```
+
+该流程生成 macOS arm64 DMG 与 ZIP，并允许应用使用 ad-hoc 签名。安装包验证必须至少覆盖：
+
+- [ ] `.app`、DMG、ZIP 都存在且非空；
+- [ ] `.app` 的 ad-hoc 或 Developer ID 代码签名结构通过严格校验；
+- [ ] DMG 容器可以校验、挂载并包含 `DreamSkin Studio.app`；
+- [ ] DMG 中的 `Applications` 入口正确指向 `/Applications`；
+- [ ] ZIP 完整性测试通过；
+- [ ] DMG 和 ZIP 的 SHA-256 已输出并随测试包保存；
+- [ ] `dist-desktop/packaged-smoke.png` 展示的确是当前打包版本。
+
+这类构建只用于本机或受控测试。它没有 Developer ID 与公证票据，从浏览器下载后可能被
+Gatekeeper 拦截；不能将其命名为正式版，也不能上传到 GitHub Release 冒充公开发行包。
+
 ## 6. Developer ID 签名凭据
 
 正式分发需要 Apple Developer Program 团队中的 **Developer ID Application** 证书及私钥。
@@ -168,6 +190,19 @@ store。
 
 `desktop:release:mac` 使用 `forceCodeSigning=true`；找不到有效签名 identity 时必须失败，
 不能降级发布 ad-hoc 应用。
+
+### 6.3 GitHub Actions 证书 secret
+
+仓库的 `macos-release` Environment 必须配置以下 secret：
+
+| Secret | 内容 |
+| --- | --- |
+| `CSC_LINK` | electron-builder 可读取的 Developer ID Application PKCS#12；使用其支持的 base64 形式或受保护下载地址 |
+| `CSC_KEY_PASSWORD` | PKCS#12 密码 |
+
+建议为 `macos-release` Environment 开启 required reviewers，并只允许受保护的 `v*` tag
+部署。证书只通过签名步骤的环境变量交给 electron-builder，不要先写入仓库工作区，也不要在 shell
+中打印或解码到日志。手动测试包 job 不声明这个 Environment，也不会获得这些 secret。
 
 ## 7. Apple 公证凭据
 
@@ -204,6 +239,20 @@ export APPLE_KEYCHAIN_PROFILE="dreamskin-notary"
 使用自定义 keychain 时再设置 `APPLE_KEYCHAIN`。不要同时设置多套不完整凭据；
 electron-builder 会把半套环境变量视为配置错误。
 
+### 7.4 GitHub Actions 公证 secret
+
+当前 `.github/workflows/release-macos.yml` 使用 Apple ID 方式，`macos-release`
+Environment 还必须配置：
+
+| Secret | 内容 |
+| --- | --- |
+| `APPLE_ID` | Apple Developer Program 团队成员的 Apple ID |
+| `APPLE_APP_SPECIFIC_PASSWORD` | 为发行流程单独创建的 app-specific password |
+| `APPLE_TEAM_ID` | 与 Developer ID Application 证书一致的 Team ID |
+
+`GITHUB_TOKEN` 由 Actions 自动提供，只在签名 job 中授予 `contents: write`，用于创建当前 tag
+对应的 Release。不要添加个人 PAT，也不要给验证 job 或 unsigned job 写权限。
+
 ## 8. 正式 macOS arm64 构建
 
 凭据准备完成后运行：
@@ -226,6 +275,43 @@ npm run desktop:release:mac
 - [ ] 构建日志显示 `notarization successful`。
 - [ ] DMG 和 ZIP 名称、版本、架构符合预期。
 - [ ] 构建日志和 artifact 中不包含凭据。
+
+### 8.1 GitHub Actions 手动测试包
+
+在 GitHub 的 **Actions -> macOS Release -> Run workflow** 手动启动时，流水线只执行
+`unsigned-installer`：
+
+1. 使用 lockfile 安装根项目和 Studio 依赖；
+2. 执行语法检查、全量测试和 Studio production build；
+3. 以关闭签名身份自动发现的方式构建 ad-hoc arm64 DMG/ZIP；
+4. 运行安装包结构校验和打包态 `--skip-agent` smoke，保存截图；
+5. 生成 `SHA256SUMS.txt`；
+6. 上传保留 14 天的 `dreamskin-macos-arm64-unsigned-<run number>` Actions artifact。
+
+手动运行不会读取 Apple secret，也不会创建 GitHub Release。下载该 artifact 的人应明确知道
+它是测试构建。
+
+### 8.2 `v*` tag 正式发布
+
+推送 `v*` tag 时才会执行 `signed-release`。发布前：
+
+- [ ] `package.json` 中的版本与 tag 精确一致，例如 `0.2.1` 对应 `v0.2.1`；
+- [ ] tag 指向已完成代码审查和第 1-12 节检查的 commit；
+- [ ] `macos-release` Environment 的保护规则与五个 secret 均有效；
+- [ ] GitHub Actions 的 workflow permissions 允许该 job 写入 Releases。
+
+```bash
+git tag -a v0.2.1 -m "DreamSkin Studio v0.2.1"
+git push origin v0.2.1
+```
+
+签名 job 会运行 `npm run desktop:release:mac`，因此找不到 Developer ID、签名降级、公证失败、
+Gatekeeper/stapler 校验失败或打包态 smoke 失败都会在发布前终止。随后它再次校验 DMG/ZIP
+安装结构、生成 smoke 截图与 `SHA256SUMS.txt`，先保存 Actions artifact，最后才通过 GitHub
+CLI 创建 Release 并上传 DMG、ZIP、校验和与截图。任何前置步骤失败都不会创建 Release。
+
+若某个 tag job 失败，修正原因后发布新的版本 tag，不要复用已经公开的版本号，也不要用未验证
+的本地文件手工补齐一个看似成功的正式 Release。
 
 ## 9. 正式 artifact 验证
 
@@ -270,7 +356,7 @@ npx electron-fuses read --app "/Volumes/DreamSkin Studio/DreamSkin Studio.app"
 - [ ] 能发现本地 Codex CLI；若不在标准路径，`DREAMSKIN_CODEX_PATH` 生效。
 - [ ] Codex ACP 对话只修改选定 plugin、主题和 revision，并能通过 validate。
 - [ ] Trae 的 Work、Code、Design、对话页和 20 个组件状态预览正常。
-- [ ] WorkBuddy 的首页、对话、结果与产物、专家与技能、自动化、项目与空间、设置、浮层与状态 8 个场景和 32 个组件预览正常。
+- [ ] WorkBuddy 的首页、助理、对话、结果与产物、专家与技能、自动化、项目、设置、浮层与状态 9 个场景和 32 个组件预览正常。
 - [ ] 应用主题前会校验，Trae 与 WorkBuddy 都只开放 loopback CDP。
 - [ ] 安全说明明确回环不是认证：端口开启期间，同机其他进程仍可尝试访问 CDP。
 - [ ] verify 返回正确的 owned process、browser identity 和主题状态。

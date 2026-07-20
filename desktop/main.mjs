@@ -1,11 +1,12 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { app, BrowserWindow, ipcMain, protocol, session } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, protocol, session } from "electron";
 
 import { preferredCodexPath } from "./agent-paths.mjs";
 import { createDesktopProcessTerminator } from "./process-lifecycle.mjs";
 import { startDesktopApplication } from "./shell.mjs";
+import { reportDesktopStartupFailure } from "./startup-diagnostics.mjs";
 
 const desktopRoot = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(desktopRoot, "..");
@@ -128,7 +129,8 @@ void startDesktopApplication({
       processTerminator.listen(signal, shutdownFromSignal);
     }
   })
-  .catch((error) => {
+  .catch(async (error) => {
     console.error(error.stack || error.message);
+    await reportDesktopStartupFailure({ app, dialog, error });
     app.exit(1);
   });

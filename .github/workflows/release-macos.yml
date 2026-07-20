@@ -1,0 +1,207 @@
+name: macOS Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: macos-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate source
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            studio/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix studio ci
+
+      - name: Run project validation
+        run: |
+          npm run check
+          npm test
+          npm run studio:build
+
+  unsigned-installer:
+    name: Build unsigned test installer
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            studio/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix studio ci
+
+      - name: Build ad-hoc arm64 installer
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run desktop:installer:mac
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          shopt -s nullglob
+          artifacts=(dist-desktop/*.dmg dist-desktop/*.zip)
+          if [[ ${#artifacts[@]} -ne 2 ]]; then
+            echo "::error::Expected exactly one DMG and one ZIP artifact."
+            exit 1
+          fi
+          (
+            cd dist-desktop
+            shasum -a 256 -- ./*.dmg ./*.zip > SHA256SUMS.txt
+          )
+
+      - name: Upload unsigned test installer
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dreamskin-macos-arm64-unsigned-${{ github.run_number }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            dist-desktop/*.dmg
+            dist-desktop/*.zip
+            dist-desktop/SHA256SUMS.txt
+            dist-desktop/packaged-smoke.png
+
+  signed-release:
+    name: Build signed and notarized release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: validate
+    runs-on: macos-15
+    timeout-minutes: 90
+    environment: macos-release
+    permissions:
+      contents: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            studio/package-lock.json
+
+      - name: Confirm tag and release secrets
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          expected_tag="v$(node -p "require('./package.json').version")"
+          if [[ "${GITHUB_REF_NAME}" != "${expected_tag}" ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package version ${expected_tag}."
+            exit 1
+          fi
+
+          missing=0
+          for secret_name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!secret_name:-}" ]]; then
+              echo "::error::Required macOS release secret ${secret_name} is not configured."
+              missing=1
+            fi
+          done
+          exit "${missing}"
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm --prefix studio ci
+
+      - name: Build and strictly verify signed release
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run desktop:release:mac
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          shopt -s nullglob
+          artifacts=(dist-desktop/*.dmg dist-desktop/*.zip)
+          if [[ ${#artifacts[@]} -ne 2 ]]; then
+            echo "::error::Expected exactly one DMG and one ZIP artifact."
+            exit 1
+          fi
+          (
+            cd dist-desktop
+            shasum -a 256 -- ./*.dmg ./*.zip > SHA256SUMS.txt
+          )
+
+      - name: Upload verified release artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dreamskin-macos-arm64-${{ github.ref_name }}
+          if-no-files-found: error
+          retention-days: 30
+          path: |
+            dist-desktop/*.dmg
+            dist-desktop/*.zip
+            dist-desktop/SHA256SUMS.txt
+            dist-desktop/packaged-smoke.png
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist-desktop/*.dmg \
+            dist-desktop/*.zip \
+            dist-desktop/SHA256SUMS.txt \
+            dist-desktop/packaged-smoke.png \
+            --repo "${GITHUB_REPOSITORY}" \
+            --verify-tag \
+            --generate-notes \
+            --title "DreamSkin Studio ${GITHUB_REF_NAME}"
