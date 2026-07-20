@@ -2,9 +2,20 @@
   "name": "trae-dream-skin",
   "version": "0.2.0",
   "description": "DreamSkin Studio and its local Agent Tool for designing and applying reversible desktop themes.",
-  "author": "DreamSkin Contributors",
+  "author": {
+    "name": "l77948032-cyber",
+    "url": "https://github.com/l77948032-cyber"
+  },
   "license": "MIT",
   "private": true,
+  "homepage": "https://github.com/l77948032-cyber/Agent-Dream-Skin#readme",
+  "bugs": {
+    "url": "https://github.com/l77948032-cyber/Agent-Dream-Skin/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l77948032-cyber/Agent-Dream-Skin.git"
+  },
   "type": "module",
   "main": "desktop/main.mjs",
   "bin": {
@@ -12,7 +23,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check scripts/injector.mjs && node --check scripts/workbuddy-injector.mjs && node --check scripts/studio-dev.mjs && node --check scripts/build-desktop-resources.mjs && node --check scripts/after-pack.mjs && node --check scripts/verify-packaged-desktop.mjs && node --check scripts/verify-macos-release.mjs && node --check assets/renderer-inject.js && node --check assets/workbuddy-renderer-inject.js && node --check plugins/workbuddy/plugin.mjs && node --check plugins/workbuddy/catalog.mjs && node --check src/cli.mjs && node --check src/mcp-server.mjs && node --check src/studio-server.mjs && node --check desktop/main.mjs && node --check desktop/process-lifecycle.mjs && node --check desktop/shell.mjs && node --check desktop/protocol-router.mjs",
+    "check": "node --check scripts/injector.mjs && node --check scripts/workbuddy-injector.mjs && node --check scripts/studio-dev.mjs && node --check scripts/build-desktop-resources.mjs && node --check scripts/after-pack.mjs && node --check scripts/verify-packaged-desktop.mjs && node --check scripts/verify-macos-installer.mjs && node --check scripts/verify-macos-release.mjs && node --check assets/renderer-inject.js && node --check assets/workbuddy-renderer-inject.js && node --check plugins/workbuddy/plugin.mjs && node --check plugins/workbuddy/catalog.mjs && node --check src/cli.mjs && node --check src/mcp-server.mjs && node --check src/studio-server.mjs && node --check desktop/main.mjs && node --check desktop/process-lifecycle.mjs && node --check desktop/shell.mjs && node --check desktop/startup-diagnostics.mjs && node --check desktop/protocol-router.mjs",
     "cli": "node ./bin/trae-dream-skin.mjs",
     "mcp": "node ./src/mcp-server.mjs",
     "mcp:legacy": "node ./src/mcp-server.mjs --profile legacy-v1",
@@ -27,8 +38,10 @@
     "desktop:verify:packaged": "node ./scripts/verify-packaged-desktop.mjs",
     "desktop:dist": "npm run desktop:resources && electron-builder",
     "desktop:dist:mac": "npm run desktop:resources && electron-builder --mac --arm64",
+    "desktop:verify:installer": "node ./scripts/verify-macos-installer.mjs",
     "desktop:verify:mac": "node ./scripts/verify-macos-release.mjs",
-    "desktop:release:mac": "npm run desktop:resources && electron-builder --mac --arm64 --config.forceCodeSigning=true --config.mac.notarize=true && npm run desktop:verify:packaged -- --skip-agent && npm run desktop:verify:mac"
+    "desktop:installer:mac": "npm run desktop:resources && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --arm64 && npm run desktop:verify:packaged -- --skip-agent --screenshot dist-desktop/packaged-smoke.png && npm run desktop:verify:installer",
+    "desktop:release:mac": "npm run desktop:resources && electron-builder --mac --arm64 --config.forceCodeSigning=true --config.mac.notarize=true && npm run desktop:verify:packaged -- --skip-agent --screenshot dist-desktop/packaged-smoke.png && npm run desktop:verify:installer && npm run desktop:verify:mac"
   },
   "engines": {
     "node": ">=22.12"
@@ -82,6 +95,29 @@
         "zip"
       ]
     },
+    "dmg": {
+      "title": "DreamSkin Studio ${version}",
+      "icon": "desktop/assets/icon.icns",
+      "backgroundColor": "#f4f7f6",
+      "iconSize": 128,
+      "window": {
+        "width": 660,
+        "height": 420
+      },
+      "contents": [
+        {
+          "x": 180,
+          "y": 205,
+          "type": "file"
+        },
+        {
+          "x": 480,
+          "y": 205,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
     "win": {
       "icon": "desktop/assets/icon.png",
       "target": "nsis"
@@ -89,6 +125,12 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "l77948032-cyber",
+      "repo": "Agent-Dream-Skin",
+      "releaseType": "release"
     }
   }
 }
