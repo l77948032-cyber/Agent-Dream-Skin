@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { ToolError } from "../../src/core/errors.mjs";
 import { validatePluginManifest } from "../../src/core/plugin-api.mjs";
+import { mergeThemePatch } from "../../src/core/theme-patch.mjs";
 import { WORKBUDDY_CATALOG } from "./catalog.mjs";
 
 const sourcePluginRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -101,7 +102,17 @@ export async function createWorkBuddyPlugin({
       switch (action) {
         case "inspect":
           requireEmpty(input, action);
-          return typeof service.toolInspect === "function" ? service.toolInspect() : service.inspect();
+          return Promise.resolve(
+            typeof service.toolInspect === "function" ? service.toolInspect() : service.inspect(),
+          ).then((result) => ({
+            ...result,
+            catalog: {
+              targetId: WORKBUDDY_CATALOG.targetId,
+              targetName: WORKBUDDY_CATALOG.targetName,
+              blankSourceId: WORKBUDDY_CATALOG.blank.sourceId,
+              templates: Object.entries(WORKBUDDY_CATALOG.templates).map(([id, metadata]) => ({ id, ...metadata })),
+            },
+          }));
         case "list":
           requireEmpty(input, action);
           return Promise.resolve(service.themeList()).then(({ themesRoot: _themesRoot, ...result }) => result);
@@ -109,7 +120,8 @@ export async function createWorkBuddyPlugin({
           return service.themeRead(requireId(input));
         case "create": {
           const id = requireId(input);
-          const sourceId = input.sourceId || WORKBUDDY_CATALOG.blank.sourceId;
+          const blankRequested = input.sourceId === undefined || input.sourceId === "blank";
+          const sourceId = blankRequested ? WORKBUDDY_CATALOG.blank.sourceId : input.sourceId;
           if (!WORKBUDDY_CATALOG.hasTemplate(sourceId)) {
             throw new ToolError("TEMPLATE_NOT_FOUND", `Template '${sourceId}' does not exist in the WorkBuddy plugin.`);
           }
@@ -118,16 +130,19 @@ export async function createWorkBuddyPlugin({
           }
           const source = await service.catalogRepository.read(sourceId);
           const imagePath = path.join(service.catalogRepository.themePath(sourceId), source.asset.file);
-          const {
-            operation: _operation,
-            transactionId: _transactionId,
-            sourceId: _sourceId,
-            ...writeInput
-          } = input;
+          const baseTheme = blankRequested
+            ? WORKBUDDY_CATALOG.createBlankTheme({ sourceTheme: source.theme, id })
+            : source.theme;
+          const themePatch = mergeThemePatch(baseTheme, input.themePatch || {});
+          themePatch.id = id;
           return service.themeWrite({
-            ...writeInput,
             id,
             imagePath,
+            themePatch,
+            provenance: blankRequested
+              ? { schemaVersion: 1, origin: "blank" }
+              : { schemaVersion: 1, origin: "template", sourceId },
+            ...(input.dryRun ? { dryRun: true } : {}),
             operation: "write",
             expectedRevision: null,
           });
@@ -136,6 +151,17 @@ export async function createWorkBuddyPlugin({
           const id = requireId(input);
           const { operation: _operation, transactionId: _transactionId, ...writeInput } = input;
           return service.themeWrite({ ...writeInput, id, operation: "write" });
+        }
+        case "importAsset": {
+          const id = requireId(input);
+          return service.themeWrite({
+            id,
+            imagePath: input.assetPath,
+            themePatch: {},
+            expectedRevision: input.expectedRevision,
+            ...(input.dryRun ? { dryRun: true } : {}),
+            operation: "write",
+          });
         }
         case "validate":
           return service.themeValidate(input);

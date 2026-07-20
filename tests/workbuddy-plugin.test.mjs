@@ -23,7 +23,18 @@ import { ThemeRepository } from "../src/core/theme-repository.mjs";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CATALOG_ROOT = path.join(WORKBUDDY_PLUGIN_ROOT, "catalog");
 const RESOURCE_ROOT = path.join(WORKBUDDY_PLUGIN_ROOT, "resources");
-const TEMPLATE_IDS = ["harbor-focus", "orchid-night", "paper-garden"];
+const TEMPLATE_IDS = [
+  "harbor-focus",
+  "orchid-night",
+  "paper-garden",
+  "forest-notes",
+  "city-rain",
+  "desert-dawn",
+  "ink-courtyard",
+  "orbit-console",
+  "coral-studio",
+  "winter-lodge",
+];
 const REQUIRED_COMPONENTS = [
   "shell.workspace",
   "shell.titlebar",
@@ -108,7 +119,7 @@ test("WorkBuddy manifest registers as a macOS target with complete plugin resour
   assert.deepEqual(await plugin.activate(), { pluginId: "dreamskin.workbuddy", target: "workbuddy" });
 });
 
-test("WorkBuddy catalog exposes three target-owned templates and a deterministic blank recipe", async () => {
+test("WorkBuddy catalog exposes ten target-owned templates and a deterministic blank recipe", async () => {
   assert.deepEqual(Object.keys(WORKBUDDY_CATALOG_METADATA), TEMPLATE_IDS);
   assert.equal(WORKBUDDY_CATALOG.targetId, "workbuddy");
   assert.equal(WORKBUDDY_CATALOG.targetName, "WorkBuddy");
@@ -169,7 +180,7 @@ test("WorkBuddy catalog themes are valid ThemeRepository documents with real PNG
     projectRoot: WORKBUDDY_PLUGIN_ROOT,
   });
   const listed = await repository.list();
-  assert.equal(listed.count, 3);
+  assert.equal(listed.count, 10);
   assert.deepEqual(listed.themes.map(({ id }) => id).sort(), [...TEMPLATE_IDS].sort());
 
   for (const id of TEMPLATE_IDS) {
@@ -251,7 +262,12 @@ test("WorkBuddy plugin delegates theme and runtime actions to the injected targe
     restore: async () => ({ restored: true }),
   };
   const plugin = await createWorkBuddyPlugin({ service });
-  assert.deepEqual(await plugin.executeThemeAction("inspect"), { target: { id: "workbuddy" } });
+  const inspected = await plugin.executeThemeAction("inspect");
+  assert.deepEqual(inspected.target, { id: "workbuddy" });
+  assert.equal(inspected.catalog.targetId, "workbuddy");
+  assert.equal(inspected.catalog.targetName, "WorkBuddy");
+  assert.equal(inspected.catalog.blankSourceId, WORKBUDDY_BLANK_SOURCE_ID);
+  assert.deepEqual(inspected.catalog.templates.map(({ id }) => id), TEMPLATE_IDS);
   assert.deepEqual(await plugin.executeThemeAction("list"), { count: 0, themes: [] });
   assert.deepEqual(await plugin.createPreview({ id: "harbor-focus", screenshot: true }), {
     id: "harbor-focus", options: { screenshot: true },
@@ -268,7 +284,37 @@ test("WorkBuddy plugin delegates theme and runtime actions to the injected targe
   assert.equal(created.expectedRevision, null);
   assert.equal(created.operation, "write");
   assert.equal(created.imagePath, path.join(CATALOG_ROOT, "paper-garden", "background.png"));
+  assert.equal(created.themePatch.id, "created-workbuddy");
+  assert.equal(created.themePatch.name, "Created WorkBuddy");
+  assert.equal(created.themePatch.colors.accent, (await catalogRepository.read("paper-garden")).theme.colors.accent);
+  assert.deepEqual(created.provenance, {
+    schemaVersion: 1,
+    origin: "template",
+    sourceId: "paper-garden",
+  });
   assert.deepEqual(calls.at(-1), ["write", created]);
+  const blank = await plugin.executeThemeAction("create", {
+    id: "blank-workbuddy",
+    sourceId: "blank",
+    themePatch: { name: "Blank WorkBuddy" },
+  });
+  assert.equal(blank.themePatch.name, "Blank WorkBuddy");
+  assert.equal(blank.themePatch.appearance.backgroundOpacity, 0);
+  assert.deepEqual(blank.provenance, { schemaVersion: 1, origin: "blank" });
+  const imported = await plugin.executeThemeAction("importAsset", {
+    id: "created-workbuddy",
+    assetPath: "/tmp/background.png",
+    expectedRevision: "rev-1",
+    dryRun: true,
+  });
+  assert.deepEqual(imported, {
+    id: "created-workbuddy",
+    imagePath: "/tmp/background.png",
+    themePatch: {},
+    expectedRevision: "rev-1",
+    dryRun: true,
+    operation: "write",
+  });
   await assert.rejects(
     () => plugin.executeThemeAction("create", { id: "bad-template", sourceId: "paper-orbit" }),
     (error) => error.code === "TEMPLATE_NOT_FOUND",

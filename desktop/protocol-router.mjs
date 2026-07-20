@@ -67,12 +67,13 @@ function statusFor(error) {
   if (code === "METHOD_NOT_ALLOWED") return 405;
   if (code === "INVALID_CONTENT_TYPE") return 415;
   if (code === "REVISION_CONFLICT" || code === "THEME_ACTIVE") return 409;
+  if (code === "CLI_PATH_OCCUPIED") return 409;
+  if (code === "CLI_RUNTIME_UNAVAILABLE") return 503;
   if (code === "REPOSITORY_BUSY") return 423;
   if (code === "THEME_INVALID" || code === "INVALID_THEME_PATCH") return 422;
+  if (code === "CLI_INSTALL_UNSUPPORTED") return 501;
   if (code === "INVALID_ORIGIN" || code === "INVALID_HOST") return 403;
   if (code?.startsWith("INVALID_") || code === "THEME_ID_MISMATCH") return 400;
-  if (code === "AGENT_NOT_CONNECTED" || code === "AGENT_UNAVAILABLE") return 409;
-  if (code?.startsWith("AGENT_")) return 502;
   return 500;
 }
 
@@ -187,9 +188,11 @@ async function apiRoute(request, url, router) {
       routeScopedInput(await readJson(request), pluginId),
     ), 201);
   }
-  if (!pluginId && pathname === "/api/v1/agents" && method === "GET") return success(await router.invoke("agents.list"));
   if (!pluginId && pathname === "/api/v1/settings" && method === "GET") return success(await router.invoke("settings.read"));
   if (!pluginId && pathname === "/api/v1/settings" && method === "PATCH") return success(await router.invoke("settings.update", await readJson(request)));
+  if (!pluginId && pathname === "/api/v1/cli" && method === "GET") return success(await router.invoke("cli.status"));
+  if (!pluginId && pathname === "/api/v1/cli/install" && method === "POST") return success(await router.invoke("cli.install"));
+  if (!pluginId && pathname === "/api/v1/cli/uninstall" && method === "POST") return success(await router.invoke("cli.uninstall"));
   if (pathname === "/api/v1/runtime/verify" && method === "POST") {
     return success(await router.invoke(
       "runtime.verify",
@@ -234,18 +237,14 @@ async function apiRoute(request, url, router) {
     return success(await router.invoke("themes.duplicate", { themeId: match[1], pluginId }), 201);
   }
 
-  match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/(apply|validate|preview|messages)$/);
+  match = pathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/(apply|validate|preview)$/);
   if (match && method === "POST") {
     const [, themeId, action] = match;
     if (action === "apply") return success(await router.invoke("themes.apply", { themeId, pluginId }));
     if (action === "validate") return success(await router.invoke("themes.validate", { themeId, pluginId }));
     const input = routeScopedBody(await readJson(request), pluginId);
-    const operation = action === "preview" ? "themes.preview" : "themes.message";
-    return success(await router.invoke(operation, { themeId, input, pluginId }));
+    return success(await router.invoke("themes.preview", { themeId, input, pluginId }));
   }
-
-  match = pathname.match(/^\/api\/v1\/agents\/([a-z0-9_-]+)\/connect$/);
-  if (!pluginId && match && method === "POST") return success(await router.invoke("agents.connect", { agentId: match[1] }));
 
   throw new ToolError("NOT_FOUND", "Desktop API route not found.");
 }

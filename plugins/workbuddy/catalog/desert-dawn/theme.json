@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "desert-dawn",
+  "name": "Desert Dawn",
+  "description": "沙漠晨光、石灰墙与建筑模型组成温暖的创意台，雕刻式徽章、层叠卡片和赤陶角标为规划工作增加清晰节奏。",
+  "layout": "studio-collage",
+  "brandSubtitle": "WORKBUDDY / DESERT DAWN",
+  "tagline": "Shape the day from first light.",
+  "statusText": "MORNING PLAN IN MOTION",
+  "quote": "BUILD WITH LIGHT / EDIT WITH INTENT",
+  "image": "background.png",
+  "colors": {
+    "background": "#D7D3C2",
+    "panel": "#F5F0E5",
+    "panelAlt": "#E8DDC9",
+    "accent": "#A95638",
+    "accentAlt": "#4F746D",
+    "secondary": "#7E684E",
+    "highlight": "#D29A3E",
+    "onAccent": "#FFFFFF",
+    "success": "#5F8060",
+    "warning": "#B77A2D",
+    "danger": "#B34E48",
+    "info": "#4F7881",
+    "disabled": "#A29B8E",
+    "text": "#302E28",
+    "muted": "#746E62",
+    "line": "rgba(86, 72, 55, 0.22)",
+    "selection": "rgba(169, 86, 56, 0.18)",
+    "terminal": "#2A2925"
+  },
+  "states": {
+    "surfaceHover": "rgba(169, 86, 56, 0.09)",
+    "surfaceActive": "rgba(79, 116, 109, 0.15)",
+    "focus": "#A95638",
+    "tooltipBackground": "#40382F",
+    "tooltipText": "#F5F0E5"
+  },
+  "visual": {
+    "motif": "forge",
+    "iconTreatment": "medallion",
+    "surfaceTreatment": "layered",
+    "accentPlacement": "corner",
+    "cardTreatment": "poster",
+    "ornament": "sparks"
+  },
+  "appearance": {
+    "treatment": "sunlit-immersive",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(235, 219, 186, 0.12)",
+    "backgroundBlendMode": "soft-light",
+    "backgroundOpacity": 0.94,
+    "surfaceOpacity": 0.86,
+    "sidebarOpacity": 0.92,
+    "blur": 11,
+    "saturation": 0.86,
+    "radius": 3,
+    "shadow": "soft",
+    "colorScheme": "light"
+  }
+}

@@ -11,7 +11,11 @@ import { ToolError } from "../src/core/errors.mjs";
 function backendFixture() {
   const calls = [];
   const backend = {
-    bootstrap: async () => ({ product: "DreamSkin" }),
+    bootstrap: async () => ({
+      product: "DreamSkin",
+      targets: [{ pluginId: "dreamskin.trae" }, { pluginId: "dreamskin.workbuddy" }],
+      settings: { motionEnabled: true },
+    }),
     catalog: async () => [{ id: "template-one" }],
     themes: async () => [{ localId: "theme-one" }],
     createTheme: async (input) => { calls.push(["create", input]); return input; },
@@ -22,11 +26,41 @@ function backendFixture() {
     applyTheme: async (id) => ({ applied: id }),
     validateTheme: async (id) => ({ valid: id }),
     previewTheme: async (id, input) => ({ previewed: id, input }),
-    message: async (id, input) => ({ messaged: id, input }),
-    agents: async () => [],
-    connectAgent: async (id) => ({ connected: id }),
-    settings: async () => ({ autoVerify: true }),
+    settings: async () => ({ motionEnabled: true }),
     updateSettings: async (input) => input,
+    cliStatus: async () => {
+      calls.push(["cli.status"]);
+      return {
+        supported: true,
+        state: "not-installed",
+        installed: false,
+        current: false,
+        available: false,
+        command: "dreamskin",
+      };
+    },
+    installCli: async () => {
+      calls.push(["cli.install"]);
+      return {
+        supported: true,
+        state: "ready",
+        installed: true,
+        current: true,
+        available: true,
+        command: "dreamskin",
+      };
+    },
+    uninstallCli: async () => {
+      calls.push(["cli.uninstall"]);
+      return {
+        supported: true,
+        state: "not-installed",
+        installed: false,
+        current: false,
+        available: false,
+        command: "dreamskin",
+      };
+    },
     verify: async (input) => ({ verified: input }),
     restore: async () => ({ restored: true }),
     asset: async (kind, id) => ({
@@ -43,7 +77,10 @@ test("desktop API router exposes only named Studio operations", async () => {
   const fixture = backendFixture();
   const router = new DesktopStudioApiRouter({ backend: fixture.backend });
 
-  assert.deepEqual(await router.invoke("bootstrap"), { product: "DreamSkin" });
+  const bootstrap = await router.invoke("bootstrap");
+  assert.equal(bootstrap.product, "DreamSkin");
+  assert.equal(Object.hasOwn(bootstrap, "agents"), false);
+  assert.equal(Object.hasOwn(bootstrap, "connection"), false);
   assert.deepEqual(await router.invoke("themes.read", { themeId: "theme-one" }), { localId: "theme-one" });
   await router.invoke("themes.update", {
     themeId: "theme-one",
@@ -65,9 +102,42 @@ test("desktop API router exposes only named Studio operations", async () => {
     ["delete", "theme-one", { expectedRevision: "rev-two" }],
   ]);
 
+  assert.deepEqual(await router.invoke("cli.status"), {
+    supported: true,
+    state: "not-installed",
+    installed: false,
+    current: false,
+    available: false,
+    command: "dreamskin",
+  });
+  assert.deepEqual(await router.invoke("cli.install"), {
+    supported: true,
+    state: "ready",
+    installed: true,
+    current: true,
+    available: true,
+    command: "dreamskin",
+  });
+  assert.deepEqual(await router.invoke("cli.uninstall"), {
+    supported: true,
+    state: "not-installed",
+    installed: false,
+    current: false,
+    available: false,
+    command: "dreamskin",
+  });
+  assert.deepEqual(fixture.calls.slice(3), [
+    ["cli.status"],
+    ["cli.install"],
+    ["cli.uninstall"],
+  ]);
+
   await assert.rejects(() => router.invoke("filesystem.read", { path: "/etc/passwd" }), {
     code: "INVALID_OPERATION",
   });
+  for (const operation of ["agents.list", "agents.connect", "themes.message"]) {
+    await assert.rejects(() => router.invoke(operation, {}), { code: "INVALID_OPERATION" });
+  }
   await assert.rejects(() => router.invoke("themes.read", { themeId: "../outside" }), {
     code: "INVALID_ARGUMENT",
   });
@@ -83,10 +153,6 @@ test("desktop API router forwards plugin scope independently from a shared theme
   fixture.backend.applyTheme = async (id, pluginId) => {
     calls.push(["apply", pluginId, id]);
     return { pluginId, applied: id };
-  };
-  fixture.backend.message = async (id, input, pluginId) => {
-    calls.push(["message", pluginId, id, input]);
-    return { pluginId, messaged: id };
   };
   fixture.backend.verify = async (input, pluginId) => {
     calls.push(["verify", pluginId, input]);
@@ -105,11 +171,6 @@ test("desktop API router forwards plugin scope independently from a shared theme
 
   await router.invoke("themes.create", { kind: "blank", pluginId });
   await router.invoke("themes.apply", { themeId: "shared", pluginId });
-  await router.invoke("themes.message", {
-    themeId: "shared",
-    pluginId,
-    input: { prompt: "brighter", expectedRevision: "revision-one" },
-  });
   await router.invoke("runtime.verify", { screenshot: false, pluginId });
   await router.invoke("runtime.restore", { pluginId });
   await router.asset("theme", "shared", pluginId);
@@ -117,7 +178,6 @@ test("desktop API router forwards plugin scope independently from a shared theme
   assert.deepEqual(calls, [
     ["create", pluginId, { kind: "blank" }],
     ["apply", pluginId, "shared"],
-    ["message", pluginId, "shared", { prompt: "brighter", expectedRevision: "revision-one" }],
     ["verify", pluginId, { screenshot: false }],
     ["restore", pluginId],
     ["asset", pluginId, "theme", "shared"],
@@ -238,9 +298,9 @@ test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
     calls.push(["catalog", pluginId]);
     return [{ pluginId }];
   };
-  fixture.backend.message = async (id, input, pluginId) => {
-    calls.push(["message", pluginId, id, input]);
-    return { pluginId, id };
+  fixture.backend.createTheme = async (input, pluginId) => {
+    calls.push(["create", pluginId, input]);
+    return { pluginId, localId: "shared" };
   };
   const handle = createDreamSkinProtocolHandler({
     router: new DesktopStudioApiRouter({ backend: fixture.backend }),
@@ -251,8 +311,8 @@ test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
   assert.equal(catalog.status, 200);
   assert.equal((await catalog.json()).result[0].pluginId, pluginId);
 
-  const message = await handle(new Request(
-    `dreamskin://studio/api/v1/plugins/${pluginId}/themes/shared/messages`,
+  const created = await handle(new Request(
+    `dreamskin://studio/api/v1/plugins/${pluginId}/themes`,
     {
       method: "POST",
       headers: {
@@ -260,17 +320,17 @@ test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
         Origin: "dreamskin://studio",
         "Sec-Fetch-Site": "same-origin",
       },
-      body: JSON.stringify({ prompt: "warmer", expectedRevision: "revision-one" }),
+      body: JSON.stringify({ kind: "blank" }),
     },
   ));
-  assert.equal(message.status, 200);
+  assert.equal(created.status, 201);
   assert.deepEqual(calls, [
     ["catalog", pluginId],
-    ["message", pluginId, "shared", { prompt: "warmer", expectedRevision: "revision-one" }],
+    ["create", pluginId, { kind: "blank" }],
   ]);
 
   const mismatch = await handle(new Request(
-    `dreamskin://studio/api/v1/plugins/${pluginId}/themes/shared/messages`,
+    `dreamskin://studio/api/v1/plugins/${pluginId}/themes`,
     {
       method: "POST",
       headers: {
@@ -279,14 +339,101 @@ test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
         "Sec-Fetch-Site": "same-origin",
       },
       body: JSON.stringify({
-        prompt: "warmer",
-        expectedRevision: "revision-one",
+        kind: "blank",
         pluginId: "dreamskin.trae",
       }),
     },
   ));
   assert.equal(mismatch.status, 400);
   assert.equal((await mismatch.json()).error.code, "INVALID_ARGUMENT");
+});
+
+test("dreamskin protocol exposes CLI management and returns 404 for retired Agent routes", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-desktop-cli-protocol-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.writeFile(path.join(root, "index.html"), "studio");
+  const fixture = backendFixture();
+  const handle = createDreamSkinProtocolHandler({
+    router: new DesktopStudioApiRouter({ backend: fixture.backend }),
+    distRoot: root,
+  });
+  const mutationHeaders = {
+    Origin: "dreamskin://studio",
+    "Sec-Fetch-Site": "same-origin",
+  };
+
+  const status = await handle(new Request("dreamskin://studio/api/v1/cli"));
+  assert.equal(status.status, 200);
+  assert.deepEqual(await status.json(), {
+    ok: true,
+    result: {
+      supported: true,
+      state: "not-installed",
+      installed: false,
+      current: false,
+      available: false,
+      command: "dreamskin",
+    },
+  });
+  const installed = await handle(new Request("dreamskin://studio/api/v1/cli/install", {
+    method: "POST",
+    headers: mutationHeaders,
+  }));
+  assert.equal(installed.status, 200);
+  assert.equal((await installed.json()).result.installed, true);
+  const uninstalled = await handle(new Request("dreamskin://studio/api/v1/cli/uninstall", {
+    method: "POST",
+    headers: mutationHeaders,
+  }));
+  assert.equal(uninstalled.status, 200);
+  assert.equal((await uninstalled.json()).result.installed, false);
+  assert.deepEqual(fixture.calls, [["cli.status"], ["cli.install"], ["cli.uninstall"]]);
+
+  const retiredRoutes = [
+    new Request("dreamskin://studio/api/v1/agents"),
+    new Request("dreamskin://studio/api/v1/agents/codex/connect", {
+      method: "POST",
+      headers: mutationHeaders,
+    }),
+    new Request("dreamskin://studio/api/v1/themes/theme-one/messages", {
+      method: "POST",
+      headers: mutationHeaders,
+    }),
+    new Request("dreamskin://studio/api/v1/plugins/dreamskin.workbuddy/themes/shared/messages", {
+      method: "POST",
+      headers: mutationHeaders,
+    }),
+  ];
+  for (const request of retiredRoutes) {
+    const response = await handle(request);
+    assert.equal(response.status, 404, request.url);
+    assert.equal((await response.json()).error.code, "NOT_FOUND", request.url);
+  }
+});
+
+test("dreamskin protocol reports unavailable packaged CLI resources as service unavailable", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-desktop-cli-unavailable-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  await fs.writeFile(path.join(root, "index.html"), "studio");
+  const fixture = backendFixture();
+  fixture.backend.installCli = async () => {
+    throw new ToolError("CLI_RUNTIME_UNAVAILABLE", "CLI resources are missing.");
+  };
+  const handle = createDreamSkinProtocolHandler({
+    router: new DesktopStudioApiRouter({ backend: fixture.backend }),
+    distRoot: root,
+  });
+
+  const response = await handle(new Request("dreamskin://studio/api/v1/cli/install", {
+    method: "POST",
+    headers: {
+      Origin: "dreamskin://studio",
+      "Sec-Fetch-Site": "same-origin",
+    },
+  }));
+
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).error.code, "CLI_RUNTIME_UNAVAILABLE");
 });
 
 test("dreamskin protocol rejects untrusted origins, hosts, and payload types", async (t) => {

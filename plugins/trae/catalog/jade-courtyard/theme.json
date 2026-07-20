@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "jade-courtyard",
+  "name": "Jade Courtyard",
+  "description": "雨后竹院与远山云气铺开安静的东方工作场景，以玉石绿、朱砂红和雾蓝层次承载长时间阅读与创作。",
+  "layout": "classic",
+  "brandSubtitle": "TRAE / JADE COURTYARD",
+  "tagline": "Code where rain meets bamboo.",
+  "statusText": "QUIET GARDEN ONLINE",
+  "quote": "MIST / INK / MOMENTUM",
+  "image": "background.png",
+  "colors": {
+    "background": "#DDE7E2",
+    "panel": "#F5F8F5",
+    "panelAlt": "#E4ECE7",
+    "accent": "#2A735F",
+    "accentAlt": "#A94F43",
+    "secondary": "#426F82",
+    "highlight": "#8A6B27",
+    "onAccent": "#FFFFFF",
+    "success": "#367B5C",
+    "warning": "#9B6D25",
+    "danger": "#B24F4C",
+    "info": "#3F7187",
+    "disabled": "#93A09D",
+    "text": "#1E2A27",
+    "muted": "#5F706B",
+    "line": "rgba(37, 79, 67, 0.22)",
+    "selection": "rgba(42, 115, 95, 0.18)",
+    "terminal": "#172420"
+  },
+  "states": {
+    "surfaceHover": "rgba(42, 115, 95, 0.10)",
+    "surfaceActive": "rgba(169, 79, 67, 0.16)",
+    "focus": "#2A735F",
+    "tooltipBackground": "#203A33",
+    "tooltipText": "#F5F8F5"
+  },
+  "visual": {
+    "motif": "editorial",
+    "iconTreatment": "stamp",
+    "surfaceTreatment": "paper",
+    "accentPlacement": "underline",
+    "cardTreatment": "poster",
+    "ornament": "strokes"
+  },
+  "appearance": {
+    "treatment": "paper-wash",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(221, 231, 226, 0.08)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.90,
+    "surfaceOpacity": 0.88,
+    "sidebarOpacity": 0.94,
+    "blur": 14,
+    "saturation": 0.82,
+    "radius": 5,
+    "shadow": "soft",
+    "colorScheme": "light"
+  }
+}

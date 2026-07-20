@@ -12,7 +12,6 @@ import {
 
 const SOURCE_FIXTURES = Object.freeze({
   "src/core/service.mjs": 'export const AGENT_TOOL_VERSION = "0.1.0";\n',
-  "src/core/acp-session-manager.mjs": 'const value = { clientInfo: { name: "dreamskin-studio", version: "0.1.0" } };\n',
   "scripts/common-macos.sh": 'SKIN_VERSION="0.1.0"\n',
   "scripts/injector.mjs": 'export const SKIN_VERSION = "0.1.0";\n',
   "scripts/common-workbuddy-macos.sh": 'SKIN_VERSION="0.1.0"\n',
@@ -54,7 +53,7 @@ test("product version command updates every shipping version declaration", async
   const result = await setProductVersion("0.3.0", { projectRoot: root });
   assert.equal(result.ok, true);
   assert.equal(result.version, "0.3.0");
-  assert.equal(result.records.length, 15);
+  assert.equal(result.records.length, 14);
   assert.ok(result.records.every((record) => record.version === "0.3.0"));
 });
 

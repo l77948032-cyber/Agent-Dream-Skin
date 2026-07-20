@@ -21,10 +21,6 @@ const SOURCE_TARGETS = Object.freeze([
     pattern: /(export const AGENT_TOOL_VERSION = ")([^"]+)(";)/,
   },
   {
-    file: "src/core/acp-session-manager.mjs",
-    pattern: /(clientInfo: \{ name: "dreamskin-studio", version: ")([^"]+)(" \})/,
-  },
-  {
     file: "scripts/common-macos.sh",
     pattern: /(SKIN_VERSION=")([^"]+)(")/,
   },

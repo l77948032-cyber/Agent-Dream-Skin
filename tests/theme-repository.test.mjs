@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { ThemeRepository } from "../src/core/theme-repository.mjs";
+import { MAX_ART_BYTES } from "../src/core/theme-model.mjs";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const IMAGE_PATH = path.join(ROOT, "themes", "violet-rift", "background.png");
@@ -122,6 +123,88 @@ test("theme repository stages, commits, revisions, and idempotent rollback", asy
   await assert.rejects(() => repository.read("agent-fixture"), (error) => error.code === "THEME_NOT_FOUND");
   const repeated = await repository.write({ operation: "rollback", transactionId: written.transactionId });
   assert.equal(repeated.alreadyRolledBack, true);
+});
+
+test("theme repository preserves provenance, replaces managed assets, and reports duplicate creates", async (t) => {
+  const repository = await repositoryFixture(t);
+  const created = await repository.write({
+    id: "provenance-theme",
+    imagePath: IMAGE_PATH,
+    expectedRevision: null,
+    provenance: { schemaVersion: 1, origin: "template", sourceId: "violet-rift" },
+    themePatch: { name: "Provenance Theme" },
+  });
+  assert.deepEqual(created.provenance, {
+    schemaVersion: 1,
+    origin: "template",
+    sourceId: "violet-rift",
+  });
+  await assert.rejects(
+    repository.write({
+      id: "provenance-theme",
+      expectedRevision: null,
+      themePatch: { name: "Duplicate" },
+    }),
+    (error) => error.code === "THEME_ALREADY_EXISTS"
+      && error.details.actualRevision === created.afterRevision,
+  );
+
+  const jpegPath = path.join(path.dirname(repository.themesRoot), "replacement.jpg");
+  await fs.writeFile(jpegPath, Buffer.from([0xff, 0xd8, 0xff, 0x00]));
+  const imported = await repository.write({
+    id: "provenance-theme",
+    imagePath: jpegPath,
+    expectedRevision: created.afterRevision,
+    themePatch: {},
+  });
+  const read = await repository.read("provenance-theme");
+  assert.equal(read.revision, imported.afterRevision);
+  assert.equal(read.theme.image, "background.jpg");
+  assert.deepEqual(read.provenance, created.provenance);
+  assert.equal(await exists(path.join(repository.themePath("provenance-theme"), "background.png")), false);
+  assert.deepEqual(
+    await fs.readFile(path.join(repository.themePath("provenance-theme"), "background.jpg")),
+    Buffer.from([0xff, 0xd8, 0xff, 0x00]),
+  );
+});
+
+test("theme repository rejects unsafe imported background assets before staging", {
+  skip: process.platform === "win32",
+}, async (t) => {
+  const repository = await repositoryFixture(t);
+  const created = await writeFixtureTheme(repository, { id: "asset-safety", name: "Asset Safety" });
+  const fixtureRoot = path.dirname(repository.themesRoot);
+  const symlinkPath = path.join(fixtureRoot, "linked.png");
+  const textPath = path.join(fixtureRoot, "asset.txt");
+  const badPngPath = path.join(fixtureRoot, "bad.png");
+  const oversizedPath = path.join(fixtureRoot, "oversized.png");
+  await fs.symlink(IMAGE_PATH, symlinkPath);
+  await fs.writeFile(textPath, "not an image");
+  await fs.writeFile(badPngPath, "not a png");
+  await fs.writeFile(oversizedPath, "x");
+  await fs.truncate(oversizedPath, MAX_ART_BYTES + 1);
+
+  for (const [imagePath, code] of [
+    ["relative.png", "INVALID_ASSET_PATH"],
+    [path.join(fixtureRoot, "missing.png"), "ASSET_NOT_FOUND"],
+    [fixtureRoot, "INVALID_ASSET_PATH"],
+    [symlinkPath, "INVALID_ASSET_PATH"],
+    [textPath, "INVALID_IMAGE"],
+    [badPngPath, "INVALID_IMAGE"],
+    [oversizedPath, "ASSET_TOO_LARGE"],
+  ]) {
+    await assert.rejects(
+      repository.write({
+        id: "asset-safety",
+        imagePath,
+        expectedRevision: created.afterRevision,
+        themePatch: {},
+      }),
+      (error) => error.code === code,
+      imagePath,
+    );
+  }
+  assert.equal((await repository.read("asset-safety")).revision, created.afterRevision);
 });
 
 test("theme repository rejects arbitrary fields and executable CSS values", async (t) => {

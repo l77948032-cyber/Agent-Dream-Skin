@@ -38,11 +38,12 @@ function statusFor(error) {
     || code === "PLUGIN_NOT_FOUND"
   ) return 404;
   if (code === "REVISION_CONFLICT" || code === "THEME_ACTIVE") return 409;
+  if (code === "CLI_PATH_OCCUPIED") return 409;
+  if (code === "CLI_RUNTIME_UNAVAILABLE") return 503;
   if (code === "REPOSITORY_BUSY") return 423;
   if (code === "THEME_INVALID" || code === "INVALID_THEME_PATCH") return 422;
+  if (code === "CLI_INSTALL_UNSUPPORTED") return 501;
   if (code?.startsWith("INVALID_") || code === "THEME_ID_MISMATCH") return 400;
-  if (code === "AGENT_NOT_CONNECTED" || code === "AGENT_UNAVAILABLE") return 409;
-  if (code?.startsWith("AGENT_")) return 502;
   return 500;
 }
 
@@ -277,9 +278,11 @@ export function createStudioHttpServer({
           pluginId,
         ), 201);
       }
-      if (!pluginId && apiPathname === "/api/v1/agents" && method === "GET") return sendResult(response, await backend.agents());
       if (!pluginId && apiPathname === "/api/v1/settings" && method === "GET") return sendResult(response, await backend.settings());
       if (!pluginId && apiPathname === "/api/v1/settings" && method === "PATCH") return sendResult(response, await backend.updateSettings(await readJson(request)));
+      if (!pluginId && apiPathname === "/api/v1/cli" && method === "GET") return sendResult(response, await backend.cliStatus());
+      if (!pluginId && apiPathname === "/api/v1/cli/install" && method === "POST") return sendResult(response, await backend.installCli());
+      if (!pluginId && apiPathname === "/api/v1/cli/uninstall" && method === "POST") return sendResult(response, await backend.uninstallCli());
       if (apiPathname === "/api/v1/runtime/verify" && method === "POST") {
         return sendResult(response, await backend.verify(
           routeScopedBody(await readJson(request), pluginId),
@@ -318,7 +321,7 @@ export function createStudioHttpServer({
       match = apiPathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/duplicate$/);
       if (match && method === "POST") return sendResult(response, await backend.duplicateTheme(match[1], pluginId), 201);
 
-      match = apiPathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/(apply|validate|preview|messages)$/);
+      match = apiPathname.match(/^\/api\/v1\/themes\/([a-z0-9][a-z0-9_-]{0,63})\/(apply|validate|preview)$/);
       if (match && method === "POST") {
         const [, id, operation] = match;
         const input = operation === "apply" || operation === "validate"
@@ -327,11 +330,7 @@ export function createStudioHttpServer({
         if (operation === "apply") return sendResult(response, await backend.applyTheme(id, pluginId));
         if (operation === "validate") return sendResult(response, await backend.validateTheme(id, pluginId));
         if (operation === "preview") return sendResult(response, await backend.previewTheme(id, input, pluginId));
-        return sendResult(response, await backend.message(id, input, pluginId));
       }
-
-      match = apiPathname.match(/^\/api\/v1\/agents\/([a-z0-9_-]+)\/connect$/);
-      if (!pluginId && match && method === "POST") return sendResult(response, await backend.connectAgent(match[1]));
 
       if (pathname.startsWith("/api/")) {
         return sendJson(response, 404, errorEnvelope(new ToolError("NOT_FOUND", "API route not found.")));

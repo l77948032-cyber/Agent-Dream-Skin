@@ -402,11 +402,11 @@ export function WorkBuddyScenePreview({
   }, []);
 
   return (
-    <div className="mcp-frame-viewport" ref={viewportRef} style={{ height: frameHeight * scale }}>
-      <div className="mcp-frame-stage" style={{ width: FRAME_WIDTH * scale, height: frameHeight * scale }}>
+    <div className="theme-frame-viewport" ref={viewportRef} style={{ height: frameHeight * scale }}>
+      <div className="theme-frame-stage" style={{ width: FRAME_WIDTH * scale, height: frameHeight * scale }}>
         <iframe
           ref={frameRef}
-          className="mcp-runtime-frame"
+          className="theme-runtime-frame"
           title={`${theme.name} WorkBuddy ${sceneTitles[scene]}`}
           srcDoc={srcDoc}
           sandbox="allow-same-origin"

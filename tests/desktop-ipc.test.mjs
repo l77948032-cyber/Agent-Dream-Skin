@@ -91,6 +91,12 @@ test("IPC registration envelopes backend results and rejects untrusted senders",
     ok: true,
     result: { operation: "themes.read", input: { themeId: "sunlit-spark" } },
   });
+  for (const operation of ["cli.status", "cli.install", "cli.uninstall"]) {
+    assert.deepEqual(await handlers.get(IPC_CHANNELS.studioApi)(senderEvent(), operation, {}), {
+      ok: true,
+      result: { operation, input: {} },
+    });
+  }
   assert.deepEqual(await handlers.get(IPC_CHANNELS.softwareUpdateGetState)(senderEvent()), {
     ok: true,
     result: softwareUpdate.state,
@@ -119,6 +125,9 @@ test("preload bridge exposes explicit frozen methods instead of raw Electron IPC
   assert.equal(Object.isFrozen(api.studio), true);
   assert.equal(Object.isFrozen(api.updates), true);
   assert.equal("invoke" in api, false);
+  for (const retiredMethod of ["sendThemeMessage", "listAgents", "connectAgent"]) {
+    assert.equal(retiredMethod in api.studio, false);
+  }
   await api.studio.updateTheme("sunlit-spark", { expectedRevision: "rev", theme: { name: "New" } });
   assert.deepEqual(calls[0], [IPC_CHANNELS.studioApi, "themes.update", {
     themeId: "sunlit-spark",
@@ -133,8 +142,14 @@ test("preload bridge exposes explicit frozen methods instead of raw Electron IPC
   assert.deepEqual(calls[2], [IPC_CHANNELS.studioApi, "runtime.restore", {
     pluginId: "dreamskin.workbuddy",
   }]);
+  await api.studio.getCliStatus();
+  assert.deepEqual(calls[3], [IPC_CHANNELS.studioApi, "cli.status", {}]);
+  await api.studio.installCli();
+  assert.deepEqual(calls[4], [IPC_CHANNELS.studioApi, "cli.install", {}]);
+  await api.studio.uninstallCli();
+  assert.deepEqual(calls[5], [IPC_CHANNELS.studioApi, "cli.uninstall", {}]);
   await api.updates.check();
-  assert.deepEqual(calls[3], [IPC_CHANNELS.softwareUpdateCheck]);
+  assert.deepEqual(calls[6], [IPC_CHANNELS.softwareUpdateCheck]);
 
   let updateListener;
   const eventApi = createPreloadApi({
@@ -182,19 +197,23 @@ test("sandbox-compatible CommonJS preload publishes the same narrow bridge", asy
 
   assert.equal(exposed.name, "dreamskin");
   assert.equal("invoke" in exposed.value, false);
-  await exposed.value.studio.sendThemeMessage("theme-one", { prompt: "make it warmer" });
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), [IPC_CHANNELS.studioApi, "themes.message", {
-    themeId: "theme-one",
-    input: { prompt: "make it warmer" },
-  }]);
-  await exposed.value.studio.sendThemeMessage(
-    "shared",
-    { prompt: "make it cooler" },
-    "dreamskin.workbuddy",
+  assert.equal(Object.isFrozen(exposed.value), true);
+  assert.equal(Object.isFrozen(exposed.value.studio), true);
+  for (const retiredMethod of ["sendThemeMessage", "listAgents", "connectAgent"]) {
+    assert.equal(retiredMethod in exposed.value.studio, false);
+  }
+  const reference = createPreloadApi({ invoke: async () => ({ ok: true, result: "ok" }) });
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(Object.keys(exposed.value.studio))),
+    Object.keys(reference.studio),
   );
-  assert.deepEqual(JSON.parse(JSON.stringify(calls[1])), [IPC_CHANNELS.studioApi, "themes.message", {
-    themeId: "shared",
-    input: { prompt: "make it cooler" },
-    pluginId: "dreamskin.workbuddy",
-  }]);
+
+  await exposed.value.studio.getCliStatus();
+  await exposed.value.studio.installCli();
+  await exposed.value.studio.uninstallCli();
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
+    [IPC_CHANNELS.studioApi, "cli.status", {}],
+    [IPC_CHANNELS.studioApi, "cli.install", {}],
+    [IPC_CHANNELS.studioApi, "cli.uninstall", {}],
+  ]);
 });

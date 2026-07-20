@@ -132,7 +132,6 @@ async function sourceFixture(t) {
   await write(root, "src/core/paths.mjs", "export const PROJECT_ROOT='fixture';\n");
   await write(root, "src/core/theme-loader.mjs", "export const loadTheme=()=>{};\n");
   await write(root, "src/core/theme-model.mjs", "export const normalizeTheme=(value)=>value;\n");
-  await write(root, "node_modules/@agentclientprotocol/codex-acp/dist/index.js", "#!/usr/bin/env node\nprocess.stdout.write('acp fixture');\n", 0o755);
   for (const [sourcePath] of DESKTOP_LEGAL_PATHS) {
     await write(root, sourcePath, `fixture license for ${sourcePath}\n`);
   }
@@ -168,7 +167,6 @@ test("desktop resource builder emits the verified allowlist and installable Trae
   assert.deepEqual(declared, [...declared].sort());
   assert.deepEqual(files, [...declared, DESKTOP_RESOURCE_MANIFEST_FILE].sort());
   assert.equal((await validateDesktopResourceManifest({ resourceRoot: outRoot })).valid, true);
-  assert.equal(await fs.readFile(path.join(outRoot, "acp", "codex-acp.mjs"), "utf8"), "#!/usr/bin/env node\nprocess.stdout.write('acp fixture');\n");
   assert.equal(files.some((file) => file.includes("node_modules")), false);
   assert.equal(files.includes("plugins/trae/plugin.mjs"), false);
   assert.equal(files.includes("plugins/trae/catalog.mjs"), false);

@@ -50,6 +50,32 @@ export const TRAE_CATALOG_METADATA = deepFreeze({
     version: "0.9 beta",
     experimental: true,
   },
+  "jade-courtyard": {
+    author: "Jade House",
+    categories: ["精选", "国风", "美景"],
+    featured: true,
+    downloads: "7.4k",
+    version: "1.0",
+  },
+  "alpine-signal": {
+    author: "Northline Studio",
+    categories: ["美景", "科技", "极简"],
+    downloads: "6.2k",
+    version: "1.0",
+  },
+  "cosmic-arcade": {
+    author: "DreamSkin Labs",
+    categories: ["精选", "游戏", "科技"],
+    featured: true,
+    downloads: "8.8k",
+    version: "1.0",
+  },
+  "midnight-library": {
+    author: "Nocturne Lab",
+    categories: ["精选", "极简", "美景"],
+    downloads: "7.9k",
+    version: "1.0",
+  },
 });
 
 export const TRAE_BLANK_SOURCE_ID = "paper-aurora";
@@ -68,7 +94,7 @@ export function createTraeBlankTheme(input = {}) {
     ...clone(sourceTheme),
     id,
     name: "未命名主题",
-    description: "通过与 Agent 对话，从空白开始生成。",
+    description: "从空白开始，让编程 Agent 通过 DreamSkin CLI 生成主题。",
     brandSubtitle: "YOUR DREAM SKIN",
     tagline: "Describe a feeling. Build a theme.",
     statusText: "DRAFT THEME",

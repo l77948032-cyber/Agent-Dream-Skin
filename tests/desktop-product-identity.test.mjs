@@ -99,7 +99,7 @@ test("legacy Electron data migration preserves authored data but never copies bu
   assert.equal(marker.copied.themes, 1);
 });
 
-test("legacy Electron ACP state backups merge into the new backup root without overwriting", async (t) => {
+test("legacy Electron state backups merge into the new backup root without overwriting", async (t) => {
   const root = await temporaryRoot();
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const legacy = path.join(root, "legacy");

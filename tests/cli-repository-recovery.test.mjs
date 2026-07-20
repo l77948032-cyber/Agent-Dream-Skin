@@ -5,16 +5,12 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { createDreamSkinCliContext } from "../src/core/cli-context.mjs";
 import { createDreamSkinApplicationContext } from "../src/core/product-application-context.mjs";
 import { createStudioBackend } from "../src/core/studio-backend.mjs";
-import { createMcpApplicationContext } from "../src/mcp-server.mjs";
 
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WORKBUDDY_PLUGIN_ID = "dreamskin.workbuddy";
-
-function environment(server) {
-  return Object.fromEntries(server.env.map((entry) => [entry.name, entry.value]));
-}
 
 function fileSystemWithInterruptedInstall(targetPath) {
   return new Proxy(fs, {
@@ -38,31 +34,29 @@ function fileSystemWithInterruptedInstall(targetPath) {
   });
 }
 
-test("Studio and its scoped ACP helper share one WorkBuddy backup journal and recover across surfaces", async (t) => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-acp-recovery-"));
-  const themesRoot = path.join(root, "themes", WORKBUDDY_PLUGIN_ID);
-  const dataRoot = path.join(root, "state", WORKBUDDY_PLUGIN_ID);
-  const backupsRoot = path.join(root, "backups", WORKBUDDY_PLUGIN_ID);
+test("Studio and the installed CLI share one WorkBuddy backup journal and recover across surfaces", async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-cli-recovery-"));
+  const productDataRoot = path.join(root, "dreamskin");
+  const themesRoot = path.join(productDataRoot, "themes", WORKBUDDY_PLUGIN_ID);
+  const dataRoot = path.join(productDataRoot, "state", WORKBUDDY_PLUGIN_ID);
+  const backupsRoot = path.join(productDataRoot, "backups", WORKBUDDY_PLUGIN_ID);
   let applicationContext;
   let backend;
-  let acpContext;
+  let cliContext;
   t.after(async () => {
     await backend?.close();
     if (applicationContext && !backend) {
       await Promise.allSettled(applicationContext.pluginManager.list({ state: "active" })
         .map((plugin) => applicationContext.pluginManager.deactivate(plugin.id)));
     }
-    if (acpContext) {
-      await Promise.allSettled(acpContext.pluginManager.list({ state: "active" })
-        .map((plugin) => acpContext.pluginManager.deactivate(plugin.id)));
-    }
+    await cliContext?.close();
     await fs.rm(root, { recursive: true, force: true });
   });
 
   applicationContext = await createDreamSkinApplicationContext({
     projectRoot: PROJECT_ROOT,
-    themesRoot: path.join(root, "themes"),
-    dataRoot: path.join(root, "product-state"),
+    themesRoot: path.join(productDataRoot, "themes"),
+    dataRoot: productDataRoot,
     workBuddyOptions: {
       themesRoot,
       dataRoot,
@@ -73,24 +67,30 @@ test("Studio and its scoped ACP helper share one WorkBuddy backup journal and re
   backend = await createStudioBackend({
     applicationContext,
     projectRoot: PROJECT_ROOT,
-    dataRoot: path.join(root, "studio-state"),
-    manifestPath: path.join(root, "studio-state", "library.json"),
+    dataRoot: productDataRoot,
+    targetOptions: {
+      [WORKBUDDY_PLUGIN_ID]: {
+        manifestPath: path.join(dataRoot, "library.json"),
+      },
+    },
   });
 
-  const helperEnvironment = environment(
-    backend.sessions.mcpServer("cross-surface", WORKBUDDY_PLUGIN_ID),
-  );
-  assert.equal(helperEnvironment.DREAMSKIN_TOOL_BACKUPS_ROOT, path.resolve(backupsRoot));
-  acpContext = await createMcpApplicationContext({
-    env: helperEnvironment,
-    projectRoot: PROJECT_ROOT,
+  cliContext = await createDreamSkinCliContext({
+    homeDir: root,
+    environment: {
+      DREAMSKIN_RESOURCE_ROOT: PROJECT_ROOT,
+      DREAMSKIN_USER_DATA_ROOT: path.join(root, "DreamSkin Studio"),
+      DREAMSKIN_DATA_ROOT: productDataRoot,
+      DREAMSKIN_TRAE_RUNTIME_STATE_ROOT: path.join(root, "TraeDreamSkin"),
+      DREAMSKIN_WORKBUDDY_RUNTIME_STATE_ROOT: path.join(root, "WorkBuddyDreamSkin"),
+    },
   });
 
   const studioRepository = backend.target(WORKBUDDY_PLUGIN_ID).library.userRepository;
-  const acpRepository = acpContext.repository;
-  assert.equal(studioRepository.themesRoot, acpRepository.themesRoot);
-  assert.equal(studioRepository.dataRoot, acpRepository.dataRoot);
-  assert.equal(studioRepository.backupsRoot, acpRepository.backupsRoot);
+  const cliRepository = cliContext.context.target(WORKBUDDY_PLUGIN_ID).repository;
+  assert.equal(studioRepository.themesRoot, cliRepository.themesRoot);
+  assert.equal(studioRepository.dataRoot, cliRepository.dataRoot);
+  assert.equal(studioRepository.backupsRoot, cliRepository.backupsRoot);
 
   const sourceRoot = path.join(PROJECT_ROOT, "plugins", "workbuddy", "catalog", "harbor-focus");
   const sourceTheme = JSON.parse(await fs.readFile(path.join(sourceRoot, "theme.json"), "utf8"));
@@ -117,8 +117,8 @@ test("Studio and its scoped ACP helper share one WorkBuddy backup journal and re
   );
   studioRepository.fs = fs;
 
-  await acpRepository.ensureRoots();
-  const recovered = await acpRepository.read(themeId);
+  await cliRepository.ensureRoots();
+  const recovered = await cliRepository.read(themeId);
   assert.equal(recovered.theme.name, "Stable WorkBuddy Theme");
   assert.equal(recovered.revision, stable.afterRevision);
   const recoveryManifest = JSON.parse(await fs.readFile(

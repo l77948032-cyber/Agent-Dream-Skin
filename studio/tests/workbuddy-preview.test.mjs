@@ -185,10 +185,26 @@ test("Studio theme identity and API calls are scoped by plugin", async () => {
   assert.match(app, /studioApi\.duplicateTheme\(item\.localId, item\.pluginId\)/);
   assert.match(app, /studioApi\.deleteTheme\(item\.localId,[^\n]+item\.pluginId\)/);
   assert.match(app, /studioApi\.applyTheme\(item\.localId, item\.pluginId\)/);
-  assert.match(app, /studioApi\.sendThemeMessage\([\s\S]+item\.pluginId\)/);
+  assert.match(app, /pluginIds\.map\(\(pluginId\) => studioApi\.listThemes\(pluginId\)\)/);
   assert.match(api, /pluginApiPath\(pluginId, "\/themes"\)/);
   assert.match(api, /pluginApiPath\(pluginId, "\/runtime\/verify"\)/);
   assert.match(api, /pluginApiPath\(pluginId, "\/runtime\/restore"\)/);
+});
+
+test("Studio is a local theme library without embedded Agent connection chrome", async () => {
+  const [app, api] = await Promise.all([source("App.tsx"), source("api.ts")]);
+  assert.match(app, /useState<View>\("library"\)/);
+  assert.match(app, /window\.setInterval\(\(\) => void poll\(\), 1500\)/);
+  assert.match(app, /<strong>CLI 同步<\/strong>/);
+  assert.doesNotMatch(app, /Agent 连接|sendThemeMessage|connectAgent/);
+  assert.match(api, /getCliStatus\(\): Promise<CliStatusDto>/);
+  assert.match(api, /installCli\(\): Promise<CliStatusDto>/);
+  assert.match(api, /uninstallCli\(\): Promise<CliStatusDto>/);
+  assert.match(app, /status\.state === "ready" && status\.pathAvailable/);
+  assert.match(app, /status\.message \|\| "启动器已安装，但当前终端 PATH 尚未包含它的目录。"/);
+  assert.match(app, /toast\("CLI 需要更新"/);
+  assert.match(app, /toast\("CLI 不可用"/);
+  assert.doesNotMatch(api, /sendThemeMessage|listAgents|connectAgent/);
 });
 
 test("WorkBuddy catalog detail uses WorkBuddy interface semantics", async () => {

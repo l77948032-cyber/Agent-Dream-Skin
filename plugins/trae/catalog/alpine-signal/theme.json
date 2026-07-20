@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "alpine-signal",
+  "name": "Alpine Signal",
+  "description": "高山观测站越过云海接收清晨信号，冰川蓝界面配合日出琥珀色，让技术感保持清晰、明亮而克制。",
+  "layout": "classic",
+  "brandSubtitle": "TRAE / ALPINE SIGNAL",
+  "tagline": "Find clarity above the noise.",
+  "statusText": "SIGNAL LOCKED",
+  "quote": "OBSERVE / DECODE / ASCEND",
+  "image": "background.png",
+  "colors": {
+    "background": "#DDE9F1",
+    "panel": "#F7FAFC",
+    "panelAlt": "#E6EEF3",
+    "accent": "#286A9B",
+    "accentAlt": "#B7602B",
+    "secondary": "#317E7C",
+    "highlight": "#9A6A1F",
+    "onAccent": "#FFFFFF",
+    "success": "#3B806B",
+    "warning": "#A46E23",
+    "danger": "#B85252",
+    "info": "#3377A6",
+    "disabled": "#95A5B0",
+    "text": "#1B2933",
+    "muted": "#5C6D78",
+    "line": "rgba(39, 83, 113, 0.22)",
+    "selection": "rgba(40, 106, 155, 0.18)",
+    "terminal": "#14232D"
+  },
+  "states": {
+    "surfaceHover": "rgba(40, 106, 155, 0.10)",
+    "surfaceActive": "rgba(183, 96, 43, 0.16)",
+    "focus": "#286A9B",
+    "tooltipBackground": "#203847",
+    "tooltipText": "#F7FAFC"
+  },
+  "visual": {
+    "motif": "circuit",
+    "iconTreatment": "outline",
+    "surfaceTreatment": "glass",
+    "accentPlacement": "rail",
+    "cardTreatment": "split",
+    "ornament": "nodes"
+  },
+  "appearance": {
+    "treatment": "sunlit-immersive",
+    "backgroundPosition": "right center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(221, 233, 241, 0.06)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.94,
+    "surfaceOpacity": 0.84,
+    "sidebarOpacity": 0.92,
+    "blur": 14,
+    "saturation": 0.92,
+    "radius": 6,
+    "shadow": "soft",
+    "colorScheme": "light"
+  }
+}

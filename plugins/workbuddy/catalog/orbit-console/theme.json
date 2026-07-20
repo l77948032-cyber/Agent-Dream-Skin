@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "orbit-console",
+  "name": "Orbit Console",
+  "description": "轨道舷窗与航天控制台延伸成精密深色界面，节点线路、分区卡片和冷蓝状态光让复杂任务拥有指挥舱般的可视层级。",
+  "layout": "classic",
+  "brandSubtitle": "WORKBUDDY / ORBIT CONTROL",
+  "tagline": "Coordinate every moving part.",
+  "statusText": "ORBITAL SYSTEMS NOMINAL",
+  "quote": "MAP THE SYSTEM / HOLD THE COURSE",
+  "image": "background.png",
+  "colors": {
+    "background": "#070B10",
+    "panel": "#10161D",
+    "panelAlt": "#18222C",
+    "accent": "#65B9E8",
+    "accentAlt": "#E26B45",
+    "secondary": "#617C9A",
+    "highlight": "#E8A84F",
+    "onAccent": "#071018",
+    "success": "#55BF97",
+    "warning": "#DFA64E",
+    "danger": "#E26668",
+    "info": "#65B9E8",
+    "disabled": "#5F6B76",
+    "text": "#EDF3F7",
+    "muted": "#9AA9B5",
+    "line": "rgba(101, 185, 232, 0.25)",
+    "selection": "rgba(226, 107, 69, 0.22)",
+    "terminal": "#03070B"
+  },
+  "states": {
+    "surfaceHover": "rgba(101, 185, 232, 0.11)",
+    "surfaceActive": "rgba(226, 107, 69, 0.17)",
+    "focus": "#65B9E8",
+    "tooltipBackground": "#142330",
+    "tooltipText": "#EDF3F7"
+  },
+  "visual": {
+    "motif": "circuit",
+    "iconTreatment": "tile",
+    "surfaceTreatment": "layered",
+    "accentPlacement": "glow",
+    "cardTreatment": "split",
+    "ornament": "nodes"
+  },
+  "appearance": {
+    "treatment": "midnight-neon",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(4, 10, 17, 0.2)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.97,
+    "surfaceOpacity": 0.8,
+    "sidebarOpacity": 0.92,
+    "blur": 14,
+    "saturation": 0.78,
+    "radius": 2,
+    "shadow": "deep",
+    "colorScheme": "dark"
+  }
+}

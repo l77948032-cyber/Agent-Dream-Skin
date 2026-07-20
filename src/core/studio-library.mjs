@@ -7,9 +7,7 @@ import { ToolError } from "./errors.mjs";
 const DEFAULT_MANIFEST = Object.freeze({
   schemaVersion: 1,
   settings: {
-    autoVerify: true,
     motionEnabled: true,
-    selectedAgentId: null,
   },
   entries: [],
 });
@@ -38,6 +36,21 @@ function normalizedRevisionNumber(entry) {
 
 function storedStatus(entry) {
   return entry.status === "draft" ? "draft" : "verified";
+}
+
+function repositoryOrigin(theme, catalogDefinition, existingEntry) {
+  if (theme.provenance?.origin === "template") {
+    return { origin: "template", sourceId: theme.provenance.sourceId };
+  }
+  if (theme.provenance?.origin === "blank") return { origin: "blank" };
+  if (existingEntry) {
+    return {
+      origin: existingEntry.origin,
+      ...(existingEntry.sourceId ? { sourceId: existingEntry.sourceId } : {}),
+    };
+  }
+  const sourceId = catalogDefinition.inferTemplateSource(theme.id);
+  return { origin: sourceId ? "template" : "blank", ...(sourceId ? { sourceId } : {}) };
 }
 
 function studioTheme(theme, imageUrl, { builtIn, experimental = false } = {}) {
@@ -71,8 +84,7 @@ function validateManifest(input, defaultPluginId) {
   return {
     schemaVersion: 1,
     settings: {
-      ...DEFAULT_MANIFEST.settings,
-      ...(input.settings && typeof input.settings === "object" ? input.settings : {}),
+      motionEnabled: input.settings?.motionEnabled !== false,
     },
     entries: input.entries
       .filter((entry) => (
@@ -101,7 +113,10 @@ export class StudioLibrary {
   }) {
     this.catalogRepository = catalogRepository;
     this.userRepository = userRepository;
-    if (!tool || typeof tool.createTheme !== "function" || typeof tool.updateTheme !== "function") {
+    if (!tool
+      || typeof tool.createTheme !== "function"
+      || typeof tool.updateTheme !== "function"
+      || typeof tool.importThemeAsset !== "function") {
       throw new ToolError("INVALID_STUDIO_DEPENDENCY", "Studio Library requires DreamSkin Tool write access.");
     }
     if (!catalog || typeof catalog !== "object" || !catalog.templates || typeof catalog.hasTemplate !== "function") {
@@ -222,13 +237,13 @@ export class StudioLibrary {
 
       for (const theme of available) {
         const entry = known.get(theme.id);
+        const provenance = repositoryOrigin(theme, this.catalogDefinition, entry);
         if (!entry) {
-          const sourceId = this.catalogDefinition.inferTemplateSource(theme.id);
           const discovered = {
             pluginId: this.pluginId,
             id: theme.id,
-            ...(sourceId ? { sourceId } : {}),
-            origin: sourceId ? "template" : "blank",
+            ...(provenance.sourceId ? { sourceId: provenance.sourceId } : {}),
+            origin: provenance.origin,
             createdAt: timestamp,
             updatedAt: timestamp,
             revisionNumber: 1,
@@ -239,6 +254,13 @@ export class StudioLibrary {
           known.set(theme.id, discovered);
           changed = true;
           continue;
+        }
+
+        if (entry.origin !== provenance.origin || entry.sourceId !== provenance.sourceId) {
+          entry.origin = provenance.origin;
+          if (provenance.sourceId) entry.sourceId = provenance.sourceId;
+          else delete entry.sourceId;
+          changed = true;
         }
 
         if (entry.revisionHash !== theme.revision) {
@@ -330,7 +352,6 @@ export class StudioLibrary {
     const id = `${this.catalogDefinition.blank.idPrefix}-${themeIdSuffix()}`;
     const result = await this.tool.createTheme({
       themeId: id,
-      sourceId,
       themePatch: this.catalogDefinition.createBlankTheme({ sourceTheme: source.theme, id }),
     }, this.pluginId);
     const timestamp = this.now().toISOString();
@@ -364,22 +385,30 @@ export class StudioLibrary {
       if (!sourceEntry) throw new ToolError("THEME_NOT_FOUND", `Studio theme '${id}' does not exist.`);
       const source = await this.userRepository.read(id);
       const duplicateId = duplicateThemeId(id);
-      const sourceId = sourceEntry.sourceId && this.catalogDefinition.hasTemplate(sourceEntry.sourceId)
+      const sourceId = sourceEntry.origin === "template"
+        && sourceEntry.sourceId
+        && this.catalogDefinition.hasTemplate(sourceEntry.sourceId)
         ? sourceEntry.sourceId
-        : this.catalogDefinition.blank.sourceId;
-      const result = await this.tool.createTheme({
+        : undefined;
+      const themePatch = clone(source.theme);
+      delete themePatch.image;
+      themePatch.id = duplicateId;
+      themePatch.name = `${source.theme.name} 副本`;
+      const created = await this.tool.createTheme({
         themeId: duplicateId,
-        sourceId,
-        themePatch: {
-          ...clone(source.theme),
-          id: duplicateId,
-          name: `${source.theme.name} 副本`,
-        },
+        ...(sourceId ? { sourceId } : {}),
+        themePatch,
+      }, this.pluginId);
+      const result = await this.tool.importThemeAsset({
+        themeId: duplicateId,
+        assetPath: path.join(this.userRepository.themePath(id), source.asset.file),
+        expectedRevision: created.afterRevision,
       }, this.pluginId);
       const timestamp = this.now().toISOString();
       const entry = {
         pluginId: this.pluginId,
         id: duplicateId,
+        ...(sourceId ? { sourceId } : {}),
         origin: sourceEntry.origin,
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -474,7 +503,7 @@ export class StudioLibrary {
   }
 
   async updateSettings(patch) {
-    const allowed = new Set(["autoVerify", "motionEnabled", "selectedAgentId"]);
+    const allowed = new Set(["motionEnabled"]);
     return this.mutateManifest((manifest) => {
       for (const [key, value] of Object.entries(patch || {})) {
         if (allowed.has(key)) manifest.settings[key] = value;

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "city-rain",
+  "name": "City Rain",
+  "description": "午夜雨幕与城市灯火映入深蓝玻璃界面，细线图标、铜色状态光和横向标尺让夜间工作保持清醒与秩序。",
+  "layout": "classic",
+  "brandSubtitle": "WORKBUDDY / NIGHT WINDOW",
+  "tagline": "Stay sharp while the city slows down.",
+  "statusText": "RAIN MODE / FOCUSED",
+  "quote": "LATE HOURS / CLEAR SIGNAL",
+  "image": "background.png",
+  "colors": {
+    "background": "#07121D",
+    "panel": "#101C28",
+    "panelAlt": "#172737",
+    "accent": "#58B5D0",
+    "accentAlt": "#D57A4A",
+    "secondary": "#52769F",
+    "highlight": "#E3B35E",
+    "onAccent": "#07121D",
+    "success": "#58B98C",
+    "warning": "#D8A04B",
+    "danger": "#D5646E",
+    "info": "#58B5D0",
+    "disabled": "#647585",
+    "text": "#EBF4F5",
+    "muted": "#9EB0BC",
+    "line": "rgba(88, 181, 208, 0.24)",
+    "selection": "rgba(213, 122, 74, 0.22)",
+    "terminal": "#050C13"
+  },
+  "states": {
+    "surfaceHover": "rgba(88, 181, 208, 0.11)",
+    "surfaceActive": "rgba(213, 122, 74, 0.17)",
+    "focus": "#58B5D0",
+    "tooltipBackground": "#172A39",
+    "tooltipText": "#EBF4F5"
+  },
+  "visual": {
+    "motif": "editorial",
+    "iconTreatment": "outline",
+    "surfaceTreatment": "glass",
+    "accentPlacement": "underline",
+    "cardTreatment": "quiet",
+    "ornament": "rules"
+  },
+  "appearance": {
+    "treatment": "midnight-neon",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(4, 14, 24, 0.22)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.96,
+    "surfaceOpacity": 0.76,
+    "sidebarOpacity": 0.89,
+    "blur": 19,
+    "saturation": 0.88,
+    "radius": 4,
+    "shadow": "deep",
+    "colorScheme": "dark"
+  }
+}

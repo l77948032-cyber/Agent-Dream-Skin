@@ -3,7 +3,7 @@
   "id": "ember-glass",
   "name": "Ember Glass",
   "description": "石墨与珊瑚红的暖色玻璃工作台，以金色和青色保持层次与状态辨识。",
-  "image": "background.png",
+  "image": "background-v2.png",
   "colors": {
     "background": "#171315",
     "panel": "#251C1E",

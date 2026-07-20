@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "coral-studio",
+  "name": "Coral Studio",
+  "description": "爱琴海光线与珊瑚材料样本构成明快创作室，海蓝玻璃、珊瑚角标和拼贴卡片为头脑风暴与内容制作注入度假感。",
+  "layout": "studio-collage",
+  "brandSubtitle": "WORKBUDDY / CORAL STUDIO",
+  "tagline": "Make bright work by the water.",
+  "statusText": "CREATIVE TIDE RISING",
+  "quote": "COLLECT COLOR / SHAPE THE STORY",
+  "image": "background.png",
+  "colors": {
+    "background": "#D9EDF0",
+    "panel": "#FFF9F0",
+    "panelAlt": "#E6F2EF",
+    "accent": "#087E96",
+    "accentAlt": "#E36B56",
+    "secondary": "#2E7180",
+    "highlight": "#D7A23E",
+    "onAccent": "#FFFFFF",
+    "success": "#3C9478",
+    "warning": "#C8872D",
+    "danger": "#C95859",
+    "info": "#3287B2",
+    "disabled": "#9AABAC",
+    "text": "#17343B",
+    "muted": "#647B7E",
+    "line": "rgba(8, 126, 150, 0.20)",
+    "selection": "rgba(227, 107, 86, 0.18)",
+    "terminal": "#143039"
+  },
+  "states": {
+    "surfaceHover": "rgba(8, 126, 150, 0.09)",
+    "surfaceActive": "rgba(227, 107, 86, 0.15)",
+    "focus": "#087E96",
+    "tooltipBackground": "#174B57",
+    "tooltipText": "#FFF9F0"
+  },
+  "visual": {
+    "motif": "collage",
+    "iconTreatment": "medallion",
+    "surfaceTreatment": "glass",
+    "accentPlacement": "corner",
+    "cardTreatment": "badge",
+    "ornament": "tape"
+  },
+  "appearance": {
+    "treatment": "spark-collage",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(221, 244, 244, 0.08)",
+    "backgroundBlendMode": "soft-light",
+    "backgroundOpacity": 0.96,
+    "surfaceOpacity": 0.8,
+    "sidebarOpacity": 0.9,
+    "blur": 15,
+    "saturation": 1.02,
+    "radius": 6,
+    "shadow": "soft",
+    "colorScheme": "light"
+  }
+}

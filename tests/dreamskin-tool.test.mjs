@@ -46,11 +46,24 @@ test("DreamSkin Tool exposes one strict action contract over plugins", async () 
     expectedRevision: "rev-1",
     themePatch: { name: "Updated" },
   });
+  await tool.execute({
+    action: "importAsset",
+    themeId: "sunlit",
+    assetPath: "/tmp/background.png",
+    expectedRevision: "rev-2",
+    dryRun: true,
+  });
   await tool.execute({ action: "validate", themeId: "sunlit" });
   assert.deepEqual(calls, [
     ["theme", "dreamskin.trae", "inspect", {}],
     ["theme", "dreamskin.trae", "read", { id: "sunlit" }],
     ["theme", "dreamskin.trae", "update", { id: "sunlit", expectedRevision: "rev-1", themePatch: { name: "Updated" } }],
+    ["theme", "dreamskin.trae", "importAsset", {
+      id: "sunlit",
+      assetPath: "/tmp/background.png",
+      expectedRevision: "rev-2",
+      dryRun: true,
+    }],
     ["theme", "dreamskin.trae", "validate", { id: "sunlit" }],
   ]);
 });
@@ -61,6 +74,14 @@ test("DreamSkin Tool rejects unsafe or ambiguous inputs before plugin dispatch",
   assert.throws(() => tool.execute({ action: "update", themeId: "sunlit", themePatch: {} }), /expectedRevision/);
   assert.throws(() => tool.execute({ action: "validate", themeId: "sunlit", theme: {} }), /exactly one/);
   assert.throws(() => tool.execute({ action: "read", themeId: "sunlit", imagePath: "/tmp/a.png" }), /unknown fields/);
+  assert.throws(
+    () => tool.execute({ action: "importAsset", themeId: "sunlit", assetPath: "relative.png", expectedRevision: "rev-1" }),
+    /absolute local file path/,
+  );
+  assert.throws(
+    () => tool.execute({ action: "importAsset", themeId: "sunlit", assetPath: "/tmp/a.png" }),
+    /expectedRevision/,
+  );
   assert.throws(() => tool.execute({ action: "apply", themeId: "sunlit" }), (error) => error.code === "TOOL_ACTION_NOT_SUPPORTED");
   assert.equal(calls.length, 0);
 });

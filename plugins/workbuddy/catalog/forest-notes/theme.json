@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "forest-notes",
+  "name": "Forest Notes",
+  "description": "雨后森林与植物手记构成的自然工作室，苔绿纸面、陶土强调色和印章图标让资料整理像翻阅一本野外笔记。",
+  "layout": "classic",
+  "brandSubtitle": "WORKBUDDY / FIELD NOTES",
+  "tagline": "Think slowly. Notice everything.",
+  "statusText": "FOREST SESSION READY",
+  "quote": "OBSERVE / ORGANIZE / GROW",
+  "image": "background.png",
+  "colors": {
+    "background": "#DCE4D6",
+    "panel": "#F7F4E9",
+    "panelAlt": "#E4E7D8",
+    "accent": "#3C6B47",
+    "accentAlt": "#A75F45",
+    "secondary": "#577466",
+    "highlight": "#D5B76A",
+    "onAccent": "#FFFFFF",
+    "success": "#3C7550",
+    "warning": "#A36F2E",
+    "danger": "#A94E4D",
+    "info": "#4D7680",
+    "disabled": "#98A095",
+    "text": "#223127",
+    "muted": "#68756A",
+    "line": "rgba(54, 79, 59, 0.20)",
+    "selection": "rgba(60, 107, 71, 0.18)",
+    "terminal": "#1B2920"
+  },
+  "states": {
+    "surfaceHover": "rgba(60, 107, 71, 0.09)",
+    "surfaceActive": "rgba(167, 95, 69, 0.14)",
+    "focus": "#3C6B47",
+    "tooltipBackground": "#263C2C",
+    "tooltipText": "#F7F4E9"
+  },
+  "visual": {
+    "motif": "sketch",
+    "iconTreatment": "stamp",
+    "surfaceTreatment": "paper",
+    "accentPlacement": "underline",
+    "cardTreatment": "split",
+    "ornament": "strokes"
+  },
+  "appearance": {
+    "treatment": "paper-wash",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(225, 232, 218, 0.14)",
+    "backgroundBlendMode": "soft-light",
+    "backgroundOpacity": 0.9,
+    "surfaceOpacity": 0.88,
+    "sidebarOpacity": 0.93,
+    "blur": 13,
+    "saturation": 0.82,
+    "radius": 5,
+    "shadow": "soft",
+    "colorScheme": "light"
+  }
+}

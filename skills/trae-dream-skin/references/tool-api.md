@@ -1,68 +1,92 @@
-# Trae-Dream-Skin Tool API v1
+# DreamSkin CLI Contract v1
 
-## DreamSkin Tool
+## Commands
 
-The Agent receives one `dreamskin_theme` Tool. `action` is one of `inspect`,
-`list`, `read`, `create`, `update`, or `validate`. Studio owns preview and all
-runtime actions.
+Every theme command requires an explicit target plugin returned by
+`dreamskin targets`.
 
-### Write Input
+```bash
+dreamskin targets
+dreamskin theme inspect --plugin dreamskin.trae
+dreamskin theme list --plugin dreamskin.trae
+dreamskin theme read violet-rift --plugin dreamskin.trae
+dreamskin theme create my-theme --plugin dreamskin.trae --source paper-aurora --input @theme-patch.json --dry-run
+dreamskin theme update violet-rift --plugin dreamskin.trae --expected-revision <sha256> --input @theme-patch.json --dry-run
+dreamskin theme asset import violet-rift --plugin dreamskin.trae --expected-revision <sha256> --file /absolute/path/background.png --dry-run
+dreamskin theme validate violet-rift --plugin dreamskin.trae
+dreamskin theme validate --plugin dreamskin.trae --input @complete-theme.json
+```
+
+`--input` accepts a JSON object as literal text, `@file` input, or `-` for
+stdin. Input is limited to 1 MiB. Create and update input is a structured theme
+patch; validate input is a complete structured theme. Unknown, duplicate,
+extra, and action-inapplicable arguments are rejected.
+
+Omit `--source` (or pass `--source blank`) to create a blank theme. A real
+catalog source deep-inherits the complete template before applying the input
+patch, and its source metadata persists independently of the new theme id.
+
+## Envelope
+
+The CLI writes exactly one JSON document to stdout and exits with `0` on
+success or `1` on failure.
 
 ```json
 {
-  "action": "update",
-  "themeId": "violet-rift",
-  "themePatch": {
-    "states": { "tooltipBackground": "#19172F" },
-    "visual": { "motif": "prism", "iconTreatment": "tile", "ornament": "facets" },
-    "appearance": { "surfaceOpacity": 0.56 }
+  "protocolVersion": 1,
+  "ok": true,
+  "operation": "theme.update",
+  "scope": {
+    "pluginId": "dreamskin.trae",
+    "themeId": "violet-rift"
   },
-  "expectedRevision": "revision from action read",
-  "dryRun": true
+  "result": {}
 }
 ```
 
-The Agent Tool never accepts arbitrary local paths. Studio imports reference
-images and background assets into its managed asset store before a theme action
-can refer to them.
+Failures replace `result` with a stable `error` object containing `code`,
+`message`, and optional `details`. Error envelopes do not expose a stack or
+nested cause.
 
-## Host JSON CLI
+## Write Input
 
-Run from the Trae-Dream-Skin project root. Every command writes one JSON envelope to stdout and uses a nonzero exit code on error.
-
-```bash
-npm run cli -- inspect
-npm run cli -- theme list
-npm run cli -- theme read violet-rift
-npm run cli -- theme write --input @change.json --dry-run
-npm run cli -- theme validate violet-rift
-npm run cli -- preview violet-rift --screenshot
-npm run cli -- apply violet-rift
-npm run cli -- verify --screenshot-path /absolute/path/verify.png
-npm run cli -- restore
+```json
+{
+  "states": { "tooltipBackground": "#19172F" },
+  "visual": { "motif": "prism", "iconTreatment": "tile", "ornament": "facets" },
+  "appearance": { "surfaceOpacity": 0.56 }
+}
 ```
 
-Use `--input -` to read JSON from stdin. Direct JSON text is also accepted.
-These runtime commands are host/debugging operations and are not exposed to an
-Agent session.
+Always dry-run before committing an update. A committed update must use the
+revision returned by the latest read or list operation. The CLI never accepts
+CSS, selectors, shell commands, runtime actions, or general-purpose file reads.
+`theme asset import` is the only asset-path command: it accepts a regular
+PNG/JPEG/WebP file up to 16 MiB, rejects symlinks, verifies its signature, and
+copies the bytes into the managed theme directory.
 
 ## Theme Fields
 
-- Content: `name`, `description`, `layout`, `brandSubtitle`, `tagline`, `statusText`, `quote`, `image`
+- Content: `name`, `description`, `layout`, `brandSubtitle`, `tagline`, `statusText`, `quote`. Background `image` is managed by `theme asset import`.
 - Semantic colors: `background`, `panel`, `panelAlt`, `accent`, `accentAlt`, `secondary`, `highlight`, `onAccent`, `success`, `warning`, `danger`, `info`, `disabled`, `text`, `muted`, `line`, `selection`, `terminal`
 - Interaction states: `surfaceHover`, `surfaceActive`, `focus`, `tooltipBackground`, `tooltipText`
 - Visual recipes: `motif`, `iconTreatment`, `surfaceTreatment`, `accentPlacement`, `cardTreatment`, `ornament`
 - Appearance: treatment, background positioning/blending/opacity, surface/sidebar opacity, blur, saturation, radius, shadow, and color scheme
 
-`inspect.registry.components[*].visualSlots` describes the exact creative opportunities for each semantic component. For example, `sidebar.task` exposes `sectionDivider`, `rowIcon`, and `selectionMarker`, while `home.showcase` exposes `iconBadge`, `cornerLabel`, and `cta`. Select only the validated recipe enums from `themeSchema`; raw selectors and CSS are never accepted.
+`inspect` describes each component's semantic visual slots and the exact enum
+values accepted by the theme schema.
 
 ## Common Errors
 
 - `REVISION_CONFLICT`: another write changed the theme; read and reconcile.
-- `THEME_INVALID`: config or image validation failed.
-- `THEME_NOT_FOUND`: requested id is absent.
+- `THEME_INVALID`: structured theme validation failed.
+- `THEME_NOT_FOUND`: the requested id is absent.
+- `THEME_ALREADY_EXISTS`: create selected an existing id.
 - `REPOSITORY_BUSY`: another transaction owns the repository lock.
-- `RUNTIME_COMMAND_FAILED`: platform runtime rejected or could not complete the operation.
-- `PREVIEW_FAILED`: verification failed; previous state was restored.
-- `PREVIEW_RESTORE_FAILED`: urgent; automatic restoration also failed.
-- `UNSUPPORTED_PLATFORM`: runtime operations require macOS or Windows.
+- `INPUT_TOO_LARGE`: input exceeds 1 MiB.
+- `INPUT_FILE_UNAVAILABLE`: an `@file` input is missing, is not a regular file, or cannot be read.
+- `ASSET_NOT_FOUND`: the requested background file is missing.
+- `INVALID_ASSET_PATH`: the background is a symlink, directory, or otherwise unsafe path.
+- `INVALID_IMAGE`: the extension or file signature is not a supported image.
+- `ASSET_TOO_LARGE`: the background exceeds 16 MiB.
+- `INVALID_ARGUMENT`: the command or its arguments violate the CLI contract.

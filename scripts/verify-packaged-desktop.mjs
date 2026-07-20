@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
@@ -13,24 +14,30 @@ const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 const DEFAULT_CALL_TIMEOUT_MS = 5 * 60_000;
 const DEFAULT_STOP_TIMEOUT_MS = 15_000;
 const DEFAULT_KILL_TIMEOUT_MS = 5_000;
+const DEFAULT_CLI_TIMEOUT_MS = 60_000;
+const MAX_CLI_OUTPUT_BYTES = 2 * 1024 * 1024;
 const STUDIO_URL = "dreamskin://studio/";
 export const REQUIRED_PACKAGED_TARGETS = Object.freeze([
   "dreamskin.trae",
   "dreamskin.workbuddy",
 ]);
+export const REQUIRED_PACKAGED_TEMPLATE_COUNT = 20;
+const PACKAGED_CLI_SMOKE_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+  "base64",
+);
 
 function parseArguments(argv) {
-  const options = { appPath: DEFAULT_APP, agentId: "codex", runAgent: true, screenshotPath: null, keepData: false };
+  const options = { appPath: DEFAULT_APP, runCli: true, screenshotPath: null, keepData: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--app") options.appPath = path.resolve(argv[++index] || "");
-    else if (argument === "--agent") options.agentId = argv[++index] || "";
-    else if (argument === "--skip-agent") options.runAgent = false;
+    else if (argument === "--skip-cli") options.runCli = false;
     else if (argument === "--screenshot") options.screenshotPath = path.resolve(argv[++index] || "");
     else if (argument === "--keep-data") options.keepData = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
-  if (!options.appPath || !/^[a-z0-9_-]+$/i.test(options.agentId)) throw new Error("Invalid verification arguments.");
+  if (!options.appPath) throw new Error("Invalid verification arguments.");
   return options;
 }
 
@@ -309,6 +316,65 @@ export async function stopChild(child, {
   return { forced: true };
 }
 
+export async function runJsonProcess(command, args, {
+  env = process.env,
+  timeoutMs = DEFAULT_CLI_TIMEOUT_MS,
+} = {}, {
+  spawnProcess = spawn,
+  stopProcess = stopChild,
+} = {}) {
+  const child = spawnProcess(command, args, {
+    env,
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: false,
+    windowsHide: true,
+  });
+  let stdout = "";
+  let stderr = "";
+  let outputBytes = 0;
+  child.stdout?.on("data", (chunk) => {
+    outputBytes += Buffer.byteLength(chunk);
+    stdout = bounded(stdout, chunk, MAX_CLI_OUTPUT_BYTES);
+  });
+  child.stderr?.on("data", (chunk) => {
+    outputBytes += Buffer.byteLength(chunk);
+    stderr = bounded(stderr, chunk, MAX_CLI_OUTPUT_BYTES);
+  });
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let timer;
+    const cleanup = () => {
+      clearTimeout(timer);
+      child.removeListener("error", onError);
+      child.removeListener("close", onClose);
+    };
+    const finish = (error, result) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (error) reject(error);
+      else resolve(result);
+    };
+    const onError = (error) => finish(error);
+    const onClose = (code, signal) => finish(null, { code, signal, stdout, stderr, outputBytes });
+    child.once("error", onError);
+    child.once("close", onClose);
+    timer = setTimeout(() => {
+      if (settled) return;
+      child.removeListener("error", onError);
+      child.removeListener("close", onClose);
+      void stopProcess(child).then(
+        () => finish(new Error(`Packaged DreamSkin CLI timed out after ${timeoutMs}ms.`)),
+        (error) => finish(new Error(
+          `Packaged DreamSkin CLI timed out after ${timeoutMs}ms and could not be stopped: ${error.message}`,
+          { cause: error },
+        )),
+      );
+    }, timeoutMs);
+  });
+}
+
 const DEFAULT_RUNTIME = Object.freeze({
   access: (target, mode) => fs.access(target, mode),
   createClient: (url) => new DevToolsClient(url),
@@ -317,6 +383,7 @@ const DEFAULT_RUNTIME = Object.freeze({
   platform: process.platform,
   removeDirectory: (target) => fs.rm(target, { recursive: true, force: true }),
   reservePort: availablePort,
+  runJsonProcess,
   spawnProcess: spawn,
   stopProcess: stopChild,
   waitForRenderer: waitForTarget,
@@ -343,49 +410,142 @@ export function assertPackagedProductBootstrap(base) {
   }
 }
 
-export async function runWorkBuddyScopedSmoke(client) {
-  const result = await client.evaluate(`(async () => {
-    const pluginId = "dreamskin.workbuddy";
-    const created = await window.dreamskin.studio.createTheme({ kind: "blank" }, pluginId);
-    const read = await window.dreamskin.studio.getTheme(created.localId, pluginId);
-    const deleted = await window.dreamskin.studio.deleteTheme(
-      read.localId,
-      { expectedRevision: read.revisionHash },
-      pluginId,
-    );
-    const remaining = await window.dreamskin.studio.listThemes(pluginId);
+function packagedCliConfiguration(appPath, dataRoot) {
+  const executable = executableFor(appPath, "darwin");
+  const resourcesPath = path.join(appPath, "Contents", "Resources");
+  return {
+    executable,
+    entrypoint: path.join(resourcesPath, "app.asar", "bin", "dreamskin.mjs"),
+    environment: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: "1",
+      DREAMSKIN_PACKAGED: "1",
+      DREAMSKIN_RESOURCE_ROOT: path.join(resourcesPath, "dreamskin"),
+      DREAMSKIN_USER_DATA_ROOT: dataRoot,
+      DREAMSKIN_DATA_ROOT: path.join(dataRoot, "dreamskin"),
+      DREAMSKIN_TRAE_RUNTIME_STATE_ROOT: path.join(dataRoot, "runtime-state", "TraeDreamSkin"),
+      DREAMSKIN_WORKBUDDY_RUNTIME_STATE_ROOT: path.join(dataRoot, "runtime-state", "WorkBuddyDreamSkin"),
+    },
+  };
+}
+
+function assertCliEnvelope(processResult, operation) {
+  const diagnostic = processResult.stderr.trim() || processResult.stdout.trim();
+  assert.equal(processResult.code, 0, `${operation} must exit with code 0: ${diagnostic}`);
+  assert.equal(processResult.signal, null, `${operation} must exit without a signal`);
+  assert.ok(
+    processResult.outputBytes <= MAX_CLI_OUTPUT_BYTES,
+    `${operation} output exceeded the packaged smoke limit`,
+  );
+  assert.equal(processResult.stderr.trim(), "", `${operation} must not write diagnostics to stderr`);
+  let envelope;
+  assert.doesNotThrow(() => {
+    envelope = JSON.parse(processResult.stdout);
+  }, `${operation} must write exactly one JSON document to stdout`);
+  assert.equal(envelope?.protocolVersion, 1, `${operation} must use CLI protocol v1`);
+  assert.equal(envelope?.ok, true, `${operation} returned a failure envelope`);
+  assert.equal(envelope?.operation, operation);
+  return envelope;
+}
+
+export async function runPackagedCliSmoke({
+  appPath,
+  dataRoot,
+  themeId = `packaged-cli-smoke-${randomUUID().slice(0, 8)}`,
+} = {}, {
+  runProcess = runJsonProcess,
+  prepareAsset = async (root) => {
+    await fs.mkdir(root, { recursive: true });
+    const target = path.join(root, `.packaged-cli-smoke-${randomUUID().slice(0, 8)}.png`);
+    await fs.writeFile(target, PACKAGED_CLI_SMOKE_PNG, { mode: 0o600 });
+    return target;
+  },
+  removeAsset = (target) => fs.rm(target, { force: true }),
+} = {}) {
+  const pluginId = "dreamskin.workbuddy";
+  const config = packagedCliConfiguration(path.resolve(appPath), path.resolve(dataRoot));
+  const invoke = async (operation, args) => assertCliEnvelope(
+    await runProcess(config.executable, [config.entrypoint, ...args], {
+      env: config.environment,
+      timeoutMs: DEFAULT_CLI_TIMEOUT_MS,
+    }),
+    operation,
+  );
+
+  let assetPath = null;
+  try {
+    const targets = await invoke("targets", ["targets"]);
+    const targetIds = targets.result?.targets?.map((entry) => entry.pluginId) || [];
+    for (const required of REQUIRED_PACKAGED_TARGETS) {
+      assert.ok(targetIds.includes(required), `Packaged CLI targets must include ${required}`);
+    }
+
+    const created = await invoke("theme.create", [
+      "theme", "create", themeId,
+      "--plugin", pluginId,
+      "--input", JSON.stringify({ name: "Packaged CLI Smoke" }),
+    ]);
+    assert.equal(created.scope?.pluginId, pluginId);
+    assert.equal(created.scope?.themeId, themeId);
+    assert.match(created.result?.afterRevision || "", /^[a-f0-9]{64}$/);
+
+    const read = await invoke("theme.read", ["theme", "read", themeId, "--plugin", pluginId]);
+    assert.equal(read.result?.id, themeId);
+    assert.equal(read.result?.revision, created.result.afterRevision);
+
+    assetPath = await prepareAsset(config.environment.DREAMSKIN_DATA_ROOT);
+    const imported = await invoke("theme.asset.import", [
+      "theme", "asset", "import", themeId,
+      "--plugin", pluginId,
+      "--expected-revision", read.result.revision,
+      "--file", assetPath,
+    ]);
+    assert.equal(imported.result?.beforeRevision, read.result.revision);
+    assert.notEqual(imported.result?.afterRevision, read.result.revision);
+    assert.equal(imported.result?.theme?.image, "background.png");
+
+    const updated = await invoke("theme.update", [
+      "theme", "update", themeId,
+      "--plugin", pluginId,
+      "--expected-revision", imported.result.afterRevision,
+      "--input", JSON.stringify({
+        colors: { accent: "#2F7CF6" },
+        states: { focus: "#2F7CF6" },
+      }),
+    ]);
+    assert.equal(updated.result?.beforeRevision, imported.result.afterRevision);
+    assert.notEqual(updated.result?.afterRevision, imported.result.afterRevision);
+    assert.equal(updated.result?.theme?.colors?.accent, "#2F7CF6");
+    assert.equal(updated.result?.theme?.states?.focus, "#2F7CF6");
+
+    const validated = await invoke("theme.validate", [
+      "theme", "validate", themeId, "--plugin", pluginId,
+    ]);
+    assert.equal(validated.result?.valid, true);
+    assert.equal(validated.result?.revision, updated.result.afterRevision);
+    assert.equal(validated.result?.theme?.colors?.accent, "#2F7CF6");
+    assert.equal(validated.result?.theme?.states?.focus, "#2F7CF6");
+
     return {
+      runner: "packaged-electron-node-mode",
+      externalNodeRequired: false,
       pluginId,
-      created: {
-        localId: created.localId,
-        pluginId: created.pluginId,
-        revisionHash: created.revisionHash,
-      },
-      read: {
-        localId: read.localId,
-        pluginId: read.pluginId,
-        revisionHash: read.revisionHash,
-      },
-      deleted,
-      absentAfterDelete: !remaining.some((theme) => theme.localId === created.localId),
+      themeId,
+      targets: targetIds,
+      beforeRevision: read.result.revision,
+      assetRevision: imported.result.afterRevision,
+      afterRevision: updated.result.afterRevision,
+      valid: validated.result.valid,
     };
-  })()`);
-  assert.equal(result.pluginId, "dreamskin.workbuddy");
-  assert.equal(result.created?.pluginId, result.pluginId);
-  assert.equal(result.read?.pluginId, result.pluginId);
-  assert.equal(result.read?.localId, result.created?.localId);
-  assert.equal(result.read?.revisionHash, result.created?.revisionHash);
-  assert.equal(result.deleted?.deleted, true);
-  assert.equal(result.deleted?.themeId, result.created?.localId);
-  assert.equal(result.absentAfterDelete, true);
-  return result;
+  } finally {
+    if (assetPath) await removeAsset(assetPath);
+  }
 }
 
 export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
   const runtime = { ...DEFAULT_RUNTIME, ...dependencies };
   const appPath = path.resolve(options.appPath || DEFAULT_APP);
-  const agentId = options.agentId || "codex";
-  const runAgent = options.runAgent !== false;
+  const runCli = options.runCli !== false;
   const executable = executableFor(appPath, runtime.platform);
   const ownsDataRoot = options.dataRoot === undefined;
   let dataRoot = null;
@@ -424,11 +584,12 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
         window.dreamskin.getInfo(),
         window.dreamskin.studio.bootstrap(),
       ]);
+      const targetTemplates = (bootstrap.targets || [])
+        .reduce((count, target) => count + (target.catalog || []).length, 0);
       return {
         info,
-        templates: bootstrap.catalog.length,
+        templates: targetTemplates || bootstrap.catalog.length,
         targetPluginIds: (bootstrap.targets || []).map((entry) => entry.pluginId),
-        agent: bootstrap.agents.find((entry) => entry.id === ${JSON.stringify(agentId)}) || null,
         title: document.title,
         readyState: document.readyState,
       };
@@ -439,40 +600,19 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
     assertPackagedProductBootstrap(base);
     assert.equal(base.title, "DreamSkin Studio");
     assert.equal(base.readyState, "complete");
-    assert.ok(base.templates > 0);
+    assert.equal(
+      base.templates,
+      REQUIRED_PACKAGED_TEMPLATE_COUNT,
+      `Packaged Studio must expose exactly ${REQUIRED_PACKAGED_TEMPLATE_COUNT} templates`,
+    );
     const ui = await waitForStudioUi(client);
     assert.ok(ui.heading, `Studio must render a visible page heading${ui.error ? `: ${ui.error}` : ""}`);
     assert.ok(ui.cards > 0, "Studio must render theme cards");
     assert.equal(ui.horizontalOverflow, false, "Studio must not overflow the packaged viewport horizontally");
 
-    const workBuddySmoke = runAgent ? null : await runWorkBuddyScopedSmoke(client);
-    let agentResult = null;
-    if (runAgent) {
-      assert.equal(base.agent?.state, "detected", `${agentId} must be installed and ACP-ready`);
-      agentResult = await client.evaluate(`(async () => {
-        const created = await window.dreamskin.studio.createTheme({ kind: "blank" });
-        await window.dreamskin.studio.connectAgent(${JSON.stringify(agentId)});
-        const result = await window.dreamskin.studio.sendThemeMessage(created.localId, {
-          agentId: ${JSON.stringify(agentId)},
-          expectedRevision: created.revisionHash,
-          prompt: "把强调色和焦点色统一改为 #2F7CF6，其他内容保持不变。",
-        });
-        return {
-          themeId: created.localId,
-          before: created.revisionHash,
-          after: result.theme.revisionHash,
-          accent: result.theme.theme.colors.accent,
-          focus: result.theme.theme.states.focus,
-          changes: result.changes,
-          sessionId: result.sessionId,
-          stopReason: result.stopReason,
-        };
-      })()`);
-      assert.notEqual(agentResult.after, agentResult.before);
-      assert.equal(agentResult.accent, "#2F7CF6");
-      assert.equal(agentResult.focus, "#2F7CF6");
-      assert.equal(agentResult.stopReason, "end_turn");
-    }
+    const cliResult = runCli ? await runPackagedCliSmoke({ appPath, dataRoot }, {
+      runProcess: runtime.runJsonProcess,
+    }) : null;
 
     if (options.screenshotPath) {
       const reloadMarker = `dreamskin-reload-${Date.now()}`;
@@ -487,8 +627,7 @@ export async function verifyPackagedDesktop(options = {}, dependencies = {}) {
     verificationResult = {
       ...base,
       ui,
-      workBuddySmoke,
-      agentResult,
+      cliResult,
       dataRoot: options.keepData || !ownsDataRoot ? dataRoot : undefined,
       screenshotPath: options.screenshotPath || undefined,
     };

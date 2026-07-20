@@ -31,6 +31,51 @@ export const WORKBUDDY_CATALOG_METADATA = deepFreeze({
     downloads: "New",
     version: "1.0",
   },
+  "forest-notes": {
+    author: "Field Notes Studio",
+    categories: ["精选", "美景", "极简"],
+    featured: true,
+    downloads: "4.8k",
+    version: "1.0",
+  },
+  "city-rain": {
+    author: "Night Window Lab",
+    categories: ["美景", "科技"],
+    downloads: "3.7k",
+    version: "1.0",
+  },
+  "desert-dawn": {
+    author: "DreamSkin Official",
+    categories: ["精选", "美景", "极简"],
+    featured: true,
+    downloads: "5.2k",
+    version: "1.0",
+  },
+  "ink-courtyard": {
+    author: "Moss & Ink",
+    categories: ["精选", "国风", "极简"],
+    downloads: "4.4k",
+    version: "1.0",
+  },
+  "orbit-console": {
+    author: "DreamSkin Labs",
+    categories: ["精选", "游戏", "科技"],
+    featured: true,
+    downloads: "6.1k",
+    version: "1.0",
+  },
+  "coral-studio": {
+    author: "Coastline Atelier",
+    categories: ["精选", "美景", "极简"],
+    downloads: "4.9k",
+    version: "1.0",
+  },
+  "winter-lodge": {
+    author: "North Room",
+    categories: ["美景", "极简"],
+    downloads: "3.5k",
+    version: "1.0",
+  },
 });
 
 export const WORKBUDDY_BLANK_SOURCE_ID = "harbor-focus";
@@ -49,7 +94,7 @@ export function createWorkBuddyBlankTheme(input = {}) {
     ...clone(sourceTheme),
     id,
     name: "未命名 WorkBuddy 主题",
-    description: "从安静的空白画布开始，通过与 Agent 对话逐步生成主题。",
+    description: "从安静的空白画布开始，让编程 Agent 通过 DreamSkin CLI 逐步生成主题。",
     brandSubtitle: "WORKBUDDY DREAM SKIN",
     tagline: "Describe how your workspace should feel.",
     statusText: "DRAFT THEME",

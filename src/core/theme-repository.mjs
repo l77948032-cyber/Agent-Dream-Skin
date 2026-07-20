@@ -7,11 +7,15 @@ import { ToolError } from "./errors.mjs";
 import { loadTheme } from "./theme-loader.mjs";
 import {
   COLOR_DEFAULTS,
+  IMAGE_TYPES,
+  MAX_ART_BYTES,
   STATE_DEFAULTS,
   THEME_ID_PATTERN,
   VISUAL_DEFAULTS,
+  matchesImageSignature,
   normalizeTheme,
 } from "./theme-model.mjs";
+import { mergeThemePatch } from "./theme-patch.mjs";
 
 const TOP_LEVEL_FIELDS = new Set([
   "schemaVersion", "id", "name", "description", "layout", "brandSubtitle", "tagline",
@@ -25,6 +29,8 @@ const APPEARANCE_FIELDS = new Set([
 const COLOR_FIELDS = new Set(Object.keys(COLOR_DEFAULTS));
 const STATE_FIELDS = new Set(Object.keys(STATE_DEFAULTS));
 const VISUAL_FIELDS = new Set(Object.keys(VISUAL_DEFAULTS));
+const THEME_PROVENANCE_FILE = ".dreamskin.json";
+const THEME_PROVENANCE_FIELDS = new Set(["schemaVersion", "origin", "sourceId"]);
 const TRANSACTION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MANIFEST_STATUSES = new Set(["prepared", "committed", "rollingBack", "rolledBack", "recovered"]);
 
@@ -32,17 +38,6 @@ function assertThemeId(id) {
   if (typeof id !== "string" || !THEME_ID_PATTERN.test(id)) {
     throw new ToolError("INVALID_THEME_ID", "Theme id must use lowercase letters, digits, hyphens, or underscores.");
   }
-}
-
-function mergePatch(target, patch) {
-  if (!patch || typeof patch !== "object" || Array.isArray(patch)) return patch;
-  const result = target && typeof target === "object" && !Array.isArray(target) ? { ...target } : {};
-  for (const [key, value] of Object.entries(patch)) {
-    if (value === null) delete result[key];
-    else if (typeof value === "object" && !Array.isArray(value)) result[key] = mergePatch(result[key], value);
-    else result[key] = value;
-  }
-  return result;
 }
 
 function rejectUnknownFields(object, allowed, label) {
@@ -93,6 +88,83 @@ function normalizeStrict(theme, source) {
     );
   }
   return normalized;
+}
+
+function normalizeProvenance(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ToolError("THEME_METADATA_INVALID", "Theme provenance must be an object.");
+  }
+  const unknown = Object.keys(value).filter((key) => !THEME_PROVENANCE_FIELDS.has(key));
+  if (unknown.length) {
+    throw new ToolError("THEME_METADATA_INVALID", "Theme provenance contains unsupported fields.", {
+      fields: unknown,
+    });
+  }
+  if (value.schemaVersion !== 1 || (value.origin !== "blank" && value.origin !== "template")) {
+    throw new ToolError("THEME_METADATA_INVALID", "Theme provenance has an unsupported schema or origin.");
+  }
+  if (value.origin === "template") {
+    if (typeof value.sourceId !== "string" || !THEME_ID_PATTERN.test(value.sourceId)) {
+      throw new ToolError("THEME_METADATA_INVALID", "Template provenance requires a valid sourceId.");
+    }
+    return { schemaVersion: 1, origin: "template", sourceId: value.sourceId };
+  }
+  if (value.sourceId !== undefined) {
+    throw new ToolError("THEME_METADATA_INVALID", "Blank theme provenance cannot declare sourceId.");
+  }
+  return { schemaVersion: 1, origin: "blank" };
+}
+
+async function readProvenance(fileSystem, themeDir) {
+  try {
+    const value = JSON.parse(await fileSystem.readFile(path.join(themeDir, THEME_PROVENANCE_FILE), "utf8"));
+    return normalizeProvenance(value);
+  } catch (error) {
+    if (error.code === "ENOENT") return null;
+    if (error instanceof ToolError) throw error;
+    throw new ToolError("THEME_METADATA_INVALID", "Theme provenance is not valid JSON.");
+  }
+}
+
+async function readImportImage(fileSystem, imagePath) {
+  if (typeof imagePath !== "string" || !path.isAbsolute(imagePath) || imagePath.includes("\0")) {
+    throw new ToolError("INVALID_ASSET_PATH", "Imported asset path must be an absolute local file path.");
+  }
+  const resolved = path.resolve(imagePath);
+  let stat;
+  try {
+    stat = await fileSystem.lstat(resolved);
+  } catch (error) {
+    if (error.code === "ENOENT") throw new ToolError("ASSET_NOT_FOUND", "The imported background image does not exist.");
+    throw error;
+  }
+  if (stat.isSymbolicLink()) {
+    throw new ToolError("INVALID_ASSET_PATH", "Imported background images cannot be symbolic links.");
+  }
+  if (!stat.isFile()) {
+    throw new ToolError("INVALID_ASSET_PATH", "Imported background image must be a regular file.");
+  }
+  const extension = path.extname(resolved).toLowerCase();
+  if (!IMAGE_TYPES.has(extension)) {
+    throw new ToolError("INVALID_IMAGE", "Background image must be PNG, JPEG, or WebP.");
+  }
+  if (stat.size > MAX_ART_BYTES) {
+    throw new ToolError("ASSET_TOO_LARGE", "Background image exceeds the 16 MiB limit.", {
+      bytes: stat.size,
+      maximumBytes: MAX_ART_BYTES,
+    });
+  }
+  const buffer = await fileSystem.readFile(resolved);
+  if (buffer.length > MAX_ART_BYTES) {
+    throw new ToolError("ASSET_TOO_LARGE", "Background image exceeds the 16 MiB limit.", {
+      bytes: buffer.length,
+      maximumBytes: MAX_ART_BYTES,
+    });
+  }
+  if (!matchesImageSignature(buffer, extension)) {
+    throw new ToolError("INVALID_IMAGE", "Background image contents do not match its file extension.");
+  }
+  return { buffer, extension, fileName: `background${extension}` };
 }
 
 async function pathExists(fileSystem, filePath) {
@@ -610,11 +682,13 @@ export class ThemeRepository {
       throw new ToolError("THEME_ID_MISMATCH", `Theme directory '${id}' contains theme id '${loaded.theme.id}'.`);
     }
     const metadata = await this.revisionForLoaded(loaded);
+    const provenance = await readProvenance(this.fs, loaded.themeDir);
     return {
       id,
       revision: metadata.revision,
       raw: loaded.raw,
       theme: loaded.theme,
+      ...(provenance ? { provenance } : {}),
       asset: {
         file: loaded.theme.image,
         mime: loaded.mime,
@@ -648,6 +722,7 @@ export class ThemeRepository {
           visual: item.theme.visual,
           revision: item.revision,
           valid: true,
+          ...(item.provenance ? { provenance: item.provenance } : {}),
         });
       } catch (error) {
         themes.push({ id, valid: false, error: { code: error.code || "THEME_INVALID", message: error.message } });
@@ -703,10 +778,11 @@ export class ThemeRepository {
     const id = input.id;
     assertThemeId(id);
     validatePatchShape(input.themePatch || {});
+    const provenance = input.provenance === undefined ? undefined : normalizeProvenance(input.provenance);
     if (input.themePatch?.id && input.themePatch.id !== id) {
       throw new ToolError("THEME_ID_MISMATCH", "themePatch.id must match the requested theme id.");
     }
-    return this.withLock(() => this.writeLocked({ ...input, id }));
+    return this.withLock(() => this.writeLocked({ ...input, id, provenance }));
   }
 
   async delete(id, { expectedRevision } = {}) {
@@ -778,18 +854,25 @@ export class ThemeRepository {
     });
   }
 
-  async writeLocked({ id, themePatch = {}, imagePath, expectedRevision, dryRun = false }) {
+  async writeLocked({ id, themePatch = {}, imagePath, provenance, expectedRevision, dryRun = false }) {
     const transactionId = crypto.randomUUID();
     const targetPath = this.themePath(id);
     const targetExists = await pathExists(this.fs, targetPath);
     let before = null;
     if (targetExists) before = await this.read(id);
+    if (targetExists && expectedRevision === null) {
+      throw new ToolError("THEME_ALREADY_EXISTS", `Theme '${id}' already exists.`, {
+        id,
+        actualRevision: before.revision,
+      });
+    }
     if (expectedRevision !== undefined && expectedRevision !== (before?.revision ?? null)) {
       throw new ToolError("REVISION_CONFLICT", "The theme changed after it was inspected.", {
         expectedRevision,
         actualRevision: before?.revision ?? null,
       });
     }
+    const importedImage = imagePath ? await readImportImage(this.fs, imagePath) : null;
 
     const stagePath = path.join(this.themesRoot, `.${id}.stage-${transactionId}`);
     const retiredPath = path.join(this.themesRoot, `.${id}.retired-${transactionId}`);
@@ -801,29 +884,37 @@ export class ThemeRepository {
       const base = before?.theme || {
         schemaVersion: 1,
         id,
-        image: imagePath ? path.basename(imagePath) : "background.png",
+        image: importedImage?.fileName || "background.png",
       };
-      const candidate = mergePatch(base, themePatch);
+      const candidate = mergeThemePatch(base, themePatch);
       candidate.schemaVersion = 1;
       candidate.id = id;
-      if (imagePath && !themePatch.image) candidate.image = path.basename(imagePath);
+      if (importedImage && !themePatch.image) candidate.image = importedImage.fileName;
       const normalized = normalizeStrict(candidate, "themePatch");
       if (normalized.id !== id) {
         throw new ToolError("THEME_ID_MISMATCH", "Normalized theme id does not match the target directory.");
       }
-      if (imagePath) {
-        const sourceImage = path.resolve(imagePath);
-        const stat = await this.fs.stat(sourceImage);
-        if (!stat.isFile()) throw new ToolError("INVALID_IMAGE", "imagePath must point to a file.");
-        await this.fs.copyFile(sourceImage, path.join(stagePath, normalized.image));
+      if (importedImage) {
+        if (before?.theme.image && before.theme.image !== normalized.image) {
+          await this.fs.rm(path.join(stagePath, before.theme.image), { force: true });
+        }
+        await this.fs.writeFile(path.join(stagePath, normalized.image), importedImage.buffer, { mode: 0o600 });
       }
       await this.fs.writeFile(
         path.join(stagePath, "theme.json"),
         `${JSON.stringify(normalized, null, 2)}\n`,
         { mode: 0o600 },
       );
+      if (provenance) {
+        await this.fs.writeFile(
+          path.join(stagePath, THEME_PROVENANCE_FILE),
+          `${JSON.stringify(provenance, null, 2)}\n`,
+          { mode: 0o600 },
+        );
+      }
       const staged = await loadTheme(stagePath, { projectRoot: this.projectRoot, allowedRoot: this.themesRoot });
       const afterMetadata = await this.revisionForLoaded(staged);
+      const stagedProvenance = await readProvenance(this.fs, stagePath);
       const result = {
         transactionId,
         dryRun: Boolean(dryRun),
@@ -831,6 +922,7 @@ export class ThemeRepository {
         beforeRevision: before?.revision ?? null,
         afterRevision: afterMetadata.revision,
         theme: staged.theme,
+        ...(stagedProvenance ? { provenance: stagedProvenance } : {}),
         warnings: afterMetadata.hasLegacySkinCss
           ? ["Legacy skin.css was preserved but was not modified."]
           : [],

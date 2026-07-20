@@ -5,8 +5,6 @@ import path from "node:path";
 import { TRAE_PLUGIN_ROOT } from "../../plugins/trae/plugin.mjs";
 
 import { createTraeApplicationContext } from "./application-context.mjs";
-import { AcpSessionManager } from "./acp-session-manager.mjs";
-import { AgentRegistry } from "./agent-registry.mjs";
 import { ToolError } from "./errors.mjs";
 import {
   PROJECT_ROOT,
@@ -23,37 +21,6 @@ function activeThemeId(status) {
     && status.themeId
     ? status.themeId
     : null;
-}
-
-function changedAreas(before, after) {
-  const areas = [
-    ["colors", "调色板"],
-    ["states", "交互状态"],
-    ["visual", "组件视觉"],
-    ["appearance", "界面材质"],
-    ["layout", "页面布局"],
-    ["image", "背景图"],
-    ["name", "主题名称"],
-    ["description", "主题说明"],
-    ["brandSubtitle", "装饰文案"],
-    ["tagline", "装饰文案"],
-    ["statusText", "装饰文案"],
-    ["quote", "装饰文案"],
-  ];
-  return [...new Set(areas
-    .filter(([field]) => JSON.stringify(before?.[field]) !== JSON.stringify(after?.[field]))
-    .map(([, label]) => label))];
-}
-
-function componentContext(component) {
-  if (!component) return "No component is selected. Apply the requested direction consistently across the theme.";
-  return [
-    `Selected semantic component: ${component.id}`,
-    `Description: ${component.description}`,
-    `Modes: ${(component.modes || []).join(", ")}`,
-    `States: ${(component.states || []).join(", ")}`,
-    `Visual slots: ${(component.visualSlots || []).join(", ")}`,
-  ].join("\n");
 }
 
 function withoutPluginId(input = {}) {
@@ -113,8 +80,7 @@ export class StudioBackend {
     runtimeManager,
     pluginManager,
     library,
-    agentRegistry = new AgentRegistry(),
-    sessions,
+    cliManager = null,
     registryPath = REGISTRY_PATH,
     themesRoot = STUDIO_THEMES_ROOT,
     dataRoot = STUDIO_DATA_ROOT,
@@ -144,26 +110,7 @@ export class StudioBackend {
     }
     const defaultTarget = this.targets.get(defaultPluginId);
     this.library = defaultTarget.library;
-    this.agentRegistry = agentRegistry;
-    this.sessions = sessions || new AcpSessionManager({
-      agentRegistry,
-      themesRoot: defaultTarget.themesRoot,
-      themeRoots: Object.fromEntries(
-        [...this.targets.values()].map((target) => [target.pluginId, target.themesRoot]),
-      ),
-      pluginRoots: Object.fromEntries(
-        [...this.targets.values()]
-          .filter((target) => target.pluginRoot || target.plugin?.rootPath)
-          .map((target) => [target.pluginId, target.pluginRoot || target.plugin.rootPath]),
-      ),
-      dataRoots: Object.fromEntries(
-        [...this.targets.values()].map((target) => [target.pluginId, target.dataRoot]),
-      ),
-      backupsRoot: defaultTarget.backupsRoot,
-      backupRoots: Object.fromEntries(
-        [...this.targets.values()].map((target) => [target.pluginId, target.backupsRoot]),
-      ),
-    });
+    this.cliManager = cliManager;
     this.registryPath = defaultTarget.registryPath;
     this.themesRoot = defaultTarget.themesRoot;
     this.previewRoot = path.join(path.resolve(dataRoot), "previews");
@@ -264,7 +211,7 @@ export class StudioBackend {
   }
 
   async bootstrap() {
-    const [targetResults, agents, settings] = await Promise.all([
+    const [targetResults, settings] = await Promise.all([
       Promise.all([...this.targets.values()].map(async (target) => {
         const [inspect, runtime, catalog, components] = await Promise.all([
           this.tool.inspect(target.pluginId),
@@ -288,7 +235,6 @@ export class StudioBackend {
           themesRoot: target.themesRoot,
         };
       })),
-      this.sessions.agents(),
       this.library.settings(),
     ]);
     const defaultTarget = targetResults.find((target) => target.pluginId === this.defaultPluginId);
@@ -296,8 +242,6 @@ export class StudioBackend {
       // Legacy fields continue to describe the default target.
       catalog: defaultTarget.catalog,
       themes: defaultTarget.themes,
-      agents,
-      connection: this.sessions.connectionState(),
       plugins: this.pluginManager.list(),
       activePluginId: this.defaultPluginId,
       targets: targetResults,
@@ -418,99 +362,6 @@ export class StudioBackend {
     });
   }
 
-  async agents() {
-    return this.sessions.agents();
-  }
-
-  async connectAgent(id) {
-    await this.sessions.connect(id);
-    await this.library.updateSettings({ selectedAgentId: id });
-    return {
-      agents: await this.sessions.agents(),
-      connection: this.sessions.connectionState(),
-    };
-  }
-
-  message(id, input = {}, pluginId) {
-    return this.themeLifecycleOperation(() => this.messageUnlocked(id, input, pluginId));
-  }
-
-  async messageUnlocked(id, rawInput = {}, explicitPluginId) {
-    const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
-    const target = this.target(pluginId);
-    const prompt = typeof input.prompt === "string" ? input.prompt.trim() : "";
-    if (!prompt) throw new ToolError("INVALID_ARGUMENT", "prompt is required.");
-    const before = await target.library.read(id);
-    if (typeof input.expectedRevision !== "string" || !input.expectedRevision) {
-      throw new ToolError("INVALID_ARGUMENT", "expectedRevision is required when editing a theme by chat.");
-    }
-    if (input.expectedRevision !== before.revisionHash) {
-      throw new ToolError("REVISION_CONFLICT", "The theme changed after it was opened.", {
-        expectedRevision: input.expectedRevision,
-        actualRevision: before.revisionHash,
-      });
-    }
-    const agentId = input.agentId || this.sessions.selectedAgentId || (await this.library.settings()).selectedAgentId;
-    if (!agentId) throw new ToolError("AGENT_NOT_CONNECTED", "Connect a local ACP agent before editing by chat.");
-    const component = input.componentId
-      ? (await this.components(pluginId)).find((candidate) => candidate.id === input.componentId)
-      : null;
-    if (input.componentId && !component) {
-      throw new ToolError("COMPONENT_NOT_FOUND", `Component '${input.componentId}' is not registered.`);
-    }
-    const settings = await this.library.settings();
-    const context = [
-      "You are editing one structured theme through the DreamSkin Tool provided by Studio.",
-      `Target plugin id: ${pluginId}`,
-      `Target theme id: ${id}`,
-      `Current revision: ${before.revisionHash}`,
-      `Exact read arguments: ${JSON.stringify({
-        action: "read",
-        pluginId,
-        themeId: id,
-      })}`,
-      `Exact update argument keys: ${JSON.stringify({
-        action: "update",
-        pluginId,
-        themeId: id,
-        expectedRevision: before.revisionHash,
-        themePatch: { colors: { accent: "#RRGGBB" } },
-      })}`,
-      "Use only pluginId, themeId, expectedRevision, and themePatch. Never shorten them to plugin, theme, or revision.",
-      componentContext(component),
-      settings.autoVerify
-        ? "Call dreamskin_theme with action inspect/read first, then action update with expectedRevision, then action validate."
-        : "Call dreamskin_theme with action inspect/read first, then action update with expectedRevision. Validate only when needed.",
-      "Do not edit repository source files, do not write CSS, and do not use shell commands for the theme change.",
-      "Keep all unmentioned parts coherent. Finish with a concise Chinese summary of the visible changes.",
-    ].join("\n");
-    const run = await this.sessions.prompt({
-      agentId,
-      themeId: id,
-      pluginId,
-      prompt,
-      context,
-      expectedRevision: before.revisionHash,
-    });
-    const after = await target.library.reconcile(id);
-    this.sessions.acceptRevision?.({
-      agentId,
-      themeId: id,
-      pluginId,
-      sessionId: run.sessionId,
-      revision: after.revisionHash,
-    });
-    if (settings.autoVerify) await this.tool.validateTheme({ themeId: id }, pluginId);
-    const changes = changedAreas(before.theme, after.theme);
-    return {
-      theme: after,
-      message: run.text || (changes.length ? "主题已经通过 DreamSkin Tool 更新。" : "Agent 已完成检查，主题结构没有变化。"),
-      changes,
-      sessionId: run.sessionId,
-      stopReason: run.response.stopReason,
-    };
-  }
-
   catalog(pluginId = this.defaultPluginId) {
     return this.target(pluginId).library.catalog();
   }
@@ -539,6 +390,36 @@ export class StudioBackend {
     };
   }
 
+  async cliStatus() {
+    if (this.cliManager?.status) return this.cliManager.status();
+    return {
+      supported: false,
+      state: "unsupported",
+      installed: false,
+      current: false,
+      available: false,
+      command: "dreamskin",
+      path: null,
+      targetPath: "",
+      pathAvailable: false,
+      message: "CLI 安装仅在 macOS 桌面安装包中提供。",
+    };
+  }
+
+  async installCli() {
+    if (!this.cliManager?.install) {
+      throw new ToolError("CLI_INSTALL_UNSUPPORTED", "DreamSkin CLI installation is not available in this Studio mode.");
+    }
+    return this.cliManager.install();
+  }
+
+  async uninstallCli() {
+    if (!this.cliManager?.uninstall) {
+      throw new ToolError("CLI_INSTALL_UNSUPPORTED", "DreamSkin CLI installation is not available in this Studio mode.");
+    }
+    return this.cliManager.uninstall();
+  }
+
   verify(rawInput = {}, explicitPluginId) {
     const { pluginId, input } = this.scopedInput(rawInput, explicitPluginId);
     this.assertRuntimeMutationsEnabled(pluginId);
@@ -554,7 +435,6 @@ export class StudioBackend {
   }
 
   async close() {
-    await this.sessions.close();
     const active = this.pluginManager.list({ state: "active" });
     await Promise.allSettled(active.map((entry) => this.pluginManager.deactivate(entry.id)));
   }
@@ -570,10 +450,7 @@ export async function createStudioBackend({
   manifestPath = STUDIO_LIBRARY_PATH,
   projectRoot = PROJECT_ROOT,
   scriptsRoot = path.join(projectRoot, "scripts"),
-  agentRegistry,
-  agentRegistryOptions = {},
-  sessions,
-  sessionOptions = {},
+  cliManager,
   applicationContext,
   defaultPluginId,
   targetOptions = {},
@@ -667,37 +544,12 @@ export async function createStudioBackend({
       pluginId: resolvedDefaultPluginId,
     });
   }
-  const targetAgentRegistry = agentRegistry || new AgentRegistry({
-    projectRoot,
-    ...agentRegistryOptions,
-  });
-  const targetSessions = sessions || new AcpSessionManager({
-    agentRegistry: targetAgentRegistry,
-    projectRoot,
-    themesRoot: defaultTarget.themesRoot,
-    themeRoots: Object.fromEntries(studioTargets.map((target) => [target.pluginId, target.themesRoot])),
-    pluginRoots: Object.fromEntries(
-      studioTargets
-        .filter((target) => target.pluginRoot)
-        .map((target) => [target.pluginId, target.pluginRoot]),
-    ),
-    dataRoots: Object.fromEntries(
-      studioTargets.map((target) => [target.pluginId, target.dataRoot]),
-    ),
-    backupsRoot: defaultTarget.backupsRoot,
-    backupRoots: Object.fromEntries(
-      studioTargets.map((target) => [target.pluginId, target.backupsRoot]),
-    ),
-    dataRoot,
-    ...sessionOptions,
-  });
   return new StudioBackend({
     tool: context.tool,
     runtimeManager: context.runtime,
     pluginManager: context.pluginManager,
     library: defaultTarget.library,
-    agentRegistry: targetAgentRegistry,
-    sessions: targetSessions,
+    cliManager,
     registryPath: defaultTarget.registryPath,
     themesRoot: defaultTarget.themesRoot,
     targets: studioTargets,

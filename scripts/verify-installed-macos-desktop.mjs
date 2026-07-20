@@ -101,8 +101,7 @@ async function runRequired(runner, { code, label, command, args }) {
 export async function verifyInstalledMacDesktop({
   dmgPath,
   productName = "DreamSkin Studio",
-  runAgent = false,
-  agentId = "codex",
+  runCli = true,
   screenshotPath = null,
 } = {}, {
   platform = process.platform,
@@ -171,15 +170,13 @@ export async function verifyInstalledMacDesktop({
     });
     const packaged = await verifyPackaged({
       appPath: installedApp,
-      runAgent,
-      agentId,
+      runCli,
       screenshotPath,
       dataRoot: restartDataRoot,
     });
     const restarted = await verifyPackaged({
       appPath: installedApp,
-      runAgent: false,
-      agentId,
+      runCli,
       dataRoot: restartDataRoot,
     });
     result = Object.freeze({
@@ -241,7 +238,7 @@ export async function verifyInstalledMacDesktop({
 }
 
 export function parseInstalledDesktopArguments(argv, { cwd = process.cwd() } = {}) {
-  const parsed = { runAgent: false, agentId: "codex" };
+  const parsed = { runCli: true };
   const pathFlags = new Map([
     ["--project-root", "projectRoot"],
     ["--dmg", "dmgPath"],
@@ -249,12 +246,8 @@ export function parseInstalledDesktopArguments(argv, { cwd = process.cwd() } = {
   ]);
   for (let index = 0; index < argv.length; index += 1) {
     const raw = argv[index];
-    if (raw === "--with-agent") {
-      parsed.runAgent = true;
-      continue;
-    }
-    if (raw === "--agent") {
-      parsed.agentId = requireText(argv[++index], "--agent");
+    if (raw === "--skip-cli") {
+      parsed.runCli = false;
       continue;
     }
     const equalsIndex = raw.indexOf("=");
@@ -284,13 +277,6 @@ export function parseInstalledDesktopArguments(argv, { cwd = process.cwd() } = {
     }
     parsed[key] = path.resolve(cwd, value);
   }
-  if (!/^[a-z0-9_-]+$/i.test(parsed.agentId)) {
-    throw new InstalledDesktopVerificationError(
-      "MAC_INSTALLED_ARGUMENT_INVALID",
-      "--agent must be a simple agent identifier.",
-      { agentId: parsed.agentId },
-    );
-  }
   return parsed;
 }
 
@@ -306,8 +292,7 @@ export async function runInstalledDesktopVerifier(argv = process.argv.slice(2)) 
   return verifyInstalledMacDesktop({
     dmgPath: options.dmgPath || defaults.dmg,
     productName: manifest.build?.productName || manifest.productName,
-    runAgent: options.runAgent,
-    agentId: options.agentId,
+    runCli: options.runCli,
     screenshotPath: options.screenshotPath || null,
   });
 }

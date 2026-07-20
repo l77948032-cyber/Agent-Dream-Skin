@@ -3,7 +3,7 @@
   "id": "paper-aurora",
   "name": "Paper Aurora",
   "description": "清亮纸白工作台，搭配莓红、墨青和黄铜色，适合明亮环境。",
-  "image": "background.png",
+  "image": "background-v2.png",
   "colors": {
     "background": "#F3F6F3",
     "panel": "#FCFDFC",

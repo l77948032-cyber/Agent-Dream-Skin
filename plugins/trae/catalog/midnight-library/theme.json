@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "midnight-library",
+  "name": "Midnight Library",
+  "description": "雨夜古典图书馆化为沉静的深色工作空间，古金、墨绿与窗外蓝光共同标记重点、状态和层级。",
+  "layout": "classic",
+  "brandSubtitle": "TRAE / MIDNIGHT LIBRARY",
+  "tagline": "Deep work for the after-hours mind.",
+  "statusText": "READING ROOM OPEN",
+  "quote": "RESEARCH / REASON / REVEAL",
+  "image": "background.png",
+  "colors": {
+    "background": "#0D0C0A",
+    "panel": "#1B1712",
+    "panelAlt": "#292117",
+    "accent": "#CBA45B",
+    "accentAlt": "#5E9C77",
+    "secondary": "#668DAB",
+    "highlight": "#C77645",
+    "onAccent": "#191209",
+    "success": "#69A57E",
+    "warning": "#CBA45B",
+    "danger": "#C26858",
+    "info": "#6D98B8",
+    "disabled": "#736B5F",
+    "text": "#F7EEDB",
+    "muted": "#C2B49B",
+    "line": "rgba(203, 164, 91, 0.27)",
+    "selection": "rgba(94, 156, 119, 0.24)",
+    "terminal": "#090806"
+  },
+  "states": {
+    "surfaceHover": "rgba(203, 164, 91, 0.11)",
+    "surfaceActive": "rgba(94, 156, 119, 0.18)",
+    "focus": "#CBA45B",
+    "tooltipBackground": "#302619",
+    "tooltipText": "#F7EEDB"
+  },
+  "visual": {
+    "motif": "editorial",
+    "iconTreatment": "medallion",
+    "surfaceTreatment": "layered",
+    "accentPlacement": "underline",
+    "cardTreatment": "poster",
+    "ornament": "rules"
+  },
+  "appearance": {
+    "treatment": "ember-vignette",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(15, 10, 7, 0.18)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.94,
+    "surfaceOpacity": 0.85,
+    "sidebarOpacity": 0.94,
+    "blur": 10,
+    "saturation": 0.86,
+    "radius": 5,
+    "shadow": "deep",
+    "colorScheme": "dark"
+  }
+}

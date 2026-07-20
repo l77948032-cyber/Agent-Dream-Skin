@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "cosmic-arcade",
+  "name": "Cosmic Arcade",
+  "description": "环地轨道上的未来街机厅，以电光青、熔橙与紫红状态色构成高辨识度的沉浸式开发驾驶舱。",
+  "layout": "studio-collage",
+  "brandSubtitle": "TRAE / COSMIC ARCADE",
+  "tagline": "Ship the next high score.",
+  "statusText": "ORBITAL SESSION LIVE",
+  "quote": "INSERT IDEA / PRESS BUILD",
+  "image": "background.png",
+  "colors": {
+    "background": "#050B12",
+    "panel": "#0A1822",
+    "panelAlt": "#102636",
+    "accent": "#45CBF2",
+    "accentAlt": "#FF875F",
+    "secondary": "#D36DE2",
+    "highlight": "#F3C553",
+    "onAccent": "#031015",
+    "success": "#5ED5A0",
+    "warning": "#F3C553",
+    "danger": "#F06E78",
+    "info": "#45CBF2",
+    "disabled": "#647985",
+    "text": "#F1F8FB",
+    "muted": "#A7BBC6",
+    "line": "rgba(69, 203, 242, 0.28)",
+    "selection": "rgba(255, 135, 95, 0.24)",
+    "terminal": "#03080D"
+  },
+  "states": {
+    "surfaceHover": "rgba(69, 203, 242, 0.12)",
+    "surfaceActive": "rgba(211, 109, 226, 0.20)",
+    "focus": "#45CBF2",
+    "tooltipBackground": "#122B3A",
+    "tooltipText": "#F1F8FB"
+  },
+  "visual": {
+    "motif": "prism",
+    "iconTreatment": "tile",
+    "surfaceTreatment": "glass",
+    "accentPlacement": "glow",
+    "cardTreatment": "badge",
+    "ornament": "facets"
+  },
+  "appearance": {
+    "treatment": "midnight-neon",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(3, 8, 15, 0.14)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.96,
+    "surfaceOpacity": 0.78,
+    "sidebarOpacity": 0.91,
+    "blur": 16,
+    "saturation": 0.94,
+    "radius": 6,
+    "shadow": "deep",
+    "colorScheme": "dark"
+  }
+}

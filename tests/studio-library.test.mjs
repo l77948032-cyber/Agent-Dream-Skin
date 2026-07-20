@@ -21,8 +21,10 @@ async function libraryFixture(t) {
   for (const id of Object.keys(TRAE_CATALOG_METADATA)) {
     const themeRoot = path.join(catalogRoot, id);
     await fs.mkdir(themeRoot, { recursive: true });
-    await fs.copyFile(path.join(ROOT, "themes", id, "theme.json"), path.join(themeRoot, "theme.json"));
-    await fs.writeFile(path.join(themeRoot, "background.png"), PNG_SIGNATURE);
+    const sourceThemePath = path.join(ROOT, "plugins", "trae", "catalog", id, "theme.json");
+    const sourceTheme = JSON.parse(await fs.readFile(sourceThemePath, "utf8"));
+    await fs.copyFile(sourceThemePath, path.join(themeRoot, "theme.json"));
+    await fs.writeFile(path.join(themeRoot, sourceTheme.image), PNG_SIGNATURE);
   }
 
   const catalogRepository = new ThemeRepository({
@@ -57,6 +59,10 @@ async function libraryFixture(t) {
     updateTheme(input, pluginId) {
       toolCalls.push({ action: "update", input: structuredClone(input), pluginId });
       return context.tool.updateTheme(input, pluginId);
+    },
+    importThemeAsset(input, pluginId) {
+      toolCalls.push({ action: "importAsset", input: structuredClone(input), pluginId });
+      return context.tool.importThemeAsset(input, pluginId);
     },
   };
   let currentTime = Date.parse("2026-07-19T12:00:00.000Z");
@@ -128,7 +134,7 @@ test("blank themes are valid immediately and survive a new library instance", as
   const fixture = await libraryFixture(t);
   const blank = await fixture.library.createBlank();
   assert.equal(fixture.toolCalls[0].action, "create");
-  assert.equal(fixture.toolCalls[0].input.sourceId, "paper-aurora");
+  assert.equal(fixture.toolCalls[0].input.sourceId, undefined);
 
   assert.match(blank.localId, /^blank-[a-f0-9]{8}$/);
   assert.equal(blank.origin, "blank");
@@ -137,6 +143,10 @@ test("blank themes are valid immediately and survive a new library instance", as
   assert.equal(blank.theme.appearance.treatment, "neutral");
   assert.equal(blank.theme.appearance.backgroundOpacity, 0);
   assert.match(blank.revisionHash, /^[a-f0-9]{64}$/);
+  assert.deepEqual((await fixture.userRepository.read(blank.localId)).provenance, {
+    schemaVersion: 1,
+    origin: "blank",
+  });
 
   const validation = await fixture.userRepository.validate({ id: blank.localId });
   assert.equal(validation.valid, true);
@@ -164,8 +174,10 @@ test("Studio duplicates themes through the Tool and deletes only the inspected r
   assert.match(duplicate.localId, /-copy-[a-f0-9]{8}$/);
   assert.equal(duplicate.theme.name, `${source.theme.name} 副本`);
   assert.equal(duplicate.theme.colors.accent, source.theme.colors.accent);
-  assert.equal(fixture.toolCalls.at(-1).action, "create");
-  assert.equal(fixture.toolCalls.at(-1).input.sourceId, "sunlit-spark");
+  assert.equal(fixture.toolCalls.at(-2).action, "create");
+  assert.equal(fixture.toolCalls.at(-2).input.sourceId, "sunlit-spark");
+  assert.equal(fixture.toolCalls.at(-1).action, "importAsset");
+  assert.equal(fixture.toolCalls.at(-1).input.themeId, duplicate.localId);
   assert.equal((await fixture.library.list()).length, 2);
 
   await assert.rejects(
@@ -235,21 +247,23 @@ test("catalog and user assets expose validated stream metadata", async (t) => {
   await assert.rejects(() => library.asset("theme", "not-a-theme"), (error) => error.code === "THEME_NOT_FOUND");
 });
 
-test("Studio discovers themes created directly through the shared MCP repository", async (t) => {
+test("Studio discovers themes created directly through the shared CLI repository", async (t) => {
   const fixture = await libraryFixture(t);
   const source = await fixture.catalogRepository.read("ember-glass");
-  const id = "mcp-created-theme";
+  const id = "cli-created-theme";
   const write = await fixture.userRepository.write({
     id,
     imagePath: path.join(fixture.catalogRoot, "ember-glass", source.asset.file),
     expectedRevision: null,
-    themePatch: { ...structuredClone(source.theme), id, name: "MCP Created Theme" },
+    provenance: { schemaVersion: 1, origin: "template", sourceId: "ember-glass" },
+    themePatch: { ...structuredClone(source.theme), id, name: "CLI Created Theme" },
   });
 
   const discovered = await fixture.library.read(id);
   assert.equal(discovered.localId, id);
-  assert.equal(discovered.origin, "blank");
-  assert.equal(discovered.theme.name, "MCP Created Theme");
+  assert.equal(discovered.origin, "template");
+  assert.equal(discovered.sourceId, "ember-glass");
+  assert.equal(discovered.theme.name, "CLI Created Theme");
   assert.equal(discovered.revision, 1);
   assert.equal(discovered.revisionHash, write.afterRevision);
   assert.equal(discovered.status, "verified");
@@ -260,7 +274,7 @@ test("Studio discovers themes created directly through the shared MCP repository
   assert.equal((await fixture.library.list())[0].localId, id);
 });
 
-test("Studio synchronizes external MCP edits into manifest revision metadata", async (t) => {
+test("Studio synchronizes external CLI edits into manifest revision metadata", async (t) => {
   const fixture = await libraryFixture(t);
   const added = await fixture.library.addTemplate("neon-portal");
   const originalUpdatedAt = added.updatedAt;
@@ -269,11 +283,11 @@ test("Studio synchronizes external MCP edits into manifest revision metadata", a
   const external = await fixture.userRepository.write({
     id: added.localId,
     expectedRevision: added.revisionHash,
-    themePatch: { name: "Neon Portal via MCP" },
+    themePatch: { name: "Neon Portal via CLI" },
   });
   const synchronized = await fixture.library.read(added.localId);
 
-  assert.equal(synchronized.theme.name, "Neon Portal via MCP");
+  assert.equal(synchronized.theme.name, "Neon Portal via CLI");
   assert.equal(synchronized.revision, 2);
   assert.equal(synchronized.revisionHash, external.afterRevision);
   assert.notEqual(synchronized.updatedAt, originalUpdatedAt);

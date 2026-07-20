@@ -5,22 +5,17 @@ import test from "node:test";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 
-test("Studio presents DreamSkin as a Tool instead of an MCP product", async () => {
+test("Studio presents a local theme library instead of an embedded Agent connection", async () => {
   const sources = await Promise.all([
     "studio/src/App.tsx",
-    "studio/src/ThemeShowcase.tsx",
-    "src/core/studio-backend.mjs",
+    "studio/src/api.ts",
   ].map((file) => fs.readFile(path.join(ROOT, file), "utf8")));
   const userInterfaceSource = sources.join("\n");
 
   for (const forbidden of [
-    "DreamSkin MCP",
-    "MCP 已连接",
-    "MCP 已就绪",
-    "MCP Runtime",
-    "MCP 语义组件",
-    "通过 MCP 应用",
-    "使用 MCP 的运行时样式",
+    "Agent 连接",
+    "DreamSkin Tool 已就绪",
+    "通过 DreamSkin Tool 应用到",
   ]) {
     assert.equal(
       userInterfaceSource.includes(forbidden),
@@ -29,6 +24,7 @@ test("Studio presents DreamSkin as a Tool instead of an MCP product", async () =
     );
   }
 
-  assert.match(userInterfaceSource, /DreamSkin Tool 已就绪/);
-  assert.match(userInterfaceSource, /通过 DreamSkin Tool 应用到/);
+  assert.match(userInterfaceSource, /DreamSkin CLI/);
+  assert.match(userInterfaceSource, /本地主题库/);
+  assert.match(userInterfaceSource, /getCliStatus/);
 });

@@ -1,33 +1,23 @@
 import type { CatalogEntry, LocalTheme } from "./catalog";
 import type { StudioTheme } from "./themes";
 
-export type AgentState = "connected" | "detected" | "missing" | "error" | string;
-
-export interface AgentDto {
-  id: string;
-  name: string;
-  command: string;
-  version?: string | null;
-  state: AgentState;
-  initial?: string;
-  error?: string;
-  capabilities?: {
-    acp?: boolean;
-    tool?: boolean;
-    toolTransport?: "native" | "acp" | "stdio-compat" | string | null;
-  };
-}
-
-export interface AgentConnection {
-  agentId: string | null;
-  state: "connected" | "connecting" | "disconnected" | "error" | string;
-}
-
 export interface StudioSettings {
   themesRoot: string;
   themeRoots?: Record<string, string>;
-  autoVerify: boolean;
   motionEnabled: boolean;
+}
+
+export interface CliStatusDto {
+  supported: boolean;
+  state: "unsupported" | "unavailable" | "not-installed" | "stale" | "ready";
+  installed: boolean;
+  current: boolean;
+  available: boolean;
+  command: string;
+  path: string | null;
+  targetPath: string | null;
+  pathAvailable: boolean;
+  message?: string;
 }
 
 export interface InspectDto {
@@ -62,8 +52,6 @@ export interface PluginDto {
 export interface BootstrapResponse {
   catalog: CatalogEntry[];
   themes: LocalTheme[];
-  agents: AgentDto[];
-  connection: AgentConnection;
   plugins: PluginDto[];
   activePluginId: string;
   settings: StudioSettings;
@@ -85,22 +73,9 @@ export interface StudioTargetDto {
   themesRoot?: string;
 }
 
-export interface AgentConnectionResponse {
-  agents: AgentDto[];
-  connection: AgentConnection;
-}
-
 export interface ApplyThemeResponse {
   theme: LocalTheme;
   runtime: unknown;
-}
-
-export interface ThemeMessageResponse {
-  theme: LocalTheme;
-  message: string;
-  changes: string[];
-  sessionId: string;
-  stopReason: string;
 }
 
 export type CreateThemeInput = ({ kind: "template"; sourceId: string } | { kind: "blank" }) & {
@@ -114,13 +89,6 @@ export interface PluginScope {
 
 export interface UpdateThemeInput {
   theme: StudioTheme;
-  expectedRevision: string;
-}
-
-export interface ThemeMessageInput {
-  prompt: string;
-  componentId?: string;
-  agentId?: string;
   expectedRevision: string;
 }
 
@@ -197,10 +165,10 @@ export interface StudioTransport {
   getTheme(id: string, pluginId?: string): Promise<LocalTheme>;
   updateTheme(id: string, input: UpdateThemeInput, pluginId?: string): Promise<LocalTheme>;
   applyTheme(id: string, pluginId?: string): Promise<ApplyThemeResponse>;
-  sendThemeMessage(id: string, input: ThemeMessageInput, pluginId?: string): Promise<ThemeMessageResponse>;
-  listAgents(): Promise<AgentDto[]>;
-  connectAgent(id: string): Promise<AgentConnectionResponse>;
-  updateSettings(settings: Partial<Pick<StudioSettings, "autoVerify" | "motionEnabled">>): Promise<StudioSettings>;
+  getCliStatus(): Promise<CliStatusDto>;
+  installCli(): Promise<CliStatusDto>;
+  uninstallCli(): Promise<CliStatusDto>;
+  updateSettings(settings: Partial<Pick<StudioSettings, "motionEnabled">>): Promise<StudioSettings>;
   verifyRuntime(input?: Record<string, unknown>, pluginId?: string): Promise<Record<string, unknown>>;
   restoreRuntime(pluginId?: string): Promise<RuntimeRestoreResponse>;
 }
@@ -217,11 +185,11 @@ export interface DreamSkinStudioBridge {
   applyTheme(id: string, pluginId?: string): Promise<ApplyThemeResponse>;
   validateTheme(id: string): Promise<unknown>;
   previewTheme(id: string, input?: Record<string, unknown>): Promise<unknown>;
-  sendThemeMessage(id: string, input: ThemeMessageInput, pluginId?: string): Promise<ThemeMessageResponse>;
-  listAgents(): Promise<AgentDto[]>;
-  connectAgent(id: string): Promise<AgentConnectionResponse>;
+  getCliStatus(): Promise<CliStatusDto>;
+  installCli(): Promise<CliStatusDto>;
+  uninstallCli(): Promise<CliStatusDto>;
   getSettings(): Promise<StudioSettings>;
-  updateSettings(settings: Partial<Pick<StudioSettings, "autoVerify" | "motionEnabled">>): Promise<StudioSettings>;
+  updateSettings(settings: Partial<Pick<StudioSettings, "motionEnabled">>): Promise<StudioSettings>;
   verifyRuntime(input?: Record<string, unknown>, pluginId?: string): Promise<unknown>;
   restoreRuntime(pluginId?: string): Promise<unknown>;
 }
@@ -337,14 +305,9 @@ export function createHttpStudioTransport(): StudioTransport {
     applyTheme: (id, pluginId) => httpRequest<ApplyThemeResponse>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}/apply`), {
       method: "POST",
     }),
-    sendThemeMessage: (id, input, pluginId) => httpRequest<ThemeMessageResponse>(pluginApiPath(pluginId, `/themes/${encodeURIComponent(id)}/messages`), {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
-    listAgents: () => httpRequest<AgentDto[]>("/agents"),
-    connectAgent: (id) => httpRequest<AgentConnectionResponse>(`/agents/${encodeURIComponent(id)}/connect`, {
-      method: "POST",
-    }),
+    getCliStatus: () => httpRequest<CliStatusDto>("/cli"),
+    installCli: () => httpRequest<CliStatusDto>("/cli/install", { method: "POST" }),
+    uninstallCli: () => httpRequest<CliStatusDto>("/cli/uninstall", { method: "POST" }),
     updateSettings: (settings) => httpRequest<StudioSettings>("/settings", {
       method: "PATCH",
       body: JSON.stringify(settings),
@@ -377,9 +340,9 @@ export function createElectronStudioTransport(bridge: DreamSkinStudioBridge): St
     getTheme: (id, pluginId) => call(() => bridge.getTheme(id, pluginId)),
     updateTheme: (id, input, pluginId) => call(() => bridge.updateTheme(id, input, pluginId)),
     applyTheme: (id, pluginId) => call(() => bridge.applyTheme(id, pluginId)),
-    sendThemeMessage: (id, input, pluginId) => call(() => bridge.sendThemeMessage(id, input, pluginId)),
-    listAgents: () => call(() => bridge.listAgents()),
-    connectAgent: (id) => call(() => bridge.connectAgent(id)),
+    getCliStatus: () => call(() => bridge.getCliStatus()),
+    installCli: () => call(() => bridge.installCli()),
+    uninstallCli: () => call(() => bridge.uninstallCli()),
     updateSettings: (settings) => call(() => bridge.updateSettings(settings)),
     verifyRuntime: (input = {}, pluginId) => call(() => bridge.verifyRuntime(input, pluginId) as Promise<Record<string, unknown>>),
     restoreRuntime: (pluginId) => call(() => bridge.restoreRuntime(pluginId) as Promise<RuntimeRestoreResponse>),
@@ -418,10 +381,10 @@ export const studioApi = {
   getTheme: (id: string, pluginId?: string) => transport().getTheme(id, pluginId),
   updateTheme: (id: string, theme: StudioTheme, expectedRevision: string, pluginId?: string) => transport().updateTheme(id, { theme, expectedRevision }, pluginId),
   applyTheme: (id: string, pluginId?: string) => transport().applyTheme(id, pluginId),
-  sendThemeMessage: (id: string, input: ThemeMessageInput, pluginId?: string) => transport().sendThemeMessage(id, input, pluginId),
-  listAgents: () => transport().listAgents(),
-  connectAgent: (id: string) => transport().connectAgent(id),
-  updateSettings: (settings: Partial<Pick<StudioSettings, "autoVerify" | "motionEnabled">>) => transport().updateSettings(settings),
+  getCliStatus: () => transport().getCliStatus(),
+  installCli: () => transport().installCli(),
+  uninstallCli: () => transport().uninstallCli(),
+  updateSettings: (settings: Partial<Pick<StudioSettings, "motionEnabled">>) => transport().updateSettings(settings),
   verifyRuntime: (input: Record<string, unknown> = {}, pluginId?: string) => transport().verifyRuntime(input, pluginId),
   restoreRuntime: (pluginId?: string) => transport().restoreRuntime(pluginId),
 };

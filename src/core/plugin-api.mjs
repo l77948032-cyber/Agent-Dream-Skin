@@ -11,6 +11,7 @@ export const THEME_TOOL_ACTIONS = Object.freeze([
   "read",
   "create",
   "update",
+  "importAsset",
   "validate",
 ]);
 export const RUNTIME_ACTIONS = Object.freeze(["apply", "verify", "restore"]);

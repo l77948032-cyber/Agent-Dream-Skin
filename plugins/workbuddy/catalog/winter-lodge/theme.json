@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "winter-lodge",
+  "name": "Winter Lodge",
+  "description": "雪山暮色与壁炉暖光包围深木工作台，金属徽章、厚实分层卡片和琥珀焦点光营造适合长任务的沉静庇护所。",
+  "layout": "classic",
+  "brandSubtitle": "WORKBUDDY / WINTER LODGE",
+  "tagline": "Settle in for work that matters.",
+  "statusText": "HEARTH ONLINE",
+  "quote": "WARM LIGHT / STEADY PROGRESS",
+  "image": "background.png",
+  "colors": {
+    "background": "#11171E",
+    "panel": "#1B2228",
+    "panelAlt": "#252C32",
+    "accent": "#C77943",
+    "accentAlt": "#6C91AC",
+    "secondary": "#795960",
+    "highlight": "#E0AD59",
+    "onAccent": "#1A100C",
+    "success": "#5E9B78",
+    "warning": "#D09A4A",
+    "danger": "#C85E62",
+    "info": "#6C91AC",
+    "disabled": "#68727A",
+    "text": "#F0F1EC",
+    "muted": "#A7ACA9",
+    "line": "rgba(199, 121, 67, 0.24)",
+    "selection": "rgba(108, 145, 172, 0.22)",
+    "terminal": "#0B1015"
+  },
+  "states": {
+    "surfaceHover": "rgba(108, 145, 172, 0.1)",
+    "surfaceActive": "rgba(199, 121, 67, 0.17)",
+    "focus": "#C77943",
+    "tooltipBackground": "#2A2523",
+    "tooltipText": "#F0F1EC"
+  },
+  "visual": {
+    "motif": "forge",
+    "iconTreatment": "medallion",
+    "surfaceTreatment": "layered",
+    "accentPlacement": "glow",
+    "cardTreatment": "badge",
+    "ornament": "sparks"
+  },
+  "appearance": {
+    "treatment": "ember-vignette",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(12, 18, 25, 0.18)",
+    "backgroundBlendMode": "normal",
+    "backgroundOpacity": 0.96,
+    "surfaceOpacity": 0.82,
+    "sidebarOpacity": 0.92,
+    "blur": 12,
+    "saturation": 0.78,
+    "radius": 4,
+    "shadow": "deep",
+    "colorScheme": "dark"
+  }
+}

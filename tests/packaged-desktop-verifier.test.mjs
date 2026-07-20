@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import path from "node:path";
 import test from "node:test";
-import vm from "node:vm";
 
 import {
   DevToolsClient,
   REQUIRED_PACKAGED_TARGETS,
   assertPackagedProductBootstrap,
-  runWorkBuddyScopedSmoke,
+  runJsonProcess,
+  runPackagedCliSmoke,
   stopChild,
   verifyPackagedDesktop,
   waitForStudioContext,
@@ -96,48 +97,136 @@ test("packaged verifier requires both product targets and their matching runtime
   );
 });
 
-test("skip-agent smoke creates, reads, and deletes a blank WorkBuddy theme without applying it", async () => {
+test("packaged CLI smoke uses the app executable and completes scoped JSON CRUD validation", async () => {
   const calls = [];
-  let theme = null;
-  const studio = {
-    createTheme: async (input, pluginId) => {
-      calls.push(["create", input, pluginId]);
-      theme = {
-        localId: "blank-workbuddy-fixture",
-        pluginId,
-        revisionHash: "revision-one",
-      };
-      return theme;
-    },
-    getTheme: async (themeId, pluginId) => {
-      calls.push(["read", themeId, pluginId]);
-      return { ...theme };
-    },
-    deleteTheme: async (themeId, input, pluginId) => {
-      calls.push(["delete", themeId, input, pluginId]);
-      theme = null;
-      return { deleted: true, themeId };
-    },
-    listThemes: async (pluginId) => {
-      calls.push(["list", pluginId]);
-      return theme ? [theme] : [];
-    },
-    applyTheme: async () => assert.fail("packaged CRUD smoke must not apply a theme"),
+  const firstRevision = "a".repeat(64);
+  const secondRevision = "b".repeat(64);
+  const thirdRevision = "c".repeat(64);
+  const assetPath = "/tmp/dreamskin-packaged-cli-asset.png";
+  let removedAsset = null;
+  const processResult = (envelope) => {
+    const stdout = `${JSON.stringify(envelope)}\n`;
+    return { code: 0, signal: null, stdout, stderr: "", outputBytes: Buffer.byteLength(stdout) };
   };
-  const client = {
-    evaluate: (expression) => vm.runInNewContext(expression, {
-      window: { dreamskin: { studio } },
-    }),
+  const runProcess = async (command, args, options) => {
+    calls.push({ command, args, options });
+    const cliArgs = args.slice(1);
+    const operation = cliArgs[0] === "targets"
+      ? "targets"
+      : cliArgs[1] === "asset"
+        ? "theme.asset.import"
+        : `theme.${cliArgs[1]}`;
+    const scope = operation === "targets"
+      ? {}
+      : { pluginId: "dreamskin.workbuddy", themeId: "packaged-cli-fixture" };
+    const result = operation === "targets"
+      ? { targets: REQUIRED_PACKAGED_TARGETS.map((pluginId) => ({ pluginId, active: true })) }
+      : operation === "theme.create"
+        ? { afterRevision: firstRevision }
+        : operation === "theme.read"
+          ? { id: "packaged-cli-fixture", revision: firstRevision }
+          : operation === "theme.asset.import"
+            ? {
+                beforeRevision: firstRevision,
+                afterRevision: secondRevision,
+                theme: { image: "background.png" },
+              }
+          : operation === "theme.update"
+            ? {
+                beforeRevision: secondRevision,
+                afterRevision: thirdRevision,
+                theme: { colors: { accent: "#2F7CF6" }, states: { focus: "#2F7CF6" } },
+              }
+            : {
+                valid: true,
+                revision: thirdRevision,
+                theme: { colors: { accent: "#2F7CF6" }, states: { focus: "#2F7CF6" } },
+              };
+    return processResult({ protocolVersion: 1, ok: true, operation, scope, result });
   };
 
-  const result = await runWorkBuddyScopedSmoke(client);
-  assert.equal(result.absentAfterDelete, true);
-  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
-    ["create", { kind: "blank" }, "dreamskin.workbuddy"],
-    ["read", "blank-workbuddy-fixture", "dreamskin.workbuddy"],
-    ["delete", "blank-workbuddy-fixture", { expectedRevision: "revision-one" }, "dreamskin.workbuddy"],
-    ["list", "dreamskin.workbuddy"],
+  const appPath = "/tmp/DreamSkin Studio.app";
+  const dataRoot = "/tmp/dreamskin-packaged-cli-user-data";
+  const result = await runPackagedCliSmoke({
+    appPath,
+    dataRoot,
+    themeId: "packaged-cli-fixture",
+  }, {
+    runProcess,
+    prepareAsset: async () => assetPath,
+    removeAsset: async (target) => { removedAsset = target; },
+  });
+
+  assert.equal(result.runner, "packaged-electron-node-mode");
+  assert.equal(result.externalNodeRequired, false);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.targets, [...REQUIRED_PACKAGED_TARGETS]);
+  assert.equal(result.beforeRevision, firstRevision);
+  assert.equal(result.assetRevision, secondRevision);
+  assert.equal(result.afterRevision, thirdRevision);
+  assert.equal(removedAsset, assetPath);
+  assert.equal(calls.length, 6);
+  for (const call of calls) {
+    assert.equal(call.command, path.join(appPath, "Contents", "MacOS", "DreamSkin Studio"));
+    assert.equal(call.args[0], path.join(appPath, "Contents", "Resources", "app.asar", "bin", "dreamskin.mjs"));
+    assert.notEqual(path.basename(call.command), "node");
+    assert.equal(call.options.env.ELECTRON_RUN_AS_NODE, "1");
+    assert.equal(call.options.env.DREAMSKIN_PACKAGED, "1");
+    assert.equal(call.options.env.DREAMSKIN_USER_DATA_ROOT, dataRoot);
+    assert.equal(call.options.env.DREAMSKIN_DATA_ROOT, path.join(dataRoot, "dreamskin"));
+    assert.equal(call.options.env.DREAMSKIN_RESOURCE_ROOT, path.join(
+      appPath,
+      "Contents",
+      "Resources",
+      "dreamskin",
+    ));
+  }
+  assert.deepEqual(calls.map((call) => call.args.slice(1, 3)), [
+    ["targets"],
+    ["theme", "create"],
+    ["theme", "read"],
+    ["theme", "asset"],
+    ["theme", "update"],
+    ["theme", "validate"],
   ]);
+  const assetArgs = calls[3].args;
+  assert.deepEqual(assetArgs.slice(1, 4), ["theme", "asset", "import"]);
+  assert.equal(assetArgs[assetArgs.indexOf("--expected-revision") + 1], firstRevision);
+  assert.equal(assetArgs[assetArgs.indexOf("--file") + 1], assetPath);
+  const updateArgs = calls[4].args;
+  assert.equal(updateArgs[updateArgs.indexOf("--expected-revision") + 1], secondRevision);
+});
+
+test("packaged CLI smoke rejects stdout containing more than one JSON document", async () => {
+  const stdout = '{"protocolVersion":1,"ok":true,"operation":"targets","scope":{},"result":{"targets":[]}}\n{}\n';
+  await assert.rejects(() => runPackagedCliSmoke({
+    appPath: "/tmp/DreamSkin Studio.app",
+    dataRoot: "/tmp/dreamskin-packaged-cli-user-data",
+    themeId: "packaged-cli-fixture",
+  }, {
+    runProcess: async () => ({
+      code: 0,
+      signal: null,
+      stdout,
+      stderr: "",
+      outputBytes: Buffer.byteLength(stdout),
+    }),
+  }), /exactly one JSON document/);
+});
+
+test("JSON process timeout waits for child termination before rejecting", async () => {
+  const child = fakeChild();
+  let stopped = false;
+  await assert.rejects(() => runJsonProcess("/tmp/fixture", ["targets"], { timeoutMs: 1 }, {
+    spawnProcess: () => child,
+    stopProcess: async (target) => {
+      assert.equal(target, child);
+      target.exitCode = 0;
+      stopped = true;
+      return { forced: false };
+    },
+  }), /timed out after 1ms/);
+  assert.equal(stopped, true);
 });
 
 test("packaged verifier always stops the app and removes temp data after renderer discovery fails", async () => {
@@ -147,7 +236,7 @@ test("packaged verifier always stops the app and removes temp data after rendere
 
   await assert.rejects(() => verifyPackagedDesktop({
     appPath: "/tmp/DreamSkin Studio.app",
-    runAgent: false,
+    runCli: false,
   }, {
     platform: "darwin",
     access: async () => {},
@@ -188,7 +277,7 @@ test("packaged verifier preserves a caller-owned data root for restart checks", 
   await assert.rejects(() => verifyPackagedDesktop({
     appPath: "/tmp/DreamSkin Studio.app",
     dataRoot,
-    runAgent: false,
+    runCli: false,
   }, {
     platform: "darwin",
     access: async () => {},
@@ -216,7 +305,7 @@ test("packaged verifier retains the primary error when cleanup also fails", asyn
 
   await assert.rejects(() => verifyPackagedDesktop({
     appPath: "/tmp/DreamSkin Studio.app",
-    runAgent: false,
+    runCli: false,
   }, {
     platform: "darwin",
     access: async () => {},

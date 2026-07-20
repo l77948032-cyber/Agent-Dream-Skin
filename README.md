@@ -7,134 +7,149 @@
 <p align="center"><strong>让本地 Agent 的工作空间，真正长成你喜欢的样子。</strong></p>
 
 <p align="center">
-  DreamSkin Studio 是 Agent Dream Skin 的桌面主题工作室。<br>
-  挑选模板、添加到“我的主题”，再用自然语言和本地 CLI Agent 一起修改、预览和应用。
+  像管理 Obsidian 笔记库一样管理你的桌面 Agent 主题。<br>
+  Studio 负责收藏、预览与应用，<code>dreamskin</code> CLI 让你正在使用的编程 Agent 直接参与创作。
 </p>
 
 <p align="center">
   <img alt="macOS Apple silicon" src="https://img.shields.io/badge/macOS-Apple%20silicon-111111?logo=apple&logoColor=white">
   <img alt="支持 Trae 与 WorkBuddy" src="https://img.shields.io/badge/Targets-Trae%20%2B%20WorkBuddy-2F7D72">
-  <img alt="本地优先" src="https://img.shields.io/badge/Experience-Local--first-D95D4A">
+  <img alt="20 套主题模板" src="https://img.shields.io/badge/Templates-20-D95D4A">
   <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-3A73C1">
 </p>
 
 <p align="center">
-  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.3.0-macos-arm64/DreamSkin-Studio-0.3.0-mac-arm64.dmg"><strong>下载 macOS 测试版 DMG</strong></a>
+  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.0-macos-arm64/DreamSkin-Studio-0.4.0-mac-arm64.dmg"><strong>下载 macOS 测试版 DMG</strong></a>
   ·
-  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.3.0-macos-arm64">查看发行说明</a>
+  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.4.0-macos-arm64">查看发行说明</a>
 </p>
 
 ![DreamSkin Studio 主题中心](./docs/images/studio-theme-center.jpg)
 
-## 下载与安装
+## 它是什么
 
-DreamSkin Studio 已经按原生 macOS 桌面应用交付，不需要另开网页或常驻开发服务器。当前
-Apple silicon 测试版已经可以从 [GitHub Releases](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.3.0-macos-arm64)
-公开下载：
+DreamSkin Studio 是一座放在本机的主题库。你可以浏览模板、添加到“我的主题”、从空白
+开始创作，并在应用前检查目标软件的首页、对话页和组件状态。主题文件、预览与修改记录
+都留在自己的电脑上。
 
-1. 下载 [`DreamSkin-Studio-0.3.0-mac-arm64.dmg`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.3.0-macos-arm64/DreamSkin-Studio-0.3.0-mac-arm64.dmg)。
-2. 打开 DMG，把 **DreamSkin Studio** 拖到右侧的 **Applications**。
-3. 从“应用程序”启动；Studio 会在自己的应用数据目录准备主题与运行时。
-4. 需要对话修改主题时，再在 Studio 内连接本机 Codex CLI。
+Studio 不内置 Agent，也不会要求你在应用里再连接一个 Agent。你可以继续使用熟悉的 Codex、
+Claude Code 或其他编程 Agent，让它们按需调用 `dreamskin` CLI 读写同一座本地主题库。
+Studio 会自动发现这些修改并刷新预览。
 
-DMG 是推荐安装方式，ZIP 只作为备用分发格式。安装 DreamSkin Studio 本身不要求本机安装
-Node.js，也不需要单独启动 MCP Server。
-
-> 当前公开包是经过完整安装验收的 **ad-hoc 签名测试版**。其他用户可以下载，但 macOS
-> 可能显示开发者验证提示。面向所有用户的免警告正式版仍需 Developer ID 签名和 Apple 公证；
-> 完成签名凭据配置后，正式流水线会发布独立的稳定版 Release。
-
-本版功能、兼容性、升级与已知限制见 [v0.3.0 发行说明](./docs/releases/v0.3.0.md)。
+| Studio | `dreamskin` CLI | 最终控制权 |
+| --- | --- | --- |
+| 浏览 20 套模板，管理“我的主题”，查看完整界面效果。 | 让编程 Agent 查询目标、读取主题、创建、修改和验证主题。 | 应用与恢复仍由你在 Studio 中明确触发，Agent 不会擅自改变正在运行的软件。 |
 
 ## 不只是换一张背景
 
-DreamSkin 改变的是一整套界面语言。背景、色彩、材质、导航、对话、输入区、按钮、
-卡片、通知和浮层会作为同一个主题一起变化。Studio 把目标应用的重要页面与组件状态
-集中展示，让你在真正应用之前就能看清整体效果。
-
-| 整套界面一起设计 | 直接说出你想要的感觉 | 想试就试，随时回来 |
-| --- | --- | --- |
-| 首页、对话页与组件状态使用统一的视觉语言，而不是各改各的。 | 连接本地 Codex CLI，继续调整模板，或从一句话生成空白主题。 | 预览、应用、验证与恢复都是明确操作，不把一次尝试变成永久修改。 |
-
-## 两种工作空间，两套完整体验
+DreamSkin 改变的是一整套界面语言。背景、色彩、材质、导航、对话、输入区、按钮、卡片、
+通知和浮层会作为同一个主题一起变化，而不是在原界面后面简单垫一张壁纸。
 
 <table>
   <tr>
-    <td width="50%"><img src="./docs/images/studio-trae-editor.jpg" alt="DreamSkin Studio 中的 Trae Spark Atelier 主题编辑器"></td>
-    <td width="50%"><img src="./docs/images/studio-workbuddy-editor.jpg" alt="DreamSkin Studio 中的 WorkBuddy Harbor Focus 主题编辑器"></td>
+    <td width="50%"><img src="./docs/images/studio-trae-editor.jpg" alt="DreamSkin Studio 中的 Trae 主题完整预览"></td>
+    <td width="50%"><img src="./docs/images/studio-workbuddy-editor.jpg" alt="DreamSkin Studio 中的 WorkBuddy 主题完整预览"></td>
   </tr>
   <tr>
     <td valign="top">
-      <strong>Trae：把编码环境变成创作空间</strong><br><br>
-      覆盖 Work、Code、Design、对话页与 20 个常用组件。可以从 Sunlit Spark 的明亮
-      插画感出发，也可以选择 Violet Rift 的深色沉浸风格，再让 Agent 按你的工作习惯
-      继续收敛。
+      <strong>Trae：让编码空间拥有完整视觉个性</strong><br><br>
+      在同一主题里查看 Work、Code、Design、对话页和常用组件，确认导航、内容、输入区与
+      状态反馈属于同一套设计语言。
     </td>
     <td valign="top">
-      <strong>WorkBuddy：让日常工作台拥有自己的气质</strong><br><br>
-      覆盖首页、对话、结果与产物、专家与技能、自动化、项目与空间、设置、浮层与状态
-      共 9 个场景、32 个组件。Harbor Focus 适合安静专注，Orchid Night 适合夜间工作，
-      Paper Garden 则保留明亮的纸艺质感。
+      <strong>WorkBuddy：把日常工作台变成自己的空间</strong><br><br>
+      集中检查首页、对话、结果与产物、专家与技能、自动化、项目、设置、浮层与状态，
+      避免大块面板盖住背景和主题细节。
     </td>
   </tr>
 </table>
 
+## 20 套内置主题
+
+主题中心内置 20 套可直接添加的模板，覆盖 Trae 与 WorkBuddy，并包含明亮、深色、自然、
+城市、纸艺、科技和沉浸场景等不同视觉方向。每套模板都包含目标应用的重要页面、组件状态
+和配套背景，不只是一个颜色预设。
+
+模板原版始终保留。添加到“我的主题”后，你得到的是一份可以独立修改、复制和继续创作的
+本地副本。也可以直接新建空白主题，让 Agent 从一句描述开始生成。
+
 ## 从灵感到应用
 
-1. 在“主题中心”按目标应用与风格浏览模板。
+1. 在主题中心按目标应用与风格浏览模板。
 2. 点击“添加到我的主题”，或者为指定应用新建空白主题。
-3. 连接本地 Codex CLI，用自然语言描述想要的氛围与细节。
-4. 在右侧切换页面和组件，逐项检查按钮、输入框、通知、浮层等实际效果。
-5. 确认后显式应用并验证；需要时一键恢复原生界面。
+3. 在 Studio 设置中安装 `dreamskin` CLI。
+4. 回到你平时使用的编程 Agent，让它通过 CLI 修改指定主题。
+5. Studio 自动刷新右侧预览；逐项检查页面、按钮、输入框、通知与浮层。
+6. 确认无误后，在 Studio 中明确执行应用；需要时同样由你执行恢复。
 
-模板始终保留原版。添加到“我的主题”后，你得到的是一份可以独立修改、复制和继续创作
-的副本。
+你可以直接这样告诉 Agent：
 
-## 没有合适模板？从一句话开始
+> 使用 dreamskin CLI，先列出 Trae 的“我的主题”，再把我指定的那一套改成清爽的冬日视觉。
+> 保留高可读性，主要操作使用冷绿色，警告状态仍要醒目。修改后完成验证，但不要应用主题。
 
-新建空白主题后，不需要先理解复杂配置。你可以直接对 Agent 说：
+也可以基于已有模板继续收敛：
 
-> 做一套清爽的冬日主题。背景有轻微雪景，面板保持高可读性，主要操作使用冷绿色，
-> 但警告状态仍然清晰。
+> 读取我指定的 WorkBuddy 主题，把背景细节保留下来，降低面板遮挡感，提高正文和输入区
+> 对比度。更新时使用读取结果里的 revision，并在完成后验证。
 
-也可以基于现有模板继续调整：
+## 给编程 Agent 的本地 CLI
 
-> 把这个主题改得更克制一些。保留插画背景，主色换成雾蓝，并提高代码区和输入框的
-> 对比度。
+安装后，任何能执行本机命令的编程 Agent 都可以使用同一个稳定入口：
 
-> 以 Paper Garden 为基础做一个晚间阅读版本。保留植物纸艺细节，让通知和主要按钮
-> 更醒目。
+```bash
+dreamskin targets
+dreamskin theme inspect --plugin dreamskin.trae
+dreamskin theme list --plugin dreamskin.trae
+dreamskin theme read <theme-id> --plugin dreamskin.trae
+dreamskin theme create <theme-id> --plugin dreamskin.trae --input @theme.json
+dreamskin theme update <theme-id> --plugin dreamskin.trae \
+  --expected-revision <revision> --input @patch.json
+dreamskin theme asset import <theme-id> --plugin dreamskin.trae \
+  --expected-revision <revision> --file /absolute/path/background.png
+dreamskin theme validate <theme-id> --plugin dreamskin.trae
+```
 
-Agent 只会修改当前打开的主题；真正应用到目标软件之前，控制权始终在你手中。
+CLI 输出结构化 JSON，便于 Agent 判断成功、错误和 revision 冲突。每条主题命令都必须明确
+目标应用；修改时也必须带上刚读取到的 revision，避免覆盖其他进程刚完成的编辑。
 
-## 9 套内置主题
+CLI 只负责主题检查、读取、创建、结构化更新、受校验的背景导入与验证。背景导入仅接受
+PNG/JPEG/WebP 普通文件，会复制到主题库并拒绝符号链接或超大文件。CLI 不提供应用、恢复、
+删除或任意 CSS 执行能力。详细契约见 [DreamSkin Agent Tool v1](./docs/agent-tool-v1.md)。
 
-| 目标应用 | 主题 | 视觉方向 |
-| --- | --- | --- |
-| Trae | **Sunlit Spark** | 明亮插画与轻盈面板 |
-| Trae | **Violet Rift** | 深色角色场景与克制玻璃感 |
-| Trae | **Paper Aurora** | 纸面质感与柔和极光配色 |
-| Trae | **Neon Portal** | 青绿、荧光绿与玫红的深色空间 |
-| Trae | **Ember Glass** | 石墨、珊瑚、金色与青色 |
-| Trae | **Spark Atelier** | 更具手作感的实验性组件语言 |
-| WorkBuddy | **Harbor Focus** | 雾蓝海港，安静专注 |
-| WorkBuddy | **Orchid Night** | 深靛玻璃，适合夜间工作 |
-| WorkBuddy | **Paper Garden** | 压花植物与明亮纸艺 |
+## 下载与安装
 
-每套模板都可以添加到“我的主题”、复制并继续修改。主题中心也为未来更多桌面 Agent 应用
-和社区模板预留了位置。
+DreamSkin Studio 已按 macOS 桌面应用交付，不需要另开网页或常驻开发服务器。当前 Apple
+silicon 测试版可以从 [GitHub Releases](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.4.0-macos-arm64)
+公开下载：
+
+1. 下载 [`DreamSkin-Studio-0.4.0-mac-arm64.dmg`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.0-macos-arm64/DreamSkin-Studio-0.4.0-mac-arm64.dmg)
+   和同一 Release 中的 [`SHA256SUMS.txt`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.0-macos-arm64/SHA256SUMS.txt)。
+2. 在终端运行 `shasum -a 256 ~/Downloads/DreamSkin-Studio-0.4.0-mac-arm64.dmg`，确认结果与
+   `SHA256SUMS.txt` 中 DMG 对应的一行完全相同。
+3. 打开 DMG，把 **DreamSkin Studio** 拖到右侧的 **Applications**。
+4. 从“应用程序”启动，浏览模板或管理自己的主题。
+5. 需要 Agent 参与创作时，在 Studio 设置中安装 `dreamskin` CLI。
+
+安装 DreamSkin Studio 本身不要求本机安装 Node.js。DMG 是推荐安装方式，ZIP 只作为备用
+分发格式。
+
+> 当前公开包是经过安装验收的 **ad-hoc 签名测试版**。其他用户可以下载，但 macOS 可能
+> 显示开发者验证提示。面向所有用户的免警告正式版仍需 Developer ID 签名和 Apple 公证。
+
+首次打开时，如果 macOS 提示无法验证开发者，请先确认 SHA-256 匹配，再到“应用程序”中
+按住 Control 点击（或右键点击）**DreamSkin Studio**，选择“打开”，并在确认框中再次选择
+“打开”。如果仍被阻止，可前往“系统设置 -> 隐私与安全性”，在安全性提示旁选择“仍要打开”。
+校验不匹配时不要绕过系统保护，请删除文件并从本项目 Release 重新下载。
+
+本版功能、兼容性、升级与已知限制见 [v0.4.0 发行说明](./docs/releases/v0.4.0.md)。
 
 ## 从源码运行
 
-DreamSkin Studio 是本地桌面应用，目前不提供云端演示。主题、预览和 Agent 对话都在你
-自己的电脑上运行；GitHub 页面本身不会启动 Studio。
-
-开发与本地打包推荐环境：
+DreamSkin Studio 是本地桌面应用，目前不提供云端演示。开发与本地打包推荐环境：
 
 - macOS 12 或更高版本，Apple silicon。
 - Node.js `>= 22.12`。
 - 已安装 Trae 或 WorkBuddy。
-- 如需对话修改主题，本机还需要可用的 Codex CLI。
 
 ```bash
 git clone https://github.com/l77948032-cyber/Agent-Dream-Skin.git
@@ -144,43 +159,45 @@ npm --prefix studio install
 npm run desktop:dev
 ```
 
-最后一条命令会在当前电脑上打开 DreamSkin Studio。首次启动需要完成本地构建，可能需要
-稍等片刻。
-
-要生成一套可以拖入“应用程序”的本机测试安装包：
+生成本机测试安装包：
 
 ```bash
 npm run desktop:installer:mac
 ```
 
-完成后，DMG、ZIP、独立 `.app` 与打包态截图都位于 `dist-desktop/`。这条命令会实际启动
-打包后的应用、验证 Trae 与 WorkBuddy 内置资源、挂载 DMG、检查 `/Applications` 拖拽入口、
-解压 ZIP，并确认三份应用载荷完全一致。未配置 Apple Developer ID 时产物使用 ad-hoc
-签名，只适合本机或受控测试，不作为公开正式版发布。
+产物位于 `dist-desktop/`。未配置 Apple Developer ID 时使用 ad-hoc 签名，适合本机、受控
+测试，或按发布清单明确标注为“未签名测试版”的公开 prerelease；它不能进入 stable/latest
+更新通道。免警告稳定版仍需要 Developer ID 签名与 Apple 公证。
 
 ## 当前支持
 
 | 应用 | 当前体验 |
 | --- | --- |
-| **Trae** | macOS 实机验证，覆盖 Work、Code、Design、对话页与 20 个组件；当前重点验证版本为 TRAE SOLO CN `0.1.36`。 |
-| **WorkBuddy** | macOS WorkBuddy `5.2.6` 实机验证，覆盖 9 个完整场景与 32 个组件。 |
-| **Windows** | 相关运行与打包工作仍在验证阶段，暂不建议作为稳定体验环境。 |
+| **Trae** | macOS 实机适配，覆盖 Work、Code、Design、对话页与 20 个语义组件；当前重点验证版本为 TRAE SOLO CN `0.1.36`。 |
+| **WorkBuddy** | macOS WorkBuddy `5.2.6` 实机适配，覆盖 9 个完整场景与 32 个语义组件。 |
+| **Windows** | 相关运行与打包仍在验证阶段，暂不建议作为稳定体验环境。 |
 
 ### 使用前请知道
 
 - 当前项目属于开发者预览，优先推荐在 macOS Apple silicon 上体验。
 - 目标应用升级后，界面变化可能需要 DreamSkin 更新适配。
-- 关闭 Studio 不等于恢复原生主题；需要清理时，请在设置中使用“恢复原生界面”。
-- DreamSkin 不会让 Agent 自动应用主题，应用与恢复始终需要用户明确操作。
-- `desktop:installer:mac` 的本机构建不包含公开发行所需的 Apple Developer ID 签名与公证；
-  GitHub 正式 Release 会强制完成签名、公证、Gatekeeper 与安装介质校验。
+- 关闭 Studio 不等于恢复原生主题；需要清理时，请在 Studio 中使用“恢复原生界面”。
+- 编程 Agent 只能编辑和验证主题，不能通过 CLI 应用或恢复主题。
+- 本机构建不包含公开发行所需的 Apple Developer ID 签名与公证。
 
 ## 常见问题
 
 <details>
-<summary><strong>需要单独启动主题服务吗？</strong></summary>
+<summary><strong>需要在 Studio 里连接 Agent 吗？</strong></summary>
 <br>
-不需要。启动 DreamSkin Studio，连接本机可用的 Codex CLI，就可以开始浏览和修改主题。
+不需要。Studio 不内置对话，也不连接 Agent。继续使用你熟悉的编程 Agent，让它直接调用
+本机的 <code>dreamskin</code> CLI 即可。
+</details>
+
+<details>
+<summary><strong>需要常驻运行一个主题服务吗？</strong></summary>
+<br>
+不需要。Studio 管理本地主题库，CLI 只在 Agent 执行命令时运行。
 </details>
 
 <details>
@@ -192,40 +209,32 @@ npm run desktop:installer:mac
 <details>
 <summary><strong>可以完全从零开始吗？</strong></summary>
 <br>
-可以。选择目标应用后新建空白主题，再通过对话逐步生成和调整。
-</details>
-
-<details>
-<summary><strong>不喜欢已经应用的效果怎么办？</strong></summary>
-<br>
-在 Studio 设置中选择对应应用并点击“恢复原生界面”。DreamSkin 会清理自己开启的主题
-会话，让目标应用回到普通状态。
+可以。选择目标应用后新建空白主题，再让编程 Agent 通过 CLI 逐步生成和调整。
 </details>
 
 <details>
 <summary><strong>关闭 Studio 后主题还在吗？</strong></summary>
 <br>
-已经应用到 WorkBuddy 的主题不会因为 Studio 窗口关闭而立刻消失。需要结束主题时，请主动
-使用“恢复原生界面”；如果 WorkBuddy 本身退出，再次应用即可安全重建主题会话。
+已经应用的主题不会因为 Studio 窗口关闭而立刻消失。需要结束主题时，请主动使用“恢复原生
+界面”；目标应用退出后，则可在下次使用时重新应用并验证。
 </details>
 
 ## 接下来
 
 - 适配更多桌面 Agent 应用。
 - 支持社区主题的导入、分享与版本管理。
-- 增加更多官方模板和主题案例。
+- 增加更多官方主题案例与创作工作流。
 - 完成 Windows 实机验收。
 - 增加静默更新与升级后数据保留验收。
 
 ## 反馈与贡献
 
-不需要上传代码也可以参与。发现问题、想到新的主题方向，或者希望 DreamSkin 支持其他
-桌面 Agent 应用，都可以通过 [Issue](https://github.com/l77948032-cyber/Agent-Dream-Skin/issues)
+不需要上传代码也可以参与。发现问题、想到新的主题方向，或者希望 DreamSkin 支持其他桌面
+Agent 应用，都可以通过 [Issue](https://github.com/l77948032-cyber/Agent-Dream-Skin/issues)
 告诉我们。反馈兼容性问题时，建议附上目标应用版本、系统版本、复现步骤和截图。
 
-如果你希望贡献代码或主题，可以先 Fork 本项目，在自己的仓库中完成修改，再提交 Pull
-Request。Pull Request 是一份“建议合并”的申请，不会直接改动本仓库；是否合并始终由
-项目维护者审核决定。除非被明确添加为协作者，其他人没有直接写入本仓库的权限。
+如果希望贡献代码或主题，可以先 Fork 本项目，在自己的仓库中完成修改，再提交 Pull Request。
+Pull Request 不会直接改动本仓库，是否合并由项目维护者审核决定。
 
 只想下载、运行和创作自己的主题，不需要提交 Issue 或 Pull Request。
 

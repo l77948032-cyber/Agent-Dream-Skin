@@ -3,7 +3,7 @@ import componentRegistry from "../../registry/components.v1.json";
 import runtimeMapping from "../../plugins/trae/resources/theme-runtime.v1.json";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import fixtureCss from "./mcp-preview-fixture.css?raw";
+import fixtureCss from "./theme-preview-fixture.css?raw";
 import type { AppearanceMode, PreviewMode, StudioTheme } from "./themes";
 import { WorkBuddyScenePreview, type WorkBuddyScene } from "./WorkBuddyPreview";
 
@@ -380,11 +380,11 @@ function ToolPreviewFrame({
   }, []);
 
   return (
-    <div className="mcp-frame-viewport" ref={wrapperRef} style={{ height: frameHeight * scale }}>
-      <div className="mcp-frame-stage" style={{ width: FRAME_WIDTH * scale, height: frameHeight * scale }}>
+    <div className="theme-frame-viewport" ref={wrapperRef} style={{ height: frameHeight * scale }}>
+      <div className="theme-frame-stage" style={{ width: FRAME_WIDTH * scale, height: frameHeight * scale }}>
         <iframe
           ref={frameRef}
-          className="mcp-runtime-frame"
+          className="theme-runtime-frame"
           title={title}
           srcDoc={srcDoc}
           sandbox="allow-same-origin"
@@ -533,8 +533,8 @@ export function ThemeScenePreview({
 
 function PreviewSection({ title, meta, children }: { title: string; meta: string; children: React.ReactNode }) {
   return (
-    <section className="mcp-preview-section">
-      <header><div><strong>{title}</strong><span>{meta}</span></div><span className="mcp-source-badge"><i />DreamSkin Tool</span></header>
+    <section className="theme-preview-section">
+      <header><div><strong>{title}</strong><span>{meta}</span></div><span className="theme-source-badge"><i />DreamSkin Tool</span></header>
       {children}
     </section>
   );
@@ -548,7 +548,7 @@ export function ThemeShowcase({ theme, appearanceMode, live = false }: { theme: 
   const components = useMemo(() => previewDocument("components", "unknown", theme, appearanceMode), [theme, appearanceMode]);
 
   return (
-    <div className={`mcp-preview-gallery ${live ? "is-live" : ""}`}>
+    <div className={`theme-preview-gallery ${live ? "is-live" : ""}`}>
       <PreviewSection title="Work 首页" meta="新建任务与场景推荐">
         <ToolPreviewFrame title={`${theme.name} Work 首页`} srcDoc={workHome} frameHeight={720} />
       </PreviewSection>

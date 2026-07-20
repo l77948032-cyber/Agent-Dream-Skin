@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { app, BrowserWindow, dialog, ipcMain, protocol, session } from "electron";
 import electronUpdater from "electron-updater";
 
-import { preferredCodexPath } from "./agent-paths.mjs";
+import { DreamSkinCliManager } from "./cli-manager.mjs";
 import { createDesktopProcessTerminator } from "./process-lifecycle.mjs";
 import {
   configureDesktopProductIdentity,
@@ -57,7 +57,7 @@ async function createDesktopBackend(config) {
     throw new Error("DreamSkin Studio requires both Trae and WorkBuddy desktop target resources.");
   }
   // Resolve path constants against the packaged resource root before loading the
-  // backend graph. Spawned Tool/ACP processes inherit the same explicit roots.
+  // backend graph. The standalone CLI receives the same roots from its launcher.
   process.env.TRAE_DREAM_SKIN_PROJECT_ROOT = config.paths.resourceRoot;
   process.env.TRAE_DREAM_SKIN_THEMES_ROOT = traeConfig.paths.userThemesRoot;
   process.env.TRAE_DREAM_SKIN_TOOL_HOME = traeConfig.paths.stateRoot;
@@ -71,15 +71,6 @@ async function createDesktopBackend(config) {
     import("../src/core/product-application-context.mjs"),
     import("../src/core/studio-backend.mjs"),
   ]);
-  const appRoot = app.getAppPath();
-  const mcpServerPath = path.join(appRoot, "src", "mcp-server.mjs");
-  const nodeModeEnvironment = { ELECTRON_RUN_AS_NODE: "1", DREAMSKIN_DESKTOP: "1" };
-  const mcpServerEnvironment = {
-    ...nodeModeEnvironment,
-    DREAMSKIN_MCP_ENTRY: "1",
-  };
-  const packagedAcpAdapter = path.join(config.paths.resourceRoot, "acp", "codex-acp.mjs");
-  const codexPath = await preferredCodexPath();
   const registrationOptions = (target) => ({
     themesRoot: target.paths.userThemesRoot,
     dataRoot: target.paths.stateRoot,
@@ -122,27 +113,11 @@ async function createDesktopBackend(config) {
     targetOptions,
     dataRoot: config.layout.dataRoot,
     runtimeMutationsEnabled: productIdentity.migrationEnabled,
-    agentRegistryOptions: {
-      projectRoot: appRoot,
+    cliManager: app.isPackaged ? new DreamSkinCliManager({
       executablePath: process.execPath,
-      ...(codexPath ? { commandPaths: { codex: codexPath } } : {}),
-      ...(app.isPackaged ? { adapterPaths: { codex: process.execPath } } : {}),
-    },
-    sessionOptions: {
-      mcpServerPath,
-      mcpServerCommand: process.execPath,
-      mcpServerArgs: [mcpServerPath],
-      mcpServerEnv: mcpServerEnvironment,
-      ...(app.isPackaged ? {
-        adapterLaunchers: {
-          codex: {
-            command: process.execPath,
-            args: [packagedAcpAdapter],
-            env: nodeModeEnvironment,
-          },
-        },
-      } : {}),
-    },
+      resourcesPath: process.resourcesPath,
+      userDataPath: productIdentity.userDataPath,
+    }) : null,
   });
 }
 

@@ -79,7 +79,8 @@ test("installed verifier copies, detaches, verifies and starts the DMG applicati
   assert.equal(fake.packagedCalls[0].dataRoot, fake.packagedCalls[1].dataRoot);
   assert.equal(fake.packagedCalls[0].screenshotPath, "/tmp/smoke.png");
   assert.equal(fake.packagedCalls[1].screenshotPath, undefined);
-  assert.equal(fake.packagedCalls[1].runAgent, false);
+  assert.equal(fake.packagedCalls[0].runCli, true);
+  assert.equal(fake.packagedCalls[1].runCli, true);
   assert.deepEqual(fake.calls.map(([command, args]) => [path.basename(command), args[0]]), [
     ["hdiutil", "attach"],
     ["ditto", fake.calls[1][1][0]],
@@ -115,7 +116,7 @@ test("installed verifier refuses unsupported platforms before mounting", async (
   );
 });
 
-test("installed verifier parses path and agent options", () => {
+test("installed verifier parses paths and the optional CLI skip", () => {
   assert.deepEqual(
     parseInstalledDesktopArguments([
       "--project-root=project",
@@ -123,13 +124,10 @@ test("installed verifier parses path and agent options", () => {
       "release/DreamSkin.dmg",
       "--screenshot",
       "artifacts/installed.png",
-      "--with-agent",
-      "--agent",
-      "codex",
+      "--skip-cli",
     ], { cwd: "/repo" }),
     {
-      runAgent: true,
-      agentId: "codex",
+      runCli: false,
       projectRoot: "/repo/project",
       dmgPath: "/repo/release/DreamSkin.dmg",
       screenshotPath: "/repo/artifacts/installed.png",

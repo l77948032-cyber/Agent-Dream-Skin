@@ -23,6 +23,10 @@ test("Trae owns the existing Studio catalog metadata and template identity rules
     "ember-glass",
     "paper-aurora",
     "spark-atelier",
+    "jade-courtyard",
+    "alpine-signal",
+    "cosmic-arcade",
+    "midnight-library",
   ]);
   assert.deepEqual(TRAE_CATALOG_METADATA["sunlit-spark"], {
     author: "DreamSkin Official",
@@ -50,7 +54,7 @@ test("Trae owns the existing Studio catalog metadata and template identity rules
 
 test("Trae blank recipe preserves the current valid empty-theme result", async () => {
   const sourceTheme = JSON.parse(await fs.readFile(
-    path.join(ROOT, "themes", TRAE_BLANK_SOURCE_ID, "theme.json"),
+    path.join(ROOT, "plugins", "trae", "catalog", TRAE_BLANK_SOURCE_ID, "theme.json"),
     "utf8",
   ));
   const sourceBefore = structuredClone(sourceTheme);
@@ -63,7 +67,7 @@ test("Trae blank recipe preserves the current valid empty-theme result", async (
   assert.equal(theme.image, sourceTheme.image);
   assert.equal(theme.id, "blank-0a1b2c3d");
   assert.equal(theme.name, "未命名主题");
-  assert.equal(theme.description, "通过与 Agent 对话，从空白开始生成。");
+  assert.equal(theme.description, "从空白开始，让编程 Agent 通过 DreamSkin CLI 生成主题。");
   assert.equal(theme.brandSubtitle, "YOUR DREAM SKIN");
   assert.equal(theme.tagline, "Describe a feeling. Build a theme.");
   assert.equal(theme.statusText, "DRAFT THEME");

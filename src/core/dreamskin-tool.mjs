@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { DREAMSKIN_THEME_TOOL_NAME, THEME_TOOL_ACTIONS } from "./plugin-api.mjs";
 import { ToolError } from "./errors.mjs";
 
@@ -9,6 +11,7 @@ const ACTION_KEYS = Object.freeze({
   read: new Set(["action", "pluginId", "themeId"]),
   create: new Set(["action", "pluginId", "themeId", "themePatch", "sourceId", "dryRun"]),
   update: new Set(["action", "pluginId", "themeId", "themePatch", "expectedRevision", "dryRun"]),
+  importAsset: new Set(["action", "pluginId", "themeId", "assetPath", "expectedRevision", "dryRun"]),
   validate: new Set(["action", "pluginId", "themeId", "theme"]),
 });
 
@@ -46,7 +49,7 @@ function normalizeInput(rawInput, defaultPluginId) {
   }
 
   const normalized = { action, pluginId };
-  if (["read", "create", "update"].includes(action)) {
+  if (["read", "create", "update", "importAsset"].includes(action)) {
     normalized.themeId = requiredString(input.themeId, "themeId");
   }
   if (action === "create" || action === "update") {
@@ -61,6 +64,18 @@ function normalizeInput(rawInput, defaultPluginId) {
   }
   if (action === "update") {
     normalized.expectedRevision = requiredString(input.expectedRevision, "expectedRevision");
+  }
+  if (action === "importAsset") {
+    const assetPath = requiredString(input.assetPath, "assetPath");
+    if (!path.isAbsolute(assetPath) || assetPath.includes("\0")) {
+      throw new ToolError("INVALID_TOOL_INPUT", "assetPath must be an absolute local file path.");
+    }
+    normalized.assetPath = path.resolve(assetPath);
+    normalized.expectedRevision = requiredString(input.expectedRevision, "expectedRevision");
+    if (input.dryRun !== undefined && typeof input.dryRun !== "boolean") {
+      throw new ToolError("INVALID_TOOL_INPUT", "dryRun must be a boolean.");
+    }
+    if (input.dryRun !== undefined) normalized.dryRun = input.dryRun;
   }
   if (action === "validate") {
     const hasId = input.themeId !== undefined;
@@ -122,6 +137,10 @@ export class DreamSkinToolCore {
 
   updateTheme(input, pluginId = this.defaultPluginId) {
     return this.execute({ action: "update", pluginId, ...input });
+  }
+
+  importThemeAsset(input, pluginId = this.defaultPluginId) {
+    return this.execute({ action: "importAsset", pluginId, ...input });
   }
 
   validateTheme(input, pluginId = this.defaultPluginId) {

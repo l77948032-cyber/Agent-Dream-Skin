@@ -31,11 +31,53 @@ async function serverFixture(t) {
     applyTheme: async (id) => ({ applied: id }),
     validateTheme: async (id) => ({ valid: true, id }),
     previewTheme: async (id, input) => ({ previewed: id, input }),
-    message: async (id, input) => ({ messaged: id, input }),
-    agents: async () => [],
-    connectAgent: async (id) => ({ connected: id }),
-    settings: async () => ({ autoVerify: true }),
+    settings: async () => ({ motionEnabled: true }),
     updateSettings: async (input) => input,
+    cliStatus: async () => {
+      calls.push(["cliStatus"]);
+      return {
+        supported: true,
+        state: "not-installed",
+        installed: false,
+        current: false,
+        available: false,
+        command: "dreamskin",
+        path: null,
+        targetPath: "/Users/test/.local/bin/dreamskin",
+        pathAvailable: true,
+        message: "CLI 尚未安装。",
+      };
+    },
+    installCli: async () => {
+      calls.push(["installCli"]);
+      return {
+        supported: true,
+        state: "ready",
+        installed: true,
+        current: true,
+        available: true,
+        command: "dreamskin",
+        path: "/Users/test/.local/bin/dreamskin",
+        targetPath: "/Users/test/.local/bin/dreamskin",
+        pathAvailable: true,
+        message: "DreamSkin CLI 已就绪。",
+      };
+    },
+    uninstallCli: async () => {
+      calls.push(["uninstallCli"]);
+      return {
+        supported: true,
+        state: "not-installed",
+        installed: false,
+        current: false,
+        available: false,
+        command: "dreamskin",
+        path: null,
+        targetPath: "/Users/test/.local/bin/dreamskin",
+        pathAvailable: true,
+        message: "CLI 尚未安装。",
+      };
+    },
     verify: async (input) => ({ verified: input }),
     restore: async () => ({ restored: true }),
     asset: async (kind, id) => ({
@@ -143,6 +185,61 @@ test("Studio HTTP routes return stable success envelopes and parsed request bodi
   ]);
 });
 
+test("Studio HTTP exposes the CLI lifecycle without Agent connection state", async (t) => {
+  const fixture = await serverFixture(t);
+
+  const bootstrap = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/bootstrap`));
+  assert.equal(bootstrap.status, 200);
+  assert.deepEqual(bootstrap.body, { ok: true, result: { product: "DreamSkin Studio" } });
+  assert.equal(Object.hasOwn(bootstrap.body.result, "agents"), false);
+  assert.equal(Object.hasOwn(bootstrap.body.result, "connection"), false);
+
+  const status = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/cli`));
+  assert.equal(status.status, 200);
+  assert.deepEqual(status.body, {
+    ok: true,
+    result: {
+      supported: true,
+      state: "not-installed",
+      installed: false,
+      current: false,
+      available: false,
+      command: "dreamskin",
+      path: null,
+      targetPath: "/Users/test/.local/bin/dreamskin",
+      pathAvailable: true,
+      message: "CLI 尚未安装。",
+    },
+  });
+
+  const installed = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/cli/install`, {
+    method: "POST",
+  }));
+  assert.equal(installed.status, 200);
+  assert.deepEqual(installed.body, {
+    ok: true,
+    result: {
+      supported: true,
+      state: "ready",
+      installed: true,
+      current: true,
+      available: true,
+      command: "dreamskin",
+      path: "/Users/test/.local/bin/dreamskin",
+      targetPath: "/Users/test/.local/bin/dreamskin",
+      pathAvailable: true,
+      message: "DreamSkin CLI 已就绪。",
+    },
+  });
+
+  const uninstalled = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/cli/uninstall`, {
+    method: "POST",
+  }));
+  assert.equal(uninstalled.status, 200);
+  assert.deepEqual(uninstalled.body, status.body);
+  assert.deepEqual(fixture.calls, [["cliStatus"], ["installCli"], ["uninstallCli"]]);
+});
+
 test("Studio HTTP plugin routes preserve the composite plugin and theme scope", async (t) => {
   const fixture = await serverFixture(t);
   const calls = [];
@@ -166,10 +263,6 @@ test("Studio HTTP plugin routes preserve the composite plugin and theme scope", 
   fixture.backend.applyTheme = async (id, scope) => {
     calls.push(["apply", scope, id]);
     return { pluginId: scope, applied: id };
-  };
-  fixture.backend.message = async (id, input, scope) => {
-    calls.push(["message", scope, id, input]);
-    return { pluginId: scope, messaged: id };
   };
   fixture.backend.verify = async (input, scope) => {
     calls.push(["verify", scope, input]);
@@ -195,11 +288,6 @@ test("Studio HTTP plugin routes preserve the composite plugin and theme scope", 
     body: JSON.stringify({ expectedRevision: "revision-one", theme: { name: "Changed" } }),
   });
   await fetch(`${prefix}/themes/shared/apply`, { method: "POST" });
-  await fetch(`${prefix}/themes/shared/messages`, {
-    method: "POST",
-    headers: jsonHeaders,
-    body: JSON.stringify({ prompt: "warmer", expectedRevision: "revision-one" }),
-  });
   await fetch(`${prefix}/runtime/verify`, {
     method: "POST",
     headers: jsonHeaders,
@@ -213,7 +301,6 @@ test("Studio HTTP plugin routes preserve the composite plugin and theme scope", 
     ["create", pluginId, { kind: "blank" }],
     ["update", pluginId, "shared", { expectedRevision: "revision-one", theme: { name: "Changed" } }],
     ["apply", pluginId, "shared"],
-    ["message", pluginId, "shared", { prompt: "warmer", expectedRevision: "revision-one" }],
     ["verify", pluginId, { screenshot: false }],
     ["restore", pluginId],
   ]);
@@ -231,10 +318,42 @@ test("Studio HTTP plugin routes preserve the composite plugin and theme scope", 
   assert.equal(malformed.body.error.code, "INVALID_ARGUMENT");
 });
 
+test("Studio HTTP keeps retired Agent and chat routes unavailable", async (t) => {
+  const fixture = await serverFixture(t);
+  const retiredRequests = [
+    { path: "/api/v1/agents", method: "GET" },
+    { path: "/api/v1/agents/codex/connect", method: "POST" },
+    {
+      path: "/api/v1/themes/theme-one/messages",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "warmer", expectedRevision: "revision-one" }),
+    },
+    {
+      path: "/api/v1/plugins/dreamskin.workbuddy/themes/shared/messages",
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: "warmer", expectedRevision: "revision-one" }),
+    },
+  ];
+
+  for (const request of retiredRequests) {
+    const response = await jsonResponse(await fetch(`${fixture.baseUrl}${request.path}`, request));
+    assert.equal(response.status, 404, request.path);
+    assert.deepEqual(response.body, {
+      ok: false,
+      error: { code: "NOT_FOUND", message: "API route not found." },
+    }, request.path);
+  }
+});
+
 test("Studio HTTP maps malformed bodies and backend errors to stable error envelopes", async (t) => {
   const fixture = await serverFixture(t);
   fixture.backend.updateTheme = async () => {
     throw new ToolError("REVISION_CONFLICT", "The theme changed.", { actualRevision: "new" });
+  };
+  fixture.backend.installCli = async () => {
+    throw new ToolError("CLI_RUNTIME_UNAVAILABLE", "CLI resources are missing.");
   };
 
   const malformed = await rawRequest({
@@ -262,6 +381,12 @@ test("Studio HTTP maps malformed bodies and backend errors to stable error envel
       details: { actualRevision: "new" },
     },
   });
+
+  const unavailableCli = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/cli/install`, {
+    method: "POST",
+  }));
+  assert.equal(unavailableCli.status, 503);
+  assert.equal(unavailableCli.body.error.code, "CLI_RUNTIME_UNAVAILABLE");
 
   const missing = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/does-not-exist`));
   assert.equal(missing.status, 404);
@@ -422,7 +547,7 @@ test("Studio HTTP rejects cross-origin writes and non-JSON mutation payloads", a
 
   const bodylessSameOriginWrite = await rawRequest({
     port: fixture.port,
-    path: "/api/v1/agents/codex/connect",
+    path: "/api/v1/cli/install",
     method: "POST",
     headers: { Host: host, Origin: sameOrigin, "Sec-Fetch-Site": "same-origin" },
   });
@@ -430,7 +555,7 @@ test("Studio HTTP rejects cross-origin writes and non-JSON mutation payloads", a
   assert.equal(fixture.calls.filter(([name]) => name === "createTheme").length, 3);
 });
 
-test("Studio backend keeps catalogs, themes, runtime, components, and chat scoped by plugin", async (t) => {
+test("Studio backend keeps catalogs, themes, runtime, and components scoped by plugin", async (t) => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "dreamskin-studio-targets-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const calls = [];
@@ -465,7 +590,7 @@ test("Studio backend keeps catalogs, themes, runtime, components, and chat scope
     const library = {
       catalog: async () => [{ pluginId, id: `${targetId}-template` }],
       list: async ({ activeThemeId } = {}) => [{ pluginId, localId: "shared", activeThemeId }],
-      settings: async () => ({ autoVerify: true, selectedAgentId: "codex" }),
+      settings: async () => ({ motionEnabled: true }),
       read: async (id) => ({
         pluginId,
         localId: id,
@@ -473,12 +598,6 @@ test("Studio backend keeps catalogs, themes, runtime, components, and chat scope
         theme: { colors: { accent: "#111111" } },
       }),
       markApplied: async (id, revision) => ({ pluginId, localId: id, revisionHash: revision, status: "applied" }),
-      reconcile: async (id) => ({
-        pluginId,
-        localId: id,
-        revisionHash: `${pluginId}:revision-2`,
-        theme: { colors: { accent: "#222222" } },
-      }),
     };
     targets.push({
       pluginId,
@@ -520,26 +639,14 @@ test("Studio backend keeps catalogs, themes, runtime, components, and chat scope
     library: targets[0].library,
     targets,
     defaultPluginId: "dreamskin.trae",
-    sessions: {
-      selectedAgentId: "codex",
-      agents: async () => [{ id: "codex" }],
-      connectionState: () => ({ agentId: "codex", state: "connected" }),
-      prompt: async (input) => {
-        calls.push(["message", input.pluginId, input.themeId, input.expectedRevision]);
-        return {
-          text: "主题已更新",
-          sessionId: "session-one",
-          response: { stopReason: "end_turn" },
-        };
-      },
-      acceptRevision: (input) => { calls.push(["accept", input.pluginId, input.themeId, input.revision]); },
-    },
     dataRoot: path.join(root, "data"),
   });
 
   const bootstrap = await backend.bootstrap();
   assert.equal(bootstrap.activePluginId, "dreamskin.trae");
   assert.equal(bootstrap.targets.length, 2);
+  assert.equal(Object.hasOwn(bootstrap, "agents"), false);
+  assert.equal(Object.hasOwn(bootstrap, "connection"), false);
   assert.deepEqual(
     bootstrap.targets.map(({ pluginId, catalog, themes, runtime, components }) => ({
       pluginId,
@@ -572,20 +679,11 @@ test("Studio backend keeps catalogs, themes, runtime, components, and chat scope
   await backend.applyTheme("shared", "dreamskin.workbuddy");
   await backend.verify({ screenshot: false }, "dreamskin.workbuddy");
   await backend.restore("dreamskin.workbuddy");
-  const messaged = await backend.message("shared", {
-    prompt: "make it brighter",
-    componentId: "workbuddy.surface",
-    expectedRevision: "dreamskin.workbuddy:revision-1",
-  }, "dreamskin.workbuddy");
-  assert.equal(messaged.theme.pluginId, "dreamskin.workbuddy");
   assert.deepEqual(calls, [
     ["validate", "dreamskin.workbuddy", "shared"],
     ["apply", "dreamskin.workbuddy", "shared"],
     ["verify", "dreamskin.workbuddy", { screenshot: false }],
     ["restore", "dreamskin.workbuddy"],
-    ["message", "dreamskin.workbuddy", "shared", "dreamskin.workbuddy:revision-1"],
-    ["accept", "dreamskin.workbuddy", "shared", "dreamskin.workbuddy:revision-2"],
-    ["validate", "dreamskin.workbuddy", "shared"],
   ]);
   assert.throws(
     () => backend.verify({ pluginId: "dreamskin.trae" }, "dreamskin.workbuddy"),
@@ -608,7 +706,6 @@ test("Studio backend generates screenshot paths only inside its data root", asyn
     runtimeManager,
     pluginManager: { list: () => [] },
     library: { read: async (id) => ({ localId: id }) },
-    sessions: {},
     dataRoot,
     themesRoot: path.join(root, "themes"),
   });
@@ -648,7 +745,6 @@ test("Studio isolated user data mode reports an offline runtime and blocks all r
     library: {
       read: async () => { calls.push("read"); },
     },
-    sessions: {},
     runtimeMutationsEnabled: false,
   });
 
@@ -689,7 +785,6 @@ test("Studio deletion fails closed when runtime status is unavailable", async ()
     library: {
       delete: async () => { deleteCalls += 1; },
     },
-    sessions: {},
   });
 
   await assert.rejects(
@@ -720,7 +815,6 @@ test("Studio keeps a degraded runtime theme applied and prevents its deletion", 
       },
       delete: async () => { deleteCalls += 1; },
     },
-    sessions: {},
   });
 
   const themes = await backend.themes();
@@ -741,7 +835,6 @@ test("Studio blocks deletion while an owned runtime has no trustworthy theme ide
       runtimeManager: { status: async () => ({ session }) },
       pluginManager: { list: () => [] },
       library: { delete: async () => { deleteCalls += 1; } },
-      sessions: {},
     });
 
     await assert.rejects(
@@ -783,7 +876,6 @@ test("Studio apply and delete share one lifecycle lock", async () => {
       markApplied: async (id) => ({ localId: id, status: "applied" }),
       delete: async () => { deleteCalls += 1; },
     },
-    sessions: {},
   });
 
   const applying = backend.applyTheme("theme-one");
@@ -826,7 +918,6 @@ test("Studio serializes theme edits, previews, and restore behind runtime apply"
       markApplied: async (id) => ({ localId: id, status: "applied" }),
       update: async (id) => { calls.push("update"); return { localId: id }; },
     },
-    sessions: {},
   });
 
   const applying = backend.applyTheme("theme-one");
@@ -856,7 +947,6 @@ test("Studio restores the host if an applied revision cannot be recorded", async
       read: async (id) => ({ localId: id, revisionHash: "revision-one" }),
       markApplied: async () => { throw conflict; },
     },
-    sessions: {},
   });
 
   await assert.rejects(() => backend.applyTheme("theme-one"), (error) => error === conflict);

@@ -57,16 +57,10 @@ const RUNTIME_CORE_PATHS = Object.freeze([
   "src/core/theme-loader.mjs",
   "src/core/theme-model.mjs",
 ]);
-const ACP_SOURCE_PATH = "node_modules/@agentclientprotocol/codex-acp/dist/index.js";
-const ACP_DESTINATION_PATH = "acp/codex-acp.mjs";
 export const DESKTOP_LEGAL_PATHS = Object.freeze([
   ["LICENSE", "legal/DreamSkin-LICENSE"],
   ["NOTICE.md", "legal/DreamSkin-NOTICE.md"],
   ["THIRD_PARTY_NOTICES.md", "legal/THIRD_PARTY_NOTICES.md"],
-  ["node_modules/@agentclientprotocol/codex-acp/LICENSE", "legal/codex-acp-LICENSE"],
-  ["node_modules/@agentclientprotocol/sdk/LICENSE", "legal/agentclientprotocol-sdk-LICENSE"],
-  ["node_modules/@modelcontextprotocol/sdk/LICENSE", "legal/modelcontextprotocol-sdk-LICENSE"],
-  ["node_modules/zod/LICENSE", "legal/zod-LICENSE"],
   ["studio/node_modules/react/LICENSE", "legal/react-LICENSE"],
   ["studio/node_modules/react-dom/LICENSE", "legal/react-dom-LICENSE"],
   ["studio/node_modules/lucide-react/LICENSE", "legal/lucide-react-LICENSE"],
@@ -526,7 +520,6 @@ async function collectDesktopFiles(projectRoot) {
   output.add("assets/trae-skin.css", trae.buffers.get("assets/trae-skin.css"));
   output.add("registry/components.v1.json", trae.buffers.get(trae.manifest.theme.registryPath));
   output.add("registry/theme-runtime.v1.json", trae.buffers.get(trae.manifest.theme.runtimeMappingPath));
-  output.add(ACP_DESTINATION_PATH, await readSourceFile(projectRoot, ACP_SOURCE_PATH), 0o755);
   for (const [sourcePath, destinationPath] of DESKTOP_LEGAL_PATHS) {
     output.add(destinationPath, await readSourceFile(projectRoot, sourcePath));
   }
@@ -646,7 +639,6 @@ function assertSafeOutputRoot(projectRoot, outRoot) {
   }
   const protectedSources = [
     "studio/dist", "plugins/trae", "plugins/workbuddy", "scripts", "assets", "registry", "src/core",
-    "node_modules/@agentclientprotocol/codex-acp",
   ].map((relativePath) => path.join(projectRoot, ...relativePath.split("/")));
   if (protectedSources.some((source) => isInside(source, outRoot) || isInside(outRoot, source))) {
     throw buildError("DESKTOP_BUILD_OUTPUT_UNSAFE", "Desktop resource output cannot overlap a required source tree.", {

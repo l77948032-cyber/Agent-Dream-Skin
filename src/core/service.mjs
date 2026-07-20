@@ -6,7 +6,7 @@ import { PlatformRuntime } from "./platform.mjs";
 import { REGISTRY_PATH, RUNTIME_MAPPING_PATH, SCHEMA_PATH, TOOL_DATA_ROOT } from "./paths.mjs";
 import { ThemeRepository } from "./theme-repository.mjs";
 
-export const AGENT_TOOL_VERSION = "0.3.0";
+export const AGENT_TOOL_VERSION = "0.4.0";
 
 async function readJson(filePath) {
   return JSON.parse(await fs.readFile(filePath, "utf8"));
@@ -94,6 +94,7 @@ export class TraeDreamSkinService {
         structuredThemesOnly: true,
         arbitraryCssWrites: false,
         arbitraryPathReads: false,
+        validatedAssetImports: true,
         runtimeActionsExposedToAgent: false,
       },
     };
@@ -120,6 +121,7 @@ export class TraeDreamSkinService {
       safety: {
         structuredThemesOnly: true,
         arbitraryCssWrites: false,
+        validatedAssetImports: true,
         loopbackCdpOnly: true,
         modifiesHostBundle: false,
         [this.bundleSafetyKey]: false,

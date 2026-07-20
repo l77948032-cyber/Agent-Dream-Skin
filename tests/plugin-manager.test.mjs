@@ -156,7 +156,7 @@ test("Trae plugin delegates Tool, preview, and runtime capabilities to the injec
   const calls = [];
   const service = {
     catalogRepository: {
-      read: async (id) => ({ id, asset: { file: "background.png" } }),
+      read: async (id) => ({ theme: { schemaVersion: 1, id, image: "background.png" }, asset: { file: "background.png" } }),
       themePath: (id) => `/catalog/${id}`,
     },
     inspect: async () => { calls.push(["inspect"]); return { product: "test" }; },
@@ -191,6 +191,10 @@ test("Trae plugin delegates Tool, preview, and runtime capabilities to the injec
   assert.equal(created.expectedRevision, null);
   assert.equal(created.operation, "write");
   assert.equal(created.imagePath, "/catalog/paper-aurora/background.png");
+  assert.equal(created.themePatch.id, "blank");
+  assert.equal(created.themePatch.name, "Blank");
+  assert.equal(created.themePatch.appearance.backgroundOpacity, 0);
+  assert.deepEqual(created.provenance, { schemaVersion: 1, origin: "blank" });
   assert.equal(updated.expectedRevision, "rev-1");
   assert.deepEqual(calls.map(([name]) => name), [
     "inspect", "read", "write", "write", "validate", "preview", "apply", "verify", "restore", "runtime-status",

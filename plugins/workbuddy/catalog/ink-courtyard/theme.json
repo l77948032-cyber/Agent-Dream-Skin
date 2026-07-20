@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "id": "ink-courtyard",
+  "name": "Ink Courtyard",
+  "description": "水墨雨院与朱门化作留白充足的东方工作台，宣纸表面、篆印图标和朱砂侧轨让长文阅读与项目梳理更有章法。",
+  "layout": "studio-collage",
+  "brandSubtitle": "WORKBUDDY / INK COURTYARD",
+  "tagline": "Leave room for the essential.",
+  "statusText": "INKSTONE READY",
+  "quote": "LESS NOISE / DEEPER THOUGHT",
+  "image": "background.png",
+  "colors": {
+    "background": "#E8E5DC",
+    "panel": "#F7F4EC",
+    "panelAlt": "#E2DED3",
+    "accent": "#9E3B2E",
+    "accentAlt": "#496979",
+    "secondary": "#5A665B",
+    "highlight": "#B38743",
+    "onAccent": "#FFFFFF",
+    "success": "#56775C",
+    "warning": "#A77431",
+    "danger": "#A8433E",
+    "info": "#496979",
+    "disabled": "#9A9992",
+    "text": "#24282A",
+    "muted": "#696E6C",
+    "line": "rgba(36, 40, 42, 0.20)",
+    "selection": "rgba(158, 59, 46, 0.16)",
+    "terminal": "#202528"
+  },
+  "states": {
+    "surfaceHover": "rgba(36, 40, 42, 0.07)",
+    "surfaceActive": "rgba(158, 59, 46, 0.13)",
+    "focus": "#9E3B2E",
+    "tooltipBackground": "#292F31",
+    "tooltipText": "#F7F4EC"
+  },
+  "visual": {
+    "motif": "sketch",
+    "iconTreatment": "stamp",
+    "surfaceTreatment": "paper",
+    "accentPlacement": "rail",
+    "cardTreatment": "poster",
+    "ornament": "strokes"
+  },
+  "appearance": {
+    "treatment": "paper-wash",
+    "backgroundPosition": "center center",
+    "backgroundSize": "cover",
+    "backgroundOverlay": "rgba(235, 231, 220, 0.08)",
+    "backgroundBlendMode": "multiply",
+    "backgroundOpacity": 0.9,
+    "surfaceOpacity": 0.9,
+    "sidebarOpacity": 0.94,
+    "blur": 8,
+    "saturation": 0.72,
+    "radius": 2,
+    "shadow": "none",
+    "colorScheme": "light"
+  }
+}
