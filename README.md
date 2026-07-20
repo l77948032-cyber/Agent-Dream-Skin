@@ -18,21 +18,31 @@
   <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-3A73C1">
 </p>
 
+<p align="center">
+  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.3.0-macos-arm64/DreamSkin-Studio-0.3.0-mac-arm64.dmg"><strong>下载 macOS 测试版 DMG</strong></a>
+  ·
+  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.3.0-macos-arm64">查看发行说明</a>
+</p>
+
 ![DreamSkin Studio 主题中心](./docs/images/studio-theme-center.jpg)
 
 ## 下载与安装
 
-DreamSkin Studio 已经按原生 macOS 桌面应用交付，不需要另开网页或常驻开发服务器。正式
-签名版本会发布在 [GitHub Releases](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases)：
+DreamSkin Studio 已经按原生 macOS 桌面应用交付，不需要另开网页或常驻开发服务器。当前
+Apple silicon 测试版已经可以从 [GitHub Releases](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.3.0-macos-arm64)
+公开下载：
 
-1. 下载名称以 `DreamSkin-Studio` 开头、以 `.dmg` 结尾的 Apple silicon 安装包。
+1. 下载 [`DreamSkin-Studio-0.3.0-mac-arm64.dmg`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.3.0-macos-arm64/DreamSkin-Studio-0.3.0-mac-arm64.dmg)。
 2. 打开 DMG，把 **DreamSkin Studio** 拖到右侧的 **Applications**。
 3. 从“应用程序”启动；Studio 会在自己的应用数据目录准备主题与运行时。
 4. 需要对话修改主题时，再在 Studio 内连接本机 Codex CLI。
 
 DMG 是推荐安装方式，ZIP 只作为备用分发格式。安装 DreamSkin Studio 本身不要求本机安装
-Node.js，也不需要单独启动 MCP Server。当前公开免警告版本必须经过 Developer ID 签名和
-Apple 公证；在正式签名版本发布前，可以从源码生成仅供本机测试的安装包，步骤见下文。
+Node.js，也不需要单独启动 MCP Server。
+
+> 当前公开包是经过完整安装验收的 **ad-hoc 签名测试版**。其他用户可以下载，但 macOS
+> 可能显示开发者验证提示。面向所有用户的免警告正式版仍需 Developer ID 签名和 Apple 公证；
+> 完成签名凭据配置后，正式流水线会发布独立的稳定版 Release。
 
 本版功能、兼容性、升级与已知限制见 [v0.3.0 发行说明](./docs/releases/v0.3.0.md)。
 
