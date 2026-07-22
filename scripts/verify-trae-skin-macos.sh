@@ -16,6 +16,8 @@ require_trae_runtime
 acquire_operation_lock
 trap release_operation_lock EXIT
 [ -f "$STATE_PATH" ] || fail "No active skin state was found."
+trae_state_is_trustworthy \
+  || fail "The active skin state does not match the selected Trae host. Restore and apply the theme again."
 PORT="$(state_field port)"
 THEME_ID="$(state_field themeId)"
 BROWSER_ID="$(state_field browserId)"

@@ -90,20 +90,20 @@ test("runtime installer stages verified immutable versions and tracks active/pre
   );
 });
 
-test("Trae and WorkBuddy runtimes upgrade immutable 0.3.0 installs to 0.4.0 idempotently", async (t) => {
+test("Trae and WorkBuddy runtimes upgrade immutable 0.4.0 installs to 0.4.1 idempotently", async (t) => {
   const paths = await fixture(t);
   const scenarios = [
     {
       namespace: "dreamskin.trae",
       relativePath: "scripts/common-macos.sh",
-      oldContents: "#!/bin/sh\necho trae-0.3.0\n",
-      newContents: "#!/bin/sh\necho trae-0.4.0\n",
+      oldContents: "#!/bin/sh\necho trae-0.4.0\n",
+      newContents: "#!/bin/sh\necho trae-0.4.1\n",
     },
     {
       namespace: "dreamskin.workbuddy",
       relativePath: "scripts/status-workbuddy-skin-macos.sh",
-      oldContents: "#!/bin/sh\necho workbuddy-0.3.0\n",
-      newContents: "#!/bin/sh\necho workbuddy-0.4.0\n",
+      oldContents: "#!/bin/sh\necho workbuddy-0.4.0\n",
+      newContents: "#!/bin/sh\necho workbuddy-0.4.1\n",
     },
   ];
 
@@ -114,30 +114,30 @@ test("Trae and WorkBuddy runtimes upgrade immutable 0.3.0 installs to 0.4.0 idem
     });
     const oldPackage = await createPackage(paths.root, {
       namespace: scenario.namespace,
-      version: "0.3.0",
+      version: "0.4.0",
       files: {
         [scenario.relativePath]: { contents: scenario.oldContents, mode: 0o755 },
       },
     });
     const currentPackage = await createPackage(paths.root, {
       namespace: scenario.namespace,
-      version: "0.4.0",
+      version: "0.4.1",
       files: {
         [scenario.relativePath]: { contents: scenario.newContents, mode: 0o755 },
       },
     });
 
     await installer.install({ sourceRoot: oldPackage.sourceRoot });
-    const oldRoot = installer.versionPath("0.3.0");
+    const oldRoot = installer.versionPath("0.4.0");
     const oldManifest = await fs.readFile(path.join(oldRoot, RUNTIME_MANIFEST_FILE));
     const oldPayload = await fs.readFile(path.join(oldRoot, ...scenario.relativePath.split("/")));
 
     const upgraded = await installer.install({ sourceRoot: currentPackage.sourceRoot });
     assert.equal(upgraded.installed, true);
-    assert.equal(upgraded.activeVersion, "0.4.0");
-    assert.equal(upgraded.previousVersion, "0.3.0");
-    assert.deepEqual((await installer.listInstalled()).versions, ["0.3.0", "0.4.0"]);
-    assert.equal((await installer.verifyInstalledVersion("0.3.0")).valid, true);
+    assert.equal(upgraded.activeVersion, "0.4.1");
+    assert.equal(upgraded.previousVersion, "0.4.0");
+    assert.deepEqual((await installer.listInstalled()).versions, ["0.4.0", "0.4.1"]);
+    assert.equal((await installer.verifyInstalledVersion("0.4.0")).valid, true);
     assert.deepEqual(await fs.readFile(path.join(oldRoot, RUNTIME_MANIFEST_FILE)), oldManifest);
     assert.deepEqual(
       await fs.readFile(path.join(oldRoot, ...scenario.relativePath.split("/"))),
@@ -146,9 +146,9 @@ test("Trae and WorkBuddy runtimes upgrade immutable 0.3.0 installs to 0.4.0 idem
 
     const repeated = await installer.install({ sourceRoot: currentPackage.sourceRoot });
     assert.equal(repeated.installed, false);
-    assert.equal(repeated.activeVersion, "0.4.0");
-    assert.equal(repeated.previousVersion, "0.3.0");
-    assert.deepEqual((await installer.listInstalled()).versions, ["0.3.0", "0.4.0"]);
+    assert.equal(repeated.activeVersion, "0.4.1");
+    assert.equal(repeated.previousVersion, "0.4.0");
+    assert.deepEqual((await installer.listInstalled()).versions, ["0.4.0", "0.4.1"]);
     assert.deepEqual(await fs.readFile(path.join(oldRoot, RUNTIME_MANIFEST_FILE)), oldManifest);
     assert.deepEqual(
       await fs.readFile(path.join(oldRoot, ...scenario.relativePath.split("/"))),

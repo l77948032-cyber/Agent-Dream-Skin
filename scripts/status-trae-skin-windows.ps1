@@ -77,6 +77,8 @@ try {
       traeStartedAt = if ($null -ne $orphan) { "$($orphan.StartedAt)" } else { $null }
       traeExe = if ($null -ne $orphanTrae) { $orphanTrae.Executable } else { $null }
       traeVersion = if ($null -ne $orphanTrae) { $orphanTrae.Version } else { $null }
+      hostProfile = if ($null -ne $orphanTrae) { $orphanTrae.HostProfile } else { $null }
+      traeDisplayName = if ($null -ne $orphanTrae) { $orphanTrae.DisplayName } else { $null }
       publisher = if ($null -ne $orphanTrae) { $orphanTrae.PublisherSubject } else { $null }
     } | ConvertTo-Json -Depth 4
     return
@@ -160,6 +162,8 @@ try {
     traeStartedAt = if ($null -ne $state) { "$($state.traeStartedAt)" } else { $null }
     traeExe = if ($null -ne $trae) { $trae.Executable } else { $null }
     traeVersion = if ($null -ne $trae) { $trae.Version } else { $null }
+    hostProfile = if ($null -ne $trae) { $trae.HostProfile } else { $null }
+    traeDisplayName = if ($null -ne $trae) { $trae.DisplayName } else { $null }
     publisher = if ($null -ne $trae) { $trae.PublisherSubject } else { $null }
   }
   $result | ConvertTo-Json -Depth 4

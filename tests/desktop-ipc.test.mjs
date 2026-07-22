@@ -91,7 +91,7 @@ test("IPC registration envelopes backend results and rejects untrusted senders",
     ok: true,
     result: { operation: "themes.read", input: { themeId: "sunlit-spark" } },
   });
-  for (const operation of ["cli.status", "cli.install", "cli.uninstall"]) {
+  for (const operation of ["cli.status", "cli.install", "cli.uninstall", "runtime.status"]) {
     assert.deepEqual(await handlers.get(IPC_CHANNELS.studioApi)(senderEvent(), operation, {}), {
       ok: true,
       result: { operation, input: {} },
@@ -142,14 +142,18 @@ test("preload bridge exposes explicit frozen methods instead of raw Electron IPC
   assert.deepEqual(calls[2], [IPC_CHANNELS.studioApi, "runtime.restore", {
     pluginId: "dreamskin.workbuddy",
   }]);
+  await api.studio.getRuntimeStatus("dreamskin.workbuddy");
+  assert.deepEqual(calls[3], [IPC_CHANNELS.studioApi, "runtime.status", {
+    pluginId: "dreamskin.workbuddy",
+  }]);
   await api.studio.getCliStatus();
-  assert.deepEqual(calls[3], [IPC_CHANNELS.studioApi, "cli.status", {}]);
+  assert.deepEqual(calls[4], [IPC_CHANNELS.studioApi, "cli.status", {}]);
   await api.studio.installCli();
-  assert.deepEqual(calls[4], [IPC_CHANNELS.studioApi, "cli.install", {}]);
+  assert.deepEqual(calls[5], [IPC_CHANNELS.studioApi, "cli.install", {}]);
   await api.studio.uninstallCli();
-  assert.deepEqual(calls[5], [IPC_CHANNELS.studioApi, "cli.uninstall", {}]);
+  assert.deepEqual(calls[6], [IPC_CHANNELS.studioApi, "cli.uninstall", {}]);
   await api.updates.check();
-  assert.deepEqual(calls[6], [IPC_CHANNELS.softwareUpdateCheck]);
+  assert.deepEqual(calls[7], [IPC_CHANNELS.softwareUpdateCheck]);
 
   let updateListener;
   const eventApi = createPreloadApi({
@@ -211,9 +215,11 @@ test("sandbox-compatible CommonJS preload publishes the same narrow bridge", asy
   await exposed.value.studio.getCliStatus();
   await exposed.value.studio.installCli();
   await exposed.value.studio.uninstallCli();
+  await exposed.value.studio.getRuntimeStatus("dreamskin.trae");
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [
     [IPC_CHANNELS.studioApi, "cli.status", {}],
     [IPC_CHANNELS.studioApi, "cli.install", {}],
     [IPC_CHANNELS.studioApi, "cli.uninstall", {}],
+    [IPC_CHANNELS.studioApi, "runtime.status", { pluginId: "dreamskin.trae" }],
   ]);
 });

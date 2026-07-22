@@ -78,6 +78,15 @@ async function serverFixture(t) {
         message: "CLI 尚未安装。",
       };
     },
+    runtimeStatus: async ({ pluginId } = {}) => ({
+      available: true,
+      session: "active",
+      themeId: "theme-one",
+      hostProfile: "international",
+      traeBundleId: "com.trae.app",
+      traeVersion: "3.5.78",
+      pluginId,
+    }),
     verify: async (input) => ({ verified: input }),
     restore: async () => ({ restored: true }),
     asset: async (kind, id) => ({
@@ -240,6 +249,24 @@ test("Studio HTTP exposes the CLI lifecycle without Agent connection state", asy
   assert.deepEqual(fixture.calls, [["cliStatus"], ["installCli"], ["uninstallCli"]]);
 });
 
+test("Studio HTTP exposes current runtime status", async (t) => {
+  const fixture = await serverFixture(t);
+  const runtime = await jsonResponse(await fetch(`${fixture.baseUrl}/api/v1/runtime`));
+
+  assert.equal(runtime.status, 200);
+  assert.deepEqual(runtime.body, {
+    ok: true,
+    result: {
+      available: true,
+      session: "active",
+      themeId: "theme-one",
+      hostProfile: "international",
+      traeBundleId: "com.trae.app",
+      traeVersion: "3.5.78",
+    },
+  });
+});
+
 test("Studio HTTP plugin routes preserve the composite plugin and theme scope", async (t) => {
   const fixture = await serverFixture(t);
   const calls = [];
@@ -272,11 +299,20 @@ test("Studio HTTP plugin routes preserve the composite plugin and theme scope", 
     calls.push(["restore", scope]);
     return { pluginId: scope, restored: true };
   };
+  fixture.backend.runtimeStatus = async ({ pluginId: scope } = {}) => {
+    calls.push(["runtime.status", scope]);
+    return { pluginId: scope, session: "active", hostProfile: "solo-cn" };
+  };
   const prefix = `${fixture.baseUrl}/api/v1/plugins/${pluginId}`;
   const jsonHeaders = { "Content-Type": "application/json" };
 
   assert.equal((await jsonResponse(await fetch(`${prefix}/catalog`))).body.result[0].pluginId, pluginId);
   assert.equal((await jsonResponse(await fetch(`${prefix}/themes`))).body.result[0].pluginId, pluginId);
+  assert.deepEqual((await jsonResponse(await fetch(`${prefix}/runtime`))).body.result, {
+    pluginId,
+    session: "active",
+    hostProfile: "solo-cn",
+  });
   await fetch(`${prefix}/themes`, {
     method: "POST",
     headers: jsonHeaders,
@@ -298,6 +334,7 @@ test("Studio HTTP plugin routes preserve the composite plugin and theme scope", 
   assert.deepEqual(calls, [
     ["catalog", pluginId],
     ["themes", pluginId],
+    ["runtime.status", pluginId],
     ["create", pluginId, { kind: "blank" }],
     ["update", pluginId, "shared", { expectedRevision: "revision-one", theme: { name: "Changed" } }],
     ["apply", pluginId, "shared"],
@@ -825,6 +862,39 @@ test("Studio keeps a degraded runtime theme applied and prevents its deletion", 
     (error) => error.code === "THEME_ACTIVE",
   );
   assert.equal(deleteCalls, 0);
+});
+
+test("Studio caches runtime status used by frequent theme-list synchronization", async () => {
+  let clock = 1_000;
+  let statusCalls = 0;
+  const listedActiveThemeIds = [];
+  const backend = new StudioBackend({
+    tool: {},
+    runtimeManager: {
+      status: async () => {
+        statusCalls += 1;
+        return { session: "active", themeId: `theme-${statusCalls}` };
+      },
+    },
+    pluginManager: { list: () => [] },
+    library: {
+      list: async ({ activeThemeId }) => {
+        listedActiveThemeIds.push(activeThemeId);
+        return [];
+      },
+    },
+    runtimeListCacheMs: 10_000,
+    now: () => clock,
+  });
+
+  await backend.themes();
+  clock += 9_999;
+  await backend.themes();
+  clock += 2;
+  await backend.themes();
+
+  assert.equal(statusCalls, 2);
+  assert.deepEqual(listedActiveThemeIds, ["theme-1", "theme-1", "theme-2"]);
 });
 
 test("Studio blocks deletion while an owned runtime has no trustworthy theme identity", async () => {

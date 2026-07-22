@@ -16,9 +16,19 @@ async function source(relativePath) {
 test("macOS launchers keep the CDP endpoint loopback-only and bind it to Trae", async () => {
   const common = await source("scripts/common-macos.sh");
   const start = await source("scripts/start-trae-skin-macos.sh");
+  const status = await source("scripts/status-trae-skin-macos.sh");
 
   assert.match(common, /codesign --verify --deep --strict/);
-  assert.match(common, /EXPECTED_TRAE_TEAM_ID/);
+  assert.match(common, /EXPECTED_TRAE_SOLO_CN_TEAM_ID/);
+  assert.match(common, /EXPECTED_TRAE_INTERNATIONAL_TEAM_ID/);
+  assert.match(common, /com\.trae\.app/);
+  assert.match(common, /cn\.trae\.solo\.app/);
+  assert.match(common, /is_supported_trae_identity/);
+  assert.match(status, /require_trae_runtime identity/);
+  assert.doesNotMatch(start, /require_trae_runtime identity/);
+  assert.match(common, /state_field\(\)[\s\S]+?plutil -extract "\$key" raw/);
+  assert.doesNotMatch(common, /state_field\(\)[\s\S]+?run_node -e[\s\S]+?trae_state_is_trustworthy\(\)/);
+  assert.match(common, /cdp_browser_id\(\)[\s\S]+?plutil -extract webSocketDebuggerUrl raw/);
   assert.match(common, /KNOWN_TRAE_0_1_36_BUNDLE_SHA256/);
   assert.match(common, /sha256_bundle_tree/);
   assert.match(common, /pid_is_trae_descendant/);
@@ -44,6 +54,61 @@ test("macOS launchers keep the CDP endpoint loopback-only and bind it to Trae", 
   assert.match(start, /cleanup_start_exit/);
   assert.match(start, /capture_launched_trae_identity/);
   assert.doesNotMatch(start, /foreground-injector/);
+});
+
+test("macOS Trae host profiles require the exact bundle and signing-team pair", async () => {
+  const commonPath = path.join(ROOT, "scripts", "common-macos.sh");
+  const result = await execFile("/bin/bash", ["-c", [
+    'source "$COMMON_PATH"',
+    'is_supported_trae_identity "cn.trae.solo.app" "CG2SCM6AV5"',
+    'is_supported_trae_identity "com.trae.app" "79M8227NKH"',
+    '! is_supported_trae_identity "cn.trae.solo.app" "79M8227NKH"',
+    '! is_supported_trae_identity "com.trae.app" "CG2SCM6AV5"',
+    '! is_supported_trae_identity "com.example.fake" "79M8227NKH"',
+    'printf "%s,%s" "$(trae_variant_for_bundle_id cn.trae.solo.app)" "$(trae_variant_for_bundle_id com.trae.app)"',
+  ].join("; ")], {
+    env: { ...process.env, COMMON_PATH: commonPath },
+  });
+  assert.equal(result.stdout, "solo-cn,international");
+});
+
+test("macOS Trae discovery accepts explicit CN and international application bundles", {
+  skip: process.platform !== "darwin",
+}, async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "trae-host-discovery-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const commonPath = path.join(ROOT, "scripts", "common-macos.sh");
+
+  for (const profile of [
+    { name: "TRAE SOLO CN", bundleId: "cn.trae.solo.app", version: "0.1.38", variant: "solo-cn" },
+    { name: "Trae", bundleId: "com.trae.app", version: "3.5.78", variant: "international" },
+  ]) {
+    const app = path.join(root, `${profile.name}.app`);
+    const executable = path.join(app, "Contents", "MacOS", "Electron");
+    await fs.mkdir(path.dirname(executable), { recursive: true });
+    await fs.writeFile(path.join(app, "Contents", "Info.plist"), `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleIdentifier</key><string>${profile.bundleId}</string>
+<key>CFBundleExecutable</key><string>Electron</string>
+<key>CFBundleShortVersionString</key><string>${profile.version}</string>
+</dict></plist>\n`);
+    await fs.writeFile(executable, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+    await fs.chmod(executable, 0o755);
+    const result = await execFile("/bin/bash", ["-c", [
+      'source "$COMMON_PATH"',
+      "discover_trae_app",
+      'printf "%s|%s|%s" "$TRAE_VARIANT" "$TRAE_BUNDLE_ID" "$TRAE_VERSION"',
+    ].join("; ")], {
+      env: {
+        ...process.env,
+        COMMON_PATH: commonPath,
+        TRAE_APP_BUNDLE: app,
+        TRAE_DREAM_SKIN_HOME: path.join(root, "state"),
+      },
+    });
+    assert.equal(result.stdout, `${profile.variant}|${profile.bundleId}|${profile.version}`);
+  }
 });
 
 test("macOS stop performs live cleanup, closes the owned session, and relaunches normally", async () => {
@@ -77,6 +142,11 @@ test("Trae state validation rejects truncated state before status reads fields",
   const validate = () => execFile("/bin/bash", ["-c", [
     'source "$COMMON_PATH"',
     'run_node() { "$TEST_NODE" "$@"; }',
+    'TRAE_BUNDLE="/Applications/Trae.app"',
+    'TRAE_EXE="/Applications/Trae.app/Contents/MacOS/Trae"',
+    'TRAE_BUNDLE_ID="com.trae.app"',
+    'TRAE_VARIANT="international"',
+    'TRAE_TEAM_ID="79M8227NKH"',
     "trae_state_is_trustworthy",
   ].join("; ")], {
     env: {
@@ -102,6 +172,7 @@ test("Trae state validation rejects truncated state before status reads fields",
     traeStartedAt: "Sun Jul 20 12:00:00 2026",
     traeBundle: "/Applications/Trae.app",
     traeExe: "/Applications/Trae.app/Contents/MacOS/Trae",
+    traeTeamId: "79M8227NKH",
     themeId: "sunlit-spark",
     themeRevision: "a".repeat(64),
     launchAgentLabel: "local.trae-dream-skin.injector",

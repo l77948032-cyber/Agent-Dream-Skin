@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dreamskin.trae",
   "name": "Trae DreamSkin",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "First-party DreamSkin target plugin for Trae.",
   "entry": "plugin.mjs",
   "catalog": {

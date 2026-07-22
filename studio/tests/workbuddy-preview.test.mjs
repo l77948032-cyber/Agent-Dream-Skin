@@ -234,10 +234,12 @@ test("window new-theme button does not forward the click event as a plugin id", 
 
 test("runtime settings distinguish degraded cleanup from active verification", async () => {
   const app = await source("App.tsx");
-  assert.match(app, /runtimeSession === "degraded"[\s\S]*?"需要修复"/);
+  assert.match(app, /runtimeSession === "degraded"[\s\S]*?"主题需修复"/);
   assert.match(app, /runtimeSession === "orphaned" \|\| runtimeSession === "orphaned-unverified"[\s\S]*?"待清理"/);
   assert.match(app, /const runtimeCanVerify = runtimeSession === "active"/);
   assert.match(app, /const runtimeCanRestore = runtimeSession === "active"[\s\S]*?runtimeSession === "degraded"[\s\S]*?runtimeSession === "orphaned"[\s\S]*?runtimeSession === "orphaned-unverified"/);
   assert.match(app, /disabled=\{!runtimeCanVerify \|\| Boolean\(runtimeBusy\)\}[\s\S]*?runRuntimeAction\("verify"\)/);
   assert.match(app, /disabled=\{!runtimeCanRestore \|\| Boolean\(runtimeBusy\)\}[\s\S]*?runRuntimeAction\("restore"\)/);
+  assert.match(app, /studioApi\.getRuntimeStatus\(pluginId\)/);
+  assert.match(app, /selectedRuntime\?\.hostProfile === "international"[\s\S]*?"Trae International"/);
 });

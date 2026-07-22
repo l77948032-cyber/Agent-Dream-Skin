@@ -1,5 +1,5 @@
 # This lifecycle is statically checked on macOS; release it only after a real Windows Trae smoke test.
-$Script:TraeSkinVersion = '0.4.0'
+$Script:TraeSkinVersion = '0.4.1'
 $Script:TraeSkinDefaultPort = 9342
 $Script:TraeSkinDefaultTheme = 'neon-portal'
 $Script:TraeSkinProjectRoot = Split-Path -Parent $PSScriptRoot
@@ -18,7 +18,8 @@ $Script:TraeSkinStatePath = Join-Path $Script:TraeSkinStateRoot 'state.json'
 $Script:TraeSkinStdoutPath = Join-Path $Script:TraeSkinStateRoot 'injector.log'
 $Script:TraeSkinStderrPath = Join-Path $Script:TraeSkinStateRoot 'injector-error.log'
 $Script:TraeSkinVerifyPath = Join-Path $Script:TraeSkinStateRoot 'last-verify.json'
-$Script:TraeSkinAppUserModelId = 'ByteDance.TraeSoloCN'
+$Script:TraeSkinSoloCnAppUserModelId = 'ByteDance.TraeSoloCN'
+$Script:TraeSkinInternationalAppUserModelId = 'ByteDance.Trae'
 $Script:TraeSkinLastNodeExitCode = 1
 $Script:TraeSkinExecutableNames = @('TRAE SOLO CN.exe', 'trae-solo-cn.exe', 'Trae.exe')
 $Script:TraeSkinProductPattern = '(?i)(?:TRAE(?:\s+(?:SOLO|Work))?(?:\s+CN)?|trae-solo-cn)'
@@ -27,7 +28,7 @@ $Script:TraeSkinProductPattern = '(?i)(?:TRAE(?:\s+(?:SOLO|Work))?(?:\s+CN)?|tra
 $Script:TraeSkinPublisherPattern = if ($env:TRAE_EXPECTED_PUBLISHER_SUBJECT_REGEX) {
   $env:TRAE_EXPECTED_PUBLISHER_SUBJECT_REGEX
 } else {
-  '(?i)(?:Beijing Yinli Catapult Technology Co\.,? Ltd\.?|Beijing Bytedance Technology Co\.,? Ltd\.?|ByteDance(?: Ltd\.)?|Bytedance Pte\.? Ltd\.?)'
+  '(?i)(?:Beijing Yinli Catapult Technology Co\.,? Ltd\.?|Beijing Bytedance Technology Co\.,? Ltd\.?|ByteDance(?: Ltd\.)?|Bytedance Pte\.? Ltd\.?|SPRING \(SG\) PTE\.? LTD\.?)'
 }
 
 function Fail-TraeSkin {
@@ -151,14 +152,25 @@ function ConvertTo-TraeSkinInstall {
 
   $version = "$($versionInfo.ProductVersion)"
   if (-not $version) { $version = "$($versionInfo.FileVersion)" }
+  $hostProfile = if ($name -ieq 'Trae.exe' -and $identityText -notmatch '(?i)(?:SOLO|Work)') {
+    'international'
+  } else {
+    'solo-cn'
+  }
   return [pscustomobject]@{
     Executable = $fullPath
     InstallRoot = Split-Path -Parent $fullPath
     Version = $version
     ProductName = "$($versionInfo.ProductName)"
+    HostProfile = $hostProfile
+    DisplayName = if ($hostProfile -eq 'international') { 'Trae International' } else { 'TRAE SOLO CN' }
     PublisherSubject = $signature.Subject
     PublisherThumbprint = $signature.Thumbprint
-    AppUserModelId = $Script:TraeSkinAppUserModelId
+    AppUserModelId = if ($hostProfile -eq 'international') {
+      $Script:TraeSkinInternationalAppUserModelId
+    } else {
+      $Script:TraeSkinSoloCnAppUserModelId
+    }
   }
 }
 
@@ -273,7 +285,8 @@ function Get-TraeSkinInstall {
   if ($programFilesX86) {
     $locations += @(
       (Join-Path $programFilesX86 'TRAE SOLO CN'),
-      (Join-Path $programFilesX86 'trae-solo-cn')
+      (Join-Path $programFilesX86 'trae-solo-cn'),
+      (Join-Path $programFilesX86 'Trae')
     )
   }
   foreach ($location in $locations) {
@@ -307,7 +320,7 @@ function Get-TraeSkinInstall {
     $install = ConvertTo-TraeSkinInstall -Executable $candidate
     if ($null -ne $install) { return $install }
   }
-  Fail-TraeSkin 'The official signed TRAE SOLO CN installation was not found. Set TRAE_EXE only when auto-discovery misses an official install.'
+  Fail-TraeSkin 'An official signed Trae International or TRAE SOLO CN installation was not found. Set TRAE_EXE only when auto-discovery misses an official install.'
 }
 
 function Get-TraeSkinInstallFromState {
@@ -316,7 +329,9 @@ function Get-TraeSkinInstallFromState {
   $install = ConvertTo-TraeSkinInstall -Executable "$($State.traeExe)"
   if ($null -eq $install -or -not $State.traePublisherThumbprint -or
     $install.PublisherThumbprint -ine "$($State.traePublisherThumbprint)" -or
-    $install.PublisherSubject -ine "$($State.traePublisherSubject)") {
+    $install.PublisherSubject -ine "$($State.traePublisherSubject)" -or
+    ($State.hostProfile -and $install.HostProfile -ine "$($State.hostProfile)") -or
+    ($State.traeAppUserModelId -and $install.AppUserModelId -ine "$($State.traeAppUserModelId)")) {
     return $null
   }
   return $install

@@ -57,6 +57,7 @@ export function createPreloadApi({ invoke, on = () => {}, removeListener = () =>
       getCliStatus: () => studio("cli.status"),
       installCli: () => studio("cli.install"),
       uninstallCli: () => studio("cli.uninstall"),
+      getRuntimeStatus: (pluginId) => studio("runtime.status", scoped({}, pluginId)),
       verifyRuntime: (input = {}, pluginId) => studio("runtime.verify", scoped(input, pluginId)),
       restoreRuntime: (pluginId) => studio("runtime.restore", scoped({}, pluginId)),
     }),

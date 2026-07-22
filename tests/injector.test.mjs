@@ -478,21 +478,33 @@ function addNode(document, parent, { id = "", classes = [], attributes = {} }) {
   return node;
 }
 
-function createRendererContext() {
+function createRendererContext({ hostProfile = "solo-cn" } = {}) {
   const document = new FakeDocument();
   const appRoot = addNode(document, document.body, { id: "root" });
-  const soloRoot = addNode(document, appRoot, { id: "solo-lite-root" });
-  const layout = addNode(document, soloRoot, { classes: ["solo-lite-layout"] });
-  addNode(document, layout, { classes: ["task-list-panel"] });
-  const chat = addNode(document, layout, { classes: ["solo-lite-chat-panel-container"] });
-  addNode(document, chat, { classes: ["session-panel"] });
-  const composerLayout = addNode(document, chat, { classes: ["messageInputContainer"] });
-  const composer = addNode(document, composerLayout, { classes: ["chat-input-v2-container"] });
-  const composerSurface = addNode(document, composer, { classes: ["chat-input-v2-editor-part"] });
-  addNode(document, composerSurface, {
-    classes: ["chat-input-v2-input-box-editable"],
-    attributes: { role: "textbox" },
-  });
+  if (hostProfile === "international") {
+    document.body.classList.remove("solo-lite");
+    document.body.classList.add("monaco-shell");
+    const workbench = addNode(document, appRoot, { classes: ["monaco-workbench"] });
+    addNode(document, workbench, { classes: ["part", "titlebar"] });
+    addNode(document, workbench, { classes: ["part", "activitybar"] });
+    addNode(document, workbench, { classes: ["part", "sidebar"] });
+    const editor = addNode(document, workbench, { classes: ["part", "editor"] });
+    addNode(document, editor, { classes: ["editor-group-container"] });
+    addNode(document, workbench, { classes: ["part", "statusbar"] });
+  } else {
+    const soloRoot = addNode(document, appRoot, { id: "solo-lite-root" });
+    const layout = addNode(document, soloRoot, { classes: ["solo-lite-layout"] });
+    addNode(document, layout, { classes: ["task-list-panel"] });
+    const chat = addNode(document, layout, { classes: ["solo-lite-chat-panel-container"] });
+    addNode(document, chat, { classes: ["session-panel"] });
+    const composerLayout = addNode(document, chat, { classes: ["messageInputContainer"] });
+    const composer = addNode(document, composerLayout, { classes: ["chat-input-v2-container"] });
+    const composerSurface = addNode(document, composer, { classes: ["chat-input-v2-editor-part"] });
+    addNode(document, composerSurface, {
+      classes: ["chat-input-v2-input-box-editable"],
+      attributes: { role: "textbox" },
+    });
+  }
 
   const revoked = [];
   let objectUrl = 0;
@@ -531,6 +543,29 @@ function createRendererContext() {
   sandbox.window = sandbox;
   return { context: vm.createContext(sandbox), document, revoked };
 }
+
+test("international Trae workbench receives and fully removes the shared theme payload", async () => {
+  const { payload } = await loadPayload(path.join(ROOT, "themes", "neon-portal"));
+  const { context, document } = createRendererContext({ hostProfile: "international" });
+
+  const applied = vm.runInContext(payload, context);
+  assert.equal(applied.installed, true);
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-view"), "workbench");
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-route"), "workbench");
+  assert.equal(document.documentElement.getAttribute("data-trae-skin-mode"), "code");
+  assert.equal(document.querySelector(".monaco-workbench")
+    .getAttribute("data-trae-skin-surface"), "shell");
+  assert.match(document.querySelector(".monaco-workbench")
+    .getAttribute("data-trae-skin-component"), /shell\.workspace/);
+  assert.equal(document.querySelectorAll("#trae-dream-skin-style").length, 1);
+  assert.ok(document.documentElement.style.getPropertyValue("--trae-skin-art"));
+
+  const session = { evaluate: async (expression) => vm.runInContext(expression, context) };
+  assert.equal(await removeFromSession(session), true);
+  assert.equal(await verifyRemovedSession(session), true);
+  assert.equal(document.querySelector("[data-trae-skin-surface]"), null);
+  assert.equal(document.querySelector("[data-trae-skin-component]"), null);
+});
 
 test("renderer injection is reentrant and remove restores every owned DOM change", async (t) => {
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), "trae-renderer-test-"));

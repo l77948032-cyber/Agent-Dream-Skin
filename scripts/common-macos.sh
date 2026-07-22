@@ -8,7 +8,7 @@ INJECTOR="$SCRIPT_DIR/injector.mjs"
 THEMES_ROOT="${TRAE_DREAM_SKIN_THEMES_ROOT:-$PROJECT_ROOT/themes}"
 DEFAULT_THEME_ID="neon-portal"
 DEFAULT_PORT="9342"
-SKIN_VERSION="0.4.0"
+SKIN_VERSION="0.4.1"
 
 STATE_ROOT="${TRAE_DREAM_SKIN_HOME:-$HOME/Library/Application Support/TraeDreamSkin}"
 STATE_PATH="$STATE_ROOT/state.json"
@@ -27,8 +27,11 @@ OPERATION_LOCK_DIR="$STATE_ROOT/operation.lock"
 OPERATION_LOCK_OWNER="$OPERATION_LOCK_DIR/owner"
 OPERATION_LOCK_HELD="false"
 
-EXPECTED_TRAE_TEAM_ID="${TRAE_EXPECTED_TEAM_ID:-CG2SCM6AV5}"
-SUPPORTED_TRAE_BUNDLE_IDS="cn.trae.solo.app"
+TRAE_SOLO_CN_BUNDLE_ID="cn.trae.solo.app"
+TRAE_INTERNATIONAL_BUNDLE_ID="com.trae.app"
+SUPPORTED_TRAE_BUNDLE_IDS="$TRAE_SOLO_CN_BUNDLE_ID $TRAE_INTERNATIONAL_BUNDLE_ID"
+EXPECTED_TRAE_SOLO_CN_TEAM_ID="${TRAE_SOLO_CN_EXPECTED_TEAM_ID:-${TRAE_EXPECTED_TEAM_ID:-CG2SCM6AV5}}"
+EXPECTED_TRAE_INTERNATIONAL_TEAM_ID="${TRAE_INTERNATIONAL_EXPECTED_TEAM_ID:-79M8227NKH}"
 KNOWN_TRAE_0_1_36_EXECUTABLE_SHA256="8407be5ebf6dc889fd48665a54321f4f313243a26108e8910737f56b674014fd"
 KNOWN_TRAE_0_1_36_BUNDLE_SHA256="5a7495d76dd36fb2e66de511c49d917aee81ca79e6bd8fc725596eb0656676f6"
 
@@ -90,45 +93,146 @@ is_supported_bundle_id() {
   return 1
 }
 
-discover_trae_app() {
+trae_variant_for_bundle_id() {
+  case "$1" in
+    "$TRAE_SOLO_CN_BUNDLE_ID") printf 'solo-cn\n' ;;
+    "$TRAE_INTERNATIONAL_BUNDLE_ID") printf 'international\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+expected_team_id_for_bundle_id() {
+  case "$1" in
+    "$TRAE_SOLO_CN_BUNDLE_ID") printf '%s\n' "$EXPECTED_TRAE_SOLO_CN_TEAM_ID" ;;
+    "$TRAE_INTERNATIONAL_BUNDLE_ID") printf '%s\n' "$EXPECTED_TRAE_INTERNATIONAL_TEAM_ID" ;;
+    *) return 1 ;;
+  esac
+}
+
+is_supported_trae_identity() {
+  local bundle_id="$1"
+  local team_id="$2"
+  local expected=""
+  expected="$(expected_team_id_for_bundle_id "$bundle_id")" || return 1
+  [ "$team_id" = "$expected" ]
+}
+
+trae_display_name_for_bundle_id() {
+  case "$1" in
+    "$TRAE_SOLO_CN_BUNDLE_ID") printf 'TRAE SOLO CN\n' ;;
+    "$TRAE_INTERNATIONAL_BUNDLE_ID") printf 'Trae International\n' ;;
+    *) return 1 ;;
+  esac
+}
+
+system_state_field() {
+  local key="$1"
+  [ -f "$STATE_PATH" ] || return 0
+  /usr/bin/plutil -extract "$key" raw -o - "$STATE_PATH" 2>/dev/null || true
+}
+
+candidate_trae_executable() {
+  local candidate="$1"
+  local executable_name=""
+  executable_name="$(plist_value "$candidate" CFBundleExecutable)"
+  [ -n "$executable_name" ] || return 1
+  printf '%s/Contents/MacOS/%s\n' "$candidate" "$executable_name"
+}
+
+candidate_trae_is_running() {
+  local candidate="$1"
+  local executable=""
+  executable="$(candidate_trae_executable "$candidate")" || return 1
+  /bin/ps -axo command= 2>/dev/null | /usr/bin/awk -v exe="$executable" '
+    $0 == exe || index($0, exe " ") == 1 { found = 1 }
+    END { exit found ? 0 : 1 }
+  '
+}
+
+select_trae_candidate() {
+  local candidate="$1"
+  local identifier=""
+  local executable=""
+  [ -n "$candidate" ] || return 1
+  [ -f "$candidate/Contents/Info.plist" ] || return 1
+  identifier="$(plist_value "$candidate" CFBundleIdentifier)"
+  is_supported_bundle_id "$identifier" || return 1
+  executable="$(candidate_trae_executable "$candidate")" || return 1
+  [ -x "$executable" ] || return 1
+  TRAE_BUNDLE="$candidate"
+  TRAE_BUNDLE_ID="$identifier"
+  TRAE_VARIANT="$(trae_variant_for_bundle_id "$identifier")"
+  TRAE_DISPLAY_NAME="$(trae_display_name_for_bundle_id "$identifier")"
+  TRAE_EXECUTABLE_NAME="$(plist_value "$candidate" CFBundleExecutable)"
+  TRAE_EXE="$executable"
+  TRAE_VERSION="$(plist_value "$candidate" CFBundleShortVersionString)"
+  export TRAE_BUNDLE TRAE_BUNDLE_ID TRAE_VARIANT TRAE_DISPLAY_NAME
+  export TRAE_EXECUTABLE_NAME TRAE_EXE TRAE_VERSION
+}
+
+trae_candidate_paths() {
   local candidate=""
   local identifier=""
+  {
+    for candidate in \
+      "/Applications/Trae.app" \
+      "$HOME/Applications/Trae.app" \
+      "/Applications/TRAE SOLO CN.app" \
+      "$HOME/Applications/TRAE SOLO CN.app"
+    do
+      [ -f "$candidate/Contents/Info.plist" ] && printf '%s\n' "$candidate"
+    done
+    for identifier in $SUPPORTED_TRAE_BUNDLE_IDS; do
+      /usr/bin/mdfind "kMDItemCFBundleIdentifier == '$identifier'" 2>/dev/null || true
+    done
+  } | /usr/bin/awk 'NF && !seen[$0]++'
+}
+
+discover_trae_app() {
+  local candidate=""
   local configured="${TRAE_APP_BUNDLE:-}"
+  local saved_bundle=""
+  local running_candidate=""
+  local running_count=0
+  local installed_candidate=""
+  local installed_count=0
 
-  for candidate in \
-    "$configured" \
-    "/Applications/TRAE SOLO CN.app" \
-    "/Applications/Trae.app" \
-    "$HOME/Applications/TRAE SOLO CN.app" \
-    "$HOME/Applications/Trae.app"
-  do
-    [ -n "$candidate" ] || continue
-    [ -f "$candidate/Contents/Info.plist" ] || continue
-    identifier="$(plist_value "$candidate" CFBundleIdentifier)"
-    if is_supported_bundle_id "$identifier"; then
-      TRAE_BUNDLE="$candidate"
-      TRAE_BUNDLE_ID="$identifier"
-      break
-    fi
-  done
-
-  if [ -z "${TRAE_BUNDLE:-}" ]; then
-    candidate="$(/usr/bin/mdfind 'kMDItemCFBundleIdentifier == "cn.trae.solo.app"' 2>/dev/null | /usr/bin/head -n 1)"
-    if [ -n "$candidate" ] && [ -f "$candidate/Contents/Info.plist" ]; then
-      identifier="$(plist_value "$candidate" CFBundleIdentifier)"
-      if is_supported_bundle_id "$identifier"; then
-        TRAE_BUNDLE="$candidate"
-        TRAE_BUNDLE_ID="$identifier"
-      fi
-    fi
+  if [ -n "$configured" ]; then
+    select_trae_candidate "$configured" \
+      || fail "TRAE_APP_BUNDLE is not a supported official Trae application: $configured"
+    return 0
   fi
 
-  [ -n "${TRAE_BUNDLE:-}" ] || fail "Could not find the supported TRAE SOLO CN app."
-  TRAE_EXECUTABLE_NAME="$(plist_value "$TRAE_BUNDLE" CFBundleExecutable)"
-  TRAE_EXE="$TRAE_BUNDLE/Contents/MacOS/$TRAE_EXECUTABLE_NAME"
-  TRAE_VERSION="$(plist_value "$TRAE_BUNDLE" CFBundleShortVersionString)"
-  [ -x "$TRAE_EXE" ] || fail "Trae executable is missing: $TRAE_EXE"
-  export TRAE_BUNDLE TRAE_BUNDLE_ID TRAE_EXE TRAE_VERSION
+  saved_bundle="$(system_state_field traeBundle)"
+  case "$saved_bundle" in
+    /*.app) select_trae_candidate "$saved_bundle" && return 0 ;;
+  esac
+
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    [ -f "$candidate/Contents/Info.plist" ] || continue
+    is_supported_bundle_id "$(plist_value "$candidate" CFBundleIdentifier)" || continue
+    [ -x "$(candidate_trae_executable "$candidate" 2>/dev/null || true)" ] || continue
+    installed_count=$((installed_count + 1))
+    installed_candidate="$candidate"
+    if candidate_trae_is_running "$candidate"; then
+      running_count=$((running_count + 1))
+      running_candidate="$candidate"
+    fi
+  done < <(trae_candidate_paths)
+  [ "$running_count" -le 1 ] \
+    || fail "Both Trae International and TRAE SOLO CN are running. Close one, or set TRAE_APP_BUNDLE to choose the target."
+  if [ "$running_count" -eq 1 ]; then
+    select_trae_candidate "$running_candidate" && return 0
+  fi
+
+  [ "$installed_count" -le 1 ] \
+    || fail "Both Trae International and TRAE SOLO CN are installed. Open the one to theme, or set TRAE_APP_BUNDLE to choose it."
+  if [ "$installed_count" -eq 1 ]; then
+    select_trae_candidate "$installed_candidate" && return 0
+  fi
+
+  fail "Could not find Trae International or TRAE SOLO CN. Install an official supported Trae app first."
 }
 
 codesign_team_id() {
@@ -163,18 +267,27 @@ run_node() {
 }
 
 require_trae_runtime() {
+  local validation_mode="${1:-full}"
+  case "$validation_mode" in full|identity) ;; *) fail "Unknown Trae validation mode: $validation_mode" ;; esac
   [ "$(/usr/bin/uname -s)" = "Darwin" ] || fail "This launcher requires macOS."
   [ -n "${TRAE_BUNDLE:-}" ] || fail "Discover Trae before validating its runtime."
+  [ "$(plist_value "$TRAE_BUNDLE" CFBundleIdentifier)" = "$TRAE_BUNDLE_ID" ] \
+    || fail "Trae's bundle identity changed after discovery."
   TRAE_TEAM_ID="$(codesign_team_id "$TRAE_BUNDLE")"
-  [ "$TRAE_TEAM_ID" = "$EXPECTED_TRAE_TEAM_ID" ] \
-    || fail "Unexpected Trae signing team: ${TRAE_TEAM_ID:-missing}."
+  is_supported_trae_identity "$TRAE_BUNDLE_ID" "$TRAE_TEAM_ID" \
+    || fail "Unexpected signing identity for $TRAE_DISPLAY_NAME: ${TRAE_TEAM_ID:-missing}."
+  if [ "$validation_mode" = "identity" ]; then
+    export TRAE_TEAM_ID
+    return 0
+  fi
   if ! /usr/bin/codesign --verify --deep --strict "$TRAE_BUNDLE" >/dev/null 2>&1; then
     if [ "${TRAE_REQUIRE_VALID_SIGNATURE:-0}" = "1" ]; then
       fail "Trae's code signature is invalid. Reinstall the official app before continuing."
     fi
     TRAE_EXECUTABLE_SHA256="$(sha256_file "$TRAE_EXE")"
     TRAE_BUNDLE_SHA256="$(sha256_bundle_tree "$TRAE_BUNDLE")"
-    if [ "$TRAE_VERSION" = "0.1.36" ] && \
+    if [ "$TRAE_BUNDLE_ID" = "$TRAE_SOLO_CN_BUNDLE_ID" ] && \
+      [ "$TRAE_VERSION" = "0.1.36" ] && \
       [ "$TRAE_EXECUTABLE_SHA256" = "$KNOWN_TRAE_0_1_36_EXECUTABLE_SHA256" ] && \
       [ "$TRAE_BUNDLE_SHA256" = "$KNOWN_TRAE_0_1_36_BUNDLE_SHA256" ]; then
       printf 'Trae Dream Skin: warning: strict signing verification failed, but the complete app bundle, executable, bundle id, and Team ID match the pinned tested Trae 0.1.36 build.\n' >&2
@@ -365,19 +478,24 @@ cdp_http_ready() {
 cdp_browser_id() {
   local port="$1"
   local payload=""
+  local web_socket_url=""
+  local browser_id=""
   payload="$(/usr/bin/curl --noproxy '*' --silent --fail --max-time 2 \
     "http://127.0.0.1:$port/json/version")" || return 1
-  run_node -e '
-    const [payload, expectedPort] = process.argv.slice(1);
-    const parsed = JSON.parse(payload);
-    const url = new URL(parsed.webSocketDebuggerUrl);
-    const match = url.pathname.match(/^\/devtools\/browser\/([A-Za-z0-9._-]{1,200})$/);
-    const hosts = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
-    if (url.protocol !== "ws:" || !hosts.has(url.hostname.toLowerCase()) ||
-      Number(url.port) !== Number(expectedPort) || url.username || url.password ||
-      url.search || url.hash || !match) process.exit(2);
-    process.stdout.write(match[1]);
-  ' "$payload" "$port"
+  web_socket_url="$(printf '%s' "$payload" \
+    | /usr/bin/plutil -extract webSocketDebuggerUrl raw -o - - 2>/dev/null)" || return 1
+  case "$web_socket_url" in
+    "ws://127.0.0.1:$port/devtools/browser/"*)
+      browser_id="${web_socket_url#"ws://127.0.0.1:$port/devtools/browser/"}" ;;
+    "ws://localhost:$port/devtools/browser/"*)
+      browser_id="${web_socket_url#"ws://localhost:$port/devtools/browser/"}" ;;
+    "ws://[::1]:$port/devtools/browser/"*)
+      browser_id="${web_socket_url#"ws://[::1]:$port/devtools/browser/"}" ;;
+    *) return 1 ;;
+  esac
+  case "$browser_id" in ''|*[!A-Za-z0-9._-]*) return 1 ;; esac
+  [ "${#browser_id}" -le 200 ] || return 1
+  printf '%s' "$browser_id"
 }
 
 verified_cdp_endpoint() {
@@ -411,11 +529,7 @@ wait_for_cdp() {
 state_field() {
   local key="$1"
   [ -f "$STATE_PATH" ] || return 0
-  run_node -e '
-    const fs = require("node:fs");
-    const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"))[process.argv[2]];
-    if (value !== undefined && value !== null) process.stdout.write(String(value));
-  ' "$STATE_PATH" "$key"
+  /usr/bin/plutil -extract "$key" raw -o - "$STATE_PATH" 2>/dev/null
 }
 
 trae_state_is_trustworthy() {
@@ -429,7 +543,10 @@ trae_state_is_trustworthy() {
   local trae_pid=""
   local trae_started_at=""
   local trae_bundle=""
+  local trae_bundle_id=""
   local trae_exe=""
+  local trae_team_id=""
+  local host_profile=""
   local theme_id=""
   local theme_revision=""
   local watcher_label=""
@@ -447,7 +564,10 @@ trae_state_is_trustworthy() {
   trae_pid="$(state_field traePid)" || return 1
   trae_started_at="$(state_field traeStartedAt)" || return 1
   trae_bundle="$(state_field traeBundle)" || return 1
+  trae_bundle_id="$(state_field traeBundleId 2>/dev/null || true)"
   trae_exe="$(state_field traeExe)" || return 1
+  trae_team_id="$(state_field traeTeamId)" || return 1
+  host_profile="$(state_field hostProfile 2>/dev/null || true)"
   theme_id="$(state_field themeId)" || return 1
   theme_revision="$(state_field themeRevision 2>/dev/null || true)"
   watcher_label="$(state_field launchAgentLabel)" || return 1
@@ -455,7 +575,8 @@ trae_state_is_trustworthy() {
   app_label="$(state_field appLaunchAgentLabel)" || return 1
   app_plist="$(state_field appLaunchAgentPlist)" || return 1
 
-  [ "$schema_version" = "1" ] && [ "$session" = "active" ] && [ "$owns_session" = "true" ] \
+  { [ "$schema_version" = "1" ] || [ "$schema_version" = "2" ]; } \
+    && [ "$session" = "active" ] && [ "$owns_session" = "true" ] \
     || return 1
   case "$port" in ''|*[!0-9]*) return 1 ;; esac
   [ "$port" -ge 1024 ] && [ "$port" -le 65535 ] || return 1
@@ -469,6 +590,12 @@ trae_state_is_trustworthy() {
   fi
   case "$trae_bundle" in /*.app) ;; *) return 1 ;; esac
   case "$trae_exe" in "$trae_bundle"/Contents/MacOS/*) ;; *) return 1 ;; esac
+  [ "$trae_bundle" = "$TRAE_BUNDLE" ] && [ "$trae_exe" = "$TRAE_EXE" ] \
+    && [ "$trae_team_id" = "$TRAE_TEAM_ID" ] || return 1
+  if [ "$schema_version" = "2" ]; then
+    [ "$trae_bundle_id" = "$TRAE_BUNDLE_ID" ] && [ "$host_profile" = "$TRAE_VARIANT" ] \
+      || return 1
+  fi
   [ "$watcher_label" = "$LAUNCH_AGENT_LABEL" ] \
     && [ "$watcher_plist" = "$LAUNCH_AGENT_PLIST" ] \
     && [ "$app_label" = "$TRAE_LAUNCH_AGENT_LABEL" ] \
@@ -496,9 +623,9 @@ write_state() {
   local theme_revision="${9:-}"
   run_node -e '
     const fs = require("node:fs");
-    const [file, version, port, browserId, pid, startedAt, injector, nodeVersion, bundle, exe, appVersion, teamId, root, themeId, themeDir, themeRevision, appPid, appStartedAt, ownsSession, startedCdpHere, arch, launchLabel, launchPlist, appLaunchLabel, appLaunchPlist] = process.argv.slice(1);
+    const [file, version, port, browserId, pid, startedAt, injector, nodeVersion, bundle, bundleId, hostProfile, displayName, exe, appVersion, teamId, root, themeId, themeDir, themeRevision, appPid, appStartedAt, ownsSession, startedCdpHere, arch, launchLabel, launchPlist, appLaunchLabel, appLaunchPlist] = process.argv.slice(1);
     const state = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       platform: `darwin-${arch}`,
       skinVersion: version,
       session: "active",
@@ -511,6 +638,9 @@ write_state() {
       injectorPath: injector,
       nodeVersion,
       traeBundle: bundle,
+      traeBundleId: bundleId,
+      hostProfile,
+      traeDisplayName: displayName,
       traeExe: exe,
       traeVersion: appVersion,
       traeTeamId: teamId,
@@ -529,7 +659,7 @@ write_state() {
     const temporary = `${file}.${process.pid}.tmp`;
     fs.writeFileSync(temporary, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
     fs.renameSync(temporary, file);
-  ' "$STATE_PATH" "$SKIN_VERSION" "$port" "$browser_id" "$injector_pid" "$injector_started_at" "$INJECTOR" "$NODE_VERSION" "$TRAE_BUNDLE" "$TRAE_EXE" "$TRAE_VERSION" "$TRAE_TEAM_ID" "$PROJECT_ROOT" "$THEME_ID" "$THEME_DIR" "$theme_revision" "$trae_pid" "$trae_started_at" "$owns_session" "$started_cdp_here" "$(/usr/bin/uname -m)" "$LAUNCH_AGENT_LABEL" "$LAUNCH_AGENT_PLIST" "$TRAE_LAUNCH_AGENT_LABEL" "$TRAE_LAUNCH_AGENT_PLIST"
+  ' "$STATE_PATH" "$SKIN_VERSION" "$port" "$browser_id" "$injector_pid" "$injector_started_at" "$INJECTOR" "$NODE_VERSION" "$TRAE_BUNDLE" "$TRAE_BUNDLE_ID" "$TRAE_VARIANT" "$TRAE_DISPLAY_NAME" "$TRAE_EXE" "$TRAE_VERSION" "$TRAE_TEAM_ID" "$PROJECT_ROOT" "$THEME_ID" "$THEME_DIR" "$theme_revision" "$trae_pid" "$trae_started_at" "$owns_session" "$started_cdp_here" "$(/usr/bin/uname -m)" "$LAUNCH_AGENT_LABEL" "$LAUNCH_AGENT_PLIST" "$TRAE_LAUNCH_AGENT_LABEL" "$TRAE_LAUNCH_AGENT_PLIST"
 }
 
 trae_launch_agent_output() {

@@ -206,6 +206,7 @@ try {
       traeInstallRoot = $trae.InstallRoot
       traeVersion = $trae.Version
       traeProductName = $trae.ProductName
+      hostProfile = $trae.HostProfile
       traePublisherSubject = $trae.PublisherSubject
       traePublisherThumbprint = $trae.PublisherThumbprint
       traeAppUserModelId = $trae.AppUserModelId

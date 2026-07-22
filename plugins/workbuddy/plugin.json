@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "dreamskin.workbuddy",
   "name": "WorkBuddy DreamSkin",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "First-party DreamSkin target plugin for WorkBuddy.",
   "entry": "plugin.mjs",
   "catalog": {

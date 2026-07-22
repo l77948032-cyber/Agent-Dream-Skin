@@ -13,15 +13,15 @@
 
 <p align="center">
   <img alt="macOS Apple silicon" src="https://img.shields.io/badge/macOS-Apple%20silicon-111111?logo=apple&logoColor=white">
-  <img alt="支持 Trae 与 WorkBuddy" src="https://img.shields.io/badge/Targets-Trae%20%2B%20WorkBuddy-2F7D72">
+  <img alt="支持 Trae 国际版、TRAE SOLO CN 与 WorkBuddy" src="https://img.shields.io/badge/Targets-Trae%20%2B%20WorkBuddy-2F7D72">
   <img alt="20 套主题模板" src="https://img.shields.io/badge/Templates-20-D95D4A">
   <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-3A73C1">
 </p>
 
 <p align="center">
-  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.0-macos-arm64/DreamSkin-Studio-0.4.0-mac-arm64.dmg"><strong>下载 macOS 测试版 DMG</strong></a>
+  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.1-macos-arm64/DreamSkin-Studio-0.4.1-mac-arm64.dmg"><strong>下载 macOS 测试版 DMG</strong></a>
   ·
-  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.4.0-macos-arm64">查看发行说明</a>
+  <a href="https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.4.1-macos-arm64">查看发行说明</a>
 </p>
 
 ![DreamSkin Studio 主题中心](./docs/images/studio-theme-center.jpg)
@@ -119,12 +119,12 @@ PNG/JPEG/WebP 普通文件，会复制到主题库并拒绝符号链接或超大
 ## 下载与安装
 
 DreamSkin Studio 已按 macOS 桌面应用交付，不需要另开网页或常驻开发服务器。当前 Apple
-silicon 测试版可以从 [GitHub Releases](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.4.0-macos-arm64)
+silicon 测试版可以从 [GitHub Releases](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/tag/test-v0.4.1-macos-arm64)
 公开下载：
 
-1. 下载 [`DreamSkin-Studio-0.4.0-mac-arm64.dmg`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.0-macos-arm64/DreamSkin-Studio-0.4.0-mac-arm64.dmg)
-   和同一 Release 中的 [`SHA256SUMS.txt`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.0-macos-arm64/SHA256SUMS.txt)。
-2. 在终端运行 `shasum -a 256 ~/Downloads/DreamSkin-Studio-0.4.0-mac-arm64.dmg`，确认结果与
+1. 下载 [`DreamSkin-Studio-0.4.1-mac-arm64.dmg`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.1-macos-arm64/DreamSkin-Studio-0.4.1-mac-arm64.dmg)
+   和同一 Release 中的 [`SHA256SUMS.txt`](https://github.com/l77948032-cyber/Agent-Dream-Skin/releases/download/test-v0.4.1-macos-arm64/SHA256SUMS.txt)。
+2. 在终端运行 `shasum -a 256 ~/Downloads/DreamSkin-Studio-0.4.1-mac-arm64.dmg`，确认结果与
    `SHA256SUMS.txt` 中 DMG 对应的一行完全相同。
 3. 打开 DMG，把 **DreamSkin Studio** 拖到右侧的 **Applications**。
 4. 从“应用程序”启动，浏览模板或管理自己的主题。
@@ -133,15 +133,31 @@ silicon 测试版可以从 [GitHub Releases](https://github.com/l77948032-cyber/
 安装 DreamSkin Studio 本身不要求本机安装 Node.js。DMG 是推荐安装方式，ZIP 只作为备用
 分发格式。
 
-> 当前公开包是经过安装验收的 **ad-hoc 签名测试版**。其他用户可以下载，但 macOS 可能
-> 显示开发者验证提示。面向所有用户的免警告正式版仍需 Developer ID 签名和 Apple 公证。
+### 没有 Apple Developer ID 时如何启动
 
-首次打开时，如果 macOS 提示无法验证开发者，请先确认 SHA-256 匹配，再到“应用程序”中
-按住 Control 点击（或右键点击）**DreamSkin Studio**，选择“打开”，并在确认框中再次选择
-“打开”。如果仍被阻止，可前往“系统设置 -> 隐私与安全性”，在安全性提示旁选择“仍要打开”。
-校验不匹配时不要绕过系统保护，请删除文件并从本项目 Release 重新下载。
+当前发布者**没有 Apple Developer ID**，因此公开安装包只有 ad-hoc 签名，未经过 Apple
+公证。其他用户仍然可以下载使用，但 macOS 会把它视为无法验证开发者的应用。请只从本仓库
+Release 下载，并先确认 SHA-256 与 `SHA256SUMS.txt` 完全一致。
 
-本版功能、兼容性、升级与已知限制见 [v0.4.0 发行说明](./docs/releases/v0.4.0.md)。
+按下面的顺序处理，成功后不需要继续执行后面的步骤：
+
+1. 在“应用程序”中按住 Control 点击（或右键点击）**DreamSkin Studio**，选择“打开”，
+   再在确认框中选择“打开”。这只会为当前应用增加一次启动许可。
+2. 如果仍被阻止，打开“系统设置 -> 隐私与安全性”，找到 DreamSkin Studio 的安全性提示，
+   点击“仍要打开”，输入本机密码后再次确认。
+3. 如果 macOS 提示应用“已损坏”或以上入口仍未出现，在确认 SHA-256 正确后，可在终端仅
+   清除 DreamSkin Studio 的下载隔离属性，然后重新启动：
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/DreamSkin Studio.app"
+open "/Applications/DreamSkin Studio.app"
+```
+
+上面的命令只处理 DreamSkin Studio，不会全局关闭 Gatekeeper。**不要执行**
+`sudo spctl --master-disable`。如果校验值不匹配，请不要绕过系统保护，直接删除文件并从本项目
+Release 重新下载。免警告版本仍需要未来使用 Developer ID 签名并完成 Apple 公证。
+
+本版功能、兼容性、升级与已知限制见 [v0.4.1 发行说明](./docs/releases/v0.4.1.md)。
 
 ## 从源码运行
 
@@ -149,7 +165,7 @@ DreamSkin Studio 是本地桌面应用，目前不提供云端演示。开发与
 
 - macOS 12 或更高版本，Apple silicon。
 - Node.js `>= 22.12`。
-- 已安装 Trae 或 WorkBuddy。
+- 已安装 Trae 国际版、TRAE SOLO CN 或 WorkBuddy。
 
 ```bash
 git clone https://github.com/l77948032-cyber/Agent-Dream-Skin.git
@@ -173,13 +189,16 @@ npm run desktop:installer:mac
 
 | 应用 | 当前体验 |
 | --- | --- |
-| **Trae** | macOS 实机适配，覆盖 Work、Code、Design、对话页与 20 个语义组件；当前重点验证版本为 TRAE SOLO CN `0.1.36`。 |
+| **Trae 国际版** | macOS 自动识别官方 `com.trae.app`，适配标准 Workbench、对话与组件界面；已按 `3.5.78` 官方应用结构完成兼容测试。 |
+| **TRAE SOLO CN** | macOS 自动识别官方 `cn.trae.solo.app`，覆盖 Work、Code、Design、对话页与 20 个语义组件；当前本机识别基线为 `0.1.38`。 |
 | **WorkBuddy** | macOS WorkBuddy `5.2.6` 实机适配，覆盖 9 个完整场景与 32 个语义组件。 |
 | **Windows** | 相关运行与打包仍在验证阶段，暂不建议作为稳定体验环境。 |
 
 ### 使用前请知道
 
 - 当前项目属于开发者预览，优先推荐在 macOS Apple silicon 上体验。
+- Trae 国际版与 CN 版可以同时安装；应用主题前请只打开要换肤的那一版，避免目标含糊。
+- 国际版已完成官方应用身份检查、标准 Workbench 自动化测试与完整运行链路测试；本次没有安装国际版进行人工启动验收。
 - 目标应用升级后，界面变化可能需要 DreamSkin 更新适配。
 - 关闭 Studio 不等于恢复原生主题；需要清理时，请在 Studio 中使用“恢复原生界面”。
 - 编程 Agent 只能编辑和验证主题，不能通过 CLI 应用或恢复主题。

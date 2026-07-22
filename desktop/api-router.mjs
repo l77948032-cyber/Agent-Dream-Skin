@@ -53,6 +53,7 @@ export const DESKTOP_STUDIO_OPERATIONS = Object.freeze([
   "cli.status",
   "cli.install",
   "cli.uninstall",
+  "runtime.status",
   "runtime.verify",
   "runtime.restore",
 ]);
@@ -81,6 +82,7 @@ export class DesktopStudioApiRouter {
     if (operation === "cli.status") return this.backend.cliStatus();
     if (operation === "cli.install") return this.backend.installCli();
     if (operation === "cli.uninstall") return this.backend.uninstallCli();
+    if (operation === "runtime.status") return this.backend.runtimeStatus({ pluginId });
     if (operation === "runtime.verify") return this.backend.verify(withoutPluginId(input), pluginId);
     if (operation === "runtime.restore") return this.backend.restore(pluginId);
 

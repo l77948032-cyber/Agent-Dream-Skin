@@ -797,16 +797,27 @@ function SettingsView({
   const runtimeLabel = selectedRuntime?.available === false || runtimeSession === "unsupported"
     ? "不可用"
     : runtimeSession === "active"
-      ? "已连接"
+      ? "主题运行中"
       : runtimeSession === "degraded"
-        ? "需要修复"
+        ? "主题需修复"
         : runtimeSession === "orphaned" || runtimeSession === "orphaned-unverified"
           ? "待清理"
           : runtimeSession === "off" || runtimeSession === "inactive"
-            ? "未启用"
+            ? "原生界面"
             : runtimeSession
-              ? "待连接"
+              ? "等待检查"
               : "未知";
+  const runtimeHostName = typeof selectedRuntime?.traeDisplayName === "string" && selectedRuntime.traeDisplayName
+    ? selectedRuntime.traeDisplayName
+    : selectedRuntime?.hostProfile === "international"
+      ? "Trae International"
+      : selectedRuntime?.hostProfile === "solo-cn"
+        ? "TRAE SOLO CN"
+        : "";
+  const runtimeHostVersion = typeof selectedRuntime?.traeVersion === "string" && selectedRuntime.traeVersion
+    ? `v${selectedRuntime.traeVersion}`
+    : "";
+  const runtimeHostLabel = [runtimeHostName, runtimeHostVersion].filter(Boolean).join(" · ");
   const runtimeCanVerify = runtimeSession === "active";
   const runtimeCanRestore = runtimeSession === "active"
     || runtimeSession === "degraded"
@@ -860,7 +871,7 @@ function SettingsView({
           <div className="setting-row"><span><strong>界面动效</strong><small>主题卡片与工作台过渡</small></span><button type="button" className={`toggle ${motionEnabled ? "is-on" : ""}`} role="switch" disabled={Boolean(busy)} aria-label="界面动效" aria-checked={motionEnabled} onClick={() => update("motionEnabled", !motionEnabled)}><i /></button></div>
           <div className="setting-row"><span><strong>主题存储位置</strong><small>{(selectedTarget && settings.themeRoots?.[selectedTarget.pluginId]) || settings.themesRoot || "未配置"}</small></span></div>
         </section>
-        <section className="settings-section"><div className="settings-title"><strong>{targetName} 运行状态</strong></div><div className="diagnostic-row"><span><i />{targetName} Runtime</span><strong>{runtimeLabel}</strong></div><div className="diagnostic-row"><span><i />组件注册表</span><strong>{selectedInspect?.registry?.components?.length ?? (isWorkBuddyTarget(selectedTarget || {}) ? Object.keys(workBuddyComponentLabels).length : componentRegistry.components.length)} 项</strong></div><button type="button" className="setting-row command-row" disabled={!runtimeCanVerify || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("verify")}><span><strong>验证当前主题</strong><small>检查 {targetName} 中的实际换肤结果</small></span>{runtimeBusy === "verify" ? <LoaderCircle className="spin" size={15} /> : <Check size={15} />}</button><button type="button" className="setting-row command-row" disabled={!runtimeCanRestore || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("restore")}><span><strong>恢复原生界面</strong><small>停止当前主题并恢复 {targetName}</small></span>{runtimeBusy === "restore" ? <LoaderCircle className="spin" size={15} /> : <RotateCcw size={15} />}</button></section>
+        <section className="settings-section"><div className="settings-title"><strong>{targetName} 运行状态</strong></div><div className="diagnostic-row"><span><i />{targetName} Runtime</span><strong>{runtimeLabel}</strong></div>{runtimeHostLabel && !isWorkBuddyTarget(selectedTarget || {}) ? <div className="diagnostic-row"><span><i />当前宿主</span><strong title={selectedRuntime?.traeBundleId}>{runtimeHostLabel}</strong></div> : null}<div className="diagnostic-row"><span><i />组件注册表</span><strong>{selectedInspect?.registry?.components?.length ?? (isWorkBuddyTarget(selectedTarget || {}) ? Object.keys(workBuddyComponentLabels).length : componentRegistry.components.length)} 项</strong></div><button type="button" className="setting-row command-row" disabled={!runtimeCanVerify || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("verify")}><span><strong>验证当前主题</strong><small>检查 {targetName} 中的实际换肤结果</small></span>{runtimeBusy === "verify" ? <LoaderCircle className="spin" size={15} /> : <Check size={15} />}</button><button type="button" className="setting-row command-row" disabled={!runtimeCanRestore || Boolean(runtimeBusy)} onClick={() => runRuntimeAction("restore")}><span><strong>恢复原生界面</strong><small>停止当前主题并恢复 {targetName}</small></span>{runtimeBusy === "restore" ? <LoaderCircle className="spin" size={15} /> : <RotateCcw size={15} />}</button></section>
         <SoftwareUpdateSection />
       </div>
     </main>
@@ -1023,7 +1034,7 @@ function ThemeWorkspace({
   runtime: RuntimeStatusDto | null;
   onBack: () => void;
   onChange: (item: LocalTheme) => void;
-  onApplied: (item: LocalTheme) => void;
+  onApplied: (item: LocalTheme, status?: RuntimeStatusDto) => void;
   onVerify: () => Promise<void>;
   onDuplicate: () => Promise<boolean>;
   onDelete: () => Promise<boolean>;
@@ -1059,7 +1070,7 @@ function ThemeWorkspace({
     try {
       const result = await studioApi.applyTheme(item.localId, item.pluginId);
       onChange(result.theme);
-      onApplied(result.theme);
+      onApplied(result.theme, result.runtime.status);
     } catch (error) {
       onError("应用主题失败", errorMessage(error));
     } finally {
@@ -1553,16 +1564,12 @@ export default function App() {
   const verifyRuntime = async (pluginId: string) => {
     const targetName = targetOptions.find((target) => target.pluginId === pluginId)?.name || activeTargetName;
     try {
-      const result = await studioApi.verifyRuntime({}, pluginId);
-      const targetRuntime = runtimeByPlugin[pluginId] || (pluginId === activePluginId ? runtime : null);
-      const themeName = localThemes.find((item) => item.pluginId === pluginId && item.localId === targetRuntime?.themeId)?.theme.name;
+      await studioApi.verifyRuntime({}, pluginId);
+      const next = await studioApi.getRuntimeStatus(pluginId);
+      setRuntimeByPlugin((current) => ({ ...current, [pluginId]: next }));
+      if (pluginId === activePluginId) setRuntime(next);
+      const themeName = localThemes.find((item) => item.pluginId === pluginId && item.localId === next.themeId)?.theme.name;
       toast("运行验证通过", themeName ? `${themeName} 的实际换肤结果正常。` : `${targetName} 主题运行正常。`);
-      const themeId = result.themeId;
-      if (typeof themeId === "string") {
-        const next = { ...(targetRuntime || {}), available: true, session: "active", themeId };
-        setRuntimeByPlugin((current) => ({ ...current, [pluginId]: next }));
-        if (pluginId === activePluginId) setRuntime(next);
-      }
     } catch (error) {
       toast("运行验证失败", errorMessage(error), "error");
     }
@@ -1604,7 +1611,7 @@ export default function App() {
         {!bootstrapping && !bootstrapError && view === "center" ? <ThemeCenter catalog={catalog} localThemes={localThemes} targets={targetOptions} onAdd={addTemplate} onOpen={openWorkspace} onInspect={setDetailEntry} /> : null}
         {!bootstrapping && !bootstrapError && view === "library" ? <MyThemes localThemes={localThemes} targets={targetOptions} targetNameForTheme={targetNameForTheme} onCreateBlank={createBlank} onOpen={openWorkspace} onDuplicate={duplicateTheme} onDelete={deleteTheme} /> : null}
         {!bootstrapping && !bootstrapError && view === "settings" ? <SettingsView settings={settings} cliStatus={cliStatus} cliBusy={cliBusy} inspect={inspect} runtime={runtime} targets={targetOptions} inspectByPlugin={inspectByPlugin} runtimeByPlugin={runtimeByPlugin} defaultPluginId={activePluginId || targetOptions[0]?.pluginId || ""} onChange={updateSettings} onCliRefresh={() => runCliAction("refresh")} onCliInstall={() => runCliAction("install")} onCliUninstall={() => runCliAction("uninstall")} onVerifyRuntime={verifyRuntime} onRestoreRuntime={restoreRuntime} /> : null}
-        {!bootstrapping && !bootstrapError && view === "workspace" && workspaceTheme ? <ThemeWorkspace key={themeIdentity(workspaceTheme)} item={workspaceTheme} targetName={targetNameForTheme(workspaceTheme)} themesRoot={settings.themeRoots?.[workspaceTheme.pluginId] || targetData.find((target) => target.pluginId === workspaceTheme.pluginId)?.themesRoot || settings.themesRoot || ""} cliStatus={cliStatus} syncState={syncState} lastSyncAt={lastSyncAt} runtime={runtimeByPlugin[workspaceTheme.pluginId] || (workspaceTheme.pluginId === activePluginId ? runtime : null)} onBack={() => setView("library")} onChange={updateLocalTheme} onVerify={() => verifyRuntime(workspaceTheme.pluginId)} onDuplicate={() => duplicateTheme(workspaceTheme)} onDelete={() => deleteTheme(workspaceTheme)} onApplied={(item) => { const next = { ...(runtimeByPlugin[item.pluginId] || {}), available: true, session: "active", themeId: item.localId }; setRuntimeByPlugin((current) => ({ ...current, [item.pluginId]: next })); if (item.pluginId === activePluginId) setRuntime(next); toast("主题已应用", `${item.theme.name} 已应用到 ${targetNameForTheme(item)}。`); }} onError={(title, detail) => toast(title, detail, "error")} /> : null}
+        {!bootstrapping && !bootstrapError && view === "workspace" && workspaceTheme ? <ThemeWorkspace key={themeIdentity(workspaceTheme)} item={workspaceTheme} targetName={targetNameForTheme(workspaceTheme)} themesRoot={settings.themeRoots?.[workspaceTheme.pluginId] || targetData.find((target) => target.pluginId === workspaceTheme.pluginId)?.themesRoot || settings.themesRoot || ""} cliStatus={cliStatus} syncState={syncState} lastSyncAt={lastSyncAt} runtime={runtimeByPlugin[workspaceTheme.pluginId] || (workspaceTheme.pluginId === activePluginId ? runtime : null)} onBack={() => setView("library")} onChange={updateLocalTheme} onVerify={() => verifyRuntime(workspaceTheme.pluginId)} onDuplicate={() => duplicateTheme(workspaceTheme)} onDelete={() => deleteTheme(workspaceTheme)} onApplied={(item, status) => { const next = status || { ...(runtimeByPlugin[item.pluginId] || {}), available: true, session: "active", themeId: item.localId }; setRuntimeByPlugin((current) => ({ ...current, [item.pluginId]: next })); if (item.pluginId === activePluginId) setRuntime(next); toast("主题已应用", `${item.theme.name} 已应用到 ${targetNameForTheme(item)}。`); }} onError={(title, detail) => toast(title, detail, "error")} /> : null}
       </div>
 
       <AnimatePresence>

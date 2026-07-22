@@ -283,6 +283,9 @@ export function createStudioHttpServer({
       if (!pluginId && apiPathname === "/api/v1/cli" && method === "GET") return sendResult(response, await backend.cliStatus());
       if (!pluginId && apiPathname === "/api/v1/cli/install" && method === "POST") return sendResult(response, await backend.installCli());
       if (!pluginId && apiPathname === "/api/v1/cli/uninstall" && method === "POST") return sendResult(response, await backend.uninstallCli());
+      if (apiPathname === "/api/v1/runtime" && method === "GET") {
+        return sendResult(response, await backend.runtimeStatus({ pluginId }));
+      }
       if (apiPathname === "/api/v1/runtime/verify" && method === "POST") {
         return sendResult(response, await backend.verify(
           routeScopedBody(await readJson(request), pluginId),

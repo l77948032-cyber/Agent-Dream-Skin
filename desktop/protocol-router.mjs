@@ -193,6 +193,9 @@ async function apiRoute(request, url, router) {
   if (!pluginId && pathname === "/api/v1/cli" && method === "GET") return success(await router.invoke("cli.status"));
   if (!pluginId && pathname === "/api/v1/cli/install" && method === "POST") return success(await router.invoke("cli.install"));
   if (!pluginId && pathname === "/api/v1/cli/uninstall" && method === "POST") return success(await router.invoke("cli.uninstall"));
+  if (pathname === "/api/v1/runtime" && method === "GET") {
+    return success(await router.invoke("runtime.status", { pluginId }));
+  }
   if (pathname === "/api/v1/runtime/verify" && method === "POST") {
     return success(await router.invoke(
       "runtime.verify",

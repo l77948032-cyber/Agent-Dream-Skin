@@ -24,7 +24,7 @@ const VISUAL_ATTRIBUTE_NAMES = Object.freeze([
   "data-trae-skin-ornament",
 ]);
 
-export const SKIN_VERSION = "0.4.0";
+export const SKIN_VERSION = "0.4.1";
 export const DEFAULT_PORT = 9342;
 
 const DEFAULT_THEME_DIR = path.join(root, "themes", "neon-portal");

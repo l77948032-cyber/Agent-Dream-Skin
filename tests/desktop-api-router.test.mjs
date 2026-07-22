@@ -61,6 +61,15 @@ function backendFixture() {
         command: "dreamskin",
       };
     },
+    runtimeStatus: async ({ pluginId } = {}) => ({
+      available: true,
+      session: "active",
+      themeId: "theme-one",
+      hostProfile: "international",
+      traeBundleId: "com.trae.app",
+      traeVersion: "3.5.78",
+      pluginId,
+    }),
     verify: async (input) => ({ verified: input }),
     restore: async () => ({ restored: true }),
     asset: async (kind, id) => ({
@@ -131,6 +140,15 @@ test("desktop API router exposes only named Studio operations", async () => {
     ["cli.install"],
     ["cli.uninstall"],
   ]);
+  assert.deepEqual(await router.invoke("runtime.status"), {
+    available: true,
+    session: "active",
+    themeId: "theme-one",
+    hostProfile: "international",
+    traeBundleId: "com.trae.app",
+    traeVersion: "3.5.78",
+    pluginId: undefined,
+  });
 
   await assert.rejects(() => router.invoke("filesystem.read", { path: "/etc/passwd" }), {
     code: "INVALID_OPERATION",
@@ -162,6 +180,10 @@ test("desktop API router forwards plugin scope independently from a shared theme
     calls.push(["restore", pluginId]);
     return { pluginId, restored: true };
   };
+  fixture.backend.runtimeStatus = async ({ pluginId: scope } = {}) => {
+    calls.push(["runtime.status", scope]);
+    return { pluginId: scope, session: "active" };
+  };
   fixture.backend.asset = async (kind, id, pluginId) => {
     calls.push(["asset", pluginId, kind, id]);
     return { buffer: Buffer.from("asset"), bytes: 5, mime: "image/png", revision: "revision-one" };
@@ -171,6 +193,7 @@ test("desktop API router forwards plugin scope independently from a shared theme
 
   await router.invoke("themes.create", { kind: "blank", pluginId });
   await router.invoke("themes.apply", { themeId: "shared", pluginId });
+  await router.invoke("runtime.status", { pluginId });
   await router.invoke("runtime.verify", { screenshot: false, pluginId });
   await router.invoke("runtime.restore", { pluginId });
   await router.asset("theme", "shared", pluginId);
@@ -178,6 +201,7 @@ test("desktop API router forwards plugin scope independently from a shared theme
   assert.deepEqual(calls, [
     ["create", pluginId, { kind: "blank" }],
     ["apply", pluginId, "shared"],
+    ["runtime.status", pluginId],
     ["verify", pluginId, { screenshot: false }],
     ["restore", pluginId],
     ["asset", pluginId, "theme", "shared"],
@@ -227,6 +251,16 @@ test("dreamskin protocol serves the SPA, immutable assets, and Studio API", asyn
 
   const catalog = await handle(new Request("dreamskin://studio/api/v1/catalog"));
   assert.deepEqual(await catalog.json(), { ok: true, result: [{ id: "template-one" }] });
+
+  const runtime = await handle(new Request("dreamskin://studio/api/v1/runtime"));
+  assert.deepEqual((await runtime.json()).result, {
+    available: true,
+    session: "active",
+    themeId: "theme-one",
+    hostProfile: "international",
+    traeBundleId: "com.trae.app",
+    traeVersion: "3.5.78",
+  });
 
   const created = await handle(new Request("dreamskin://studio/api/v1/themes", {
     method: "POST",
@@ -302,6 +336,10 @@ test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
     calls.push(["create", pluginId, input]);
     return { pluginId, localId: "shared" };
   };
+  fixture.backend.runtimeStatus = async ({ pluginId: scope } = {}) => {
+    calls.push(["runtime.status", scope]);
+    return { pluginId: scope, hostProfile: "solo-cn", traeBundleId: "cn.trae.solo.app" };
+  };
   const handle = createDreamSkinProtocolHandler({
     router: new DesktopStudioApiRouter({ backend: fixture.backend }),
     distRoot: root,
@@ -310,6 +348,12 @@ test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
   const catalog = await handle(new Request(`dreamskin://studio/api/v1/plugins/${pluginId}/catalog`));
   assert.equal(catalog.status, 200);
   assert.equal((await catalog.json()).result[0].pluginId, pluginId);
+  const runtime = await handle(new Request(`dreamskin://studio/api/v1/plugins/${pluginId}/runtime`));
+  assert.deepEqual((await runtime.json()).result, {
+    pluginId,
+    hostProfile: "solo-cn",
+    traeBundleId: "cn.trae.solo.app",
+  });
 
   const created = await handle(new Request(
     `dreamskin://studio/api/v1/plugins/${pluginId}/themes`,
@@ -326,6 +370,7 @@ test("dreamskin protocol exposes target-scoped Studio routes", async (t) => {
   assert.equal(created.status, 201);
   assert.deepEqual(calls, [
     ["catalog", pluginId],
+    ["runtime.status", pluginId],
     ["create", pluginId, { kind: "blank" }],
   ]);
 

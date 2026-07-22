@@ -28,3 +28,12 @@ test("Studio presents a local theme library instead of an embedded Agent connect
   assert.match(userInterfaceSource, /本地主题库/);
   assert.match(userInterfaceSource, /getCliStatus/);
 });
+
+test("Studio refreshes runtime status only after explicit runtime actions", async () => {
+  const appSource = await fs.readFile(path.join(ROOT, "studio/src/App.tsx"), "utf8");
+
+  assert.equal(appSource.includes("runtimePollBusyRef"), false);
+  assert.match(appSource, /verifyRuntime[\s\S]+getRuntimeStatus\(pluginId\)/);
+  assert.match(appSource, /restoreRuntime[\s\S]+result\.after/);
+  assert.match(appSource, /onApplied\(result\.theme, result\.runtime\.status\)/);
+});

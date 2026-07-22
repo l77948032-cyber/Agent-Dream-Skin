@@ -4,7 +4,9 @@ set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd -P)/common-macos.sh"
 
 discover_trae_app
-require_trae_runtime
+# Applying and verifying a theme perform the full deep-signature check. The
+# frequently polled status path only needs the exact bundle/Team ID binding.
+require_trae_runtime identity
 acquire_operation_lock
 trap release_operation_lock EXIT
 
@@ -17,9 +19,9 @@ if [ ! -f "$STATE_PATH" ]; then
   if [ "$OWNED_APP_JOB" = "true" ] || [ "$OWNED_WATCHER_JOB" = "true" ]; then
     SESSION_STATUS="orphaned"
   fi
-  printf '{"session":"%s","traeRunning":%s,"ownedAppJob":%s,"ownedWatcherJob":%s}\n' \
+  printf '{"session":"%s","traeRunning":%s,"ownedAppJob":%s,"ownedWatcherJob":%s,"hostProfile":"%s","traeDisplayName":"%s","traeBundleId":"%s","traeVersion":"%s"}\n' \
     "$SESSION_STATUS" "$(trae_is_running && printf true || printf false)" \
-    "$OWNED_APP_JOB" "$OWNED_WATCHER_JOB"
+    "$OWNED_APP_JOB" "$OWNED_WATCHER_JOB" "$TRAE_VARIANT" "$TRAE_DISPLAY_NAME" "$TRAE_BUNDLE_ID" "$TRAE_VERSION"
   exit 0
 fi
 
@@ -34,8 +36,9 @@ if ! trae_state_is_trustworthy; then
   if [ "$OWNED_APP_JOB" = "true" ] || [ "$OWNED_WATCHER_JOB" = "true" ]; then
     SESSION_STATUS="orphaned-unverified"
   fi
-  printf '{"session":"%s","stateValid":false,"traeRunning":%s,"ownedAppJob":%s,"ownedWatcherJob":%s}\n' \
-    "$SESSION_STATUS" "$TRAE_RUNNING" "$OWNED_APP_JOB" "$OWNED_WATCHER_JOB"
+  printf '{"session":"%s","stateValid":false,"traeRunning":%s,"ownedAppJob":%s,"ownedWatcherJob":%s,"hostProfile":"%s","traeDisplayName":"%s","traeBundleId":"%s","traeVersion":"%s"}\n' \
+    "$SESSION_STATUS" "$TRAE_RUNNING" "$OWNED_APP_JOB" "$OWNED_WATCHER_JOB" \
+    "$TRAE_VARIANT" "$TRAE_DISPLAY_NAME" "$TRAE_BUNDLE_ID" "$TRAE_VERSION"
   exit 0
 fi
 
@@ -83,6 +86,7 @@ THEME_REVISION_JSON="null"
 if [[ "$THEME_REVISION" =~ ^[0-9a-f]{64}$ ]]; then
   THEME_REVISION_JSON="\"$THEME_REVISION\""
 fi
-printf '{"session":"%s","themeId":"%s","themeRevision":%s,"port":%s,"injectorAlive":%s,"traeAlive":%s,"cdpOk":%s,"ownedAppJob":%s,"ownedWatcherJob":%s}\n' \
+printf '{"session":"%s","themeId":"%s","themeRevision":%s,"port":%s,"injectorAlive":%s,"traeAlive":%s,"cdpOk":%s,"ownedAppJob":%s,"ownedWatcherJob":%s,"hostProfile":"%s","traeDisplayName":"%s","traeBundleId":"%s","traeVersion":"%s"}\n' \
   "$SESSION_STATUS" "$THEME_ID" "$THEME_REVISION_JSON" "$PORT" "$INJECTOR_ALIVE" \
-  "$TRAE_ALIVE" "$CDP_OK" "$OWNED_APP_JOB" "$OWNED_WATCHER_JOB"
+  "$TRAE_ALIVE" "$CDP_OK" "$OWNED_APP_JOB" "$OWNED_WATCHER_JOB" \
+  "$TRAE_VARIANT" "$TRAE_DISPLAY_NAME" "$TRAE_BUNDLE_ID" "$TRAE_VERSION"

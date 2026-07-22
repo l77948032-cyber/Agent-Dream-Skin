@@ -33,6 +33,12 @@ export interface RuntimeStatusDto {
   available?: boolean;
   session?: string;
   themeId?: string;
+  hostProfile?: "solo-cn" | "international" | string;
+  traeBundleId?: string;
+  traeVersion?: string;
+  traeDisplayName?: string;
+  traeBundle?: string;
+  traeExe?: string;
   error?: { code?: string; message?: string };
   [key: string]: unknown;
 }
@@ -75,7 +81,10 @@ export interface StudioTargetDto {
 
 export interface ApplyThemeResponse {
   theme: LocalTheme;
-  runtime: unknown;
+  runtime: {
+    status: RuntimeStatusDto;
+    [key: string]: unknown;
+  };
 }
 
 export type CreateThemeInput = ({ kind: "template"; sourceId: string } | { kind: "blank" }) & {
@@ -169,6 +178,7 @@ export interface StudioTransport {
   installCli(): Promise<CliStatusDto>;
   uninstallCli(): Promise<CliStatusDto>;
   updateSettings(settings: Partial<Pick<StudioSettings, "motionEnabled">>): Promise<StudioSettings>;
+  getRuntimeStatus(pluginId?: string): Promise<RuntimeStatusDto>;
   verifyRuntime(input?: Record<string, unknown>, pluginId?: string): Promise<Record<string, unknown>>;
   restoreRuntime(pluginId?: string): Promise<RuntimeRestoreResponse>;
 }
@@ -190,6 +200,7 @@ export interface DreamSkinStudioBridge {
   uninstallCli(): Promise<CliStatusDto>;
   getSettings(): Promise<StudioSettings>;
   updateSettings(settings: Partial<Pick<StudioSettings, "motionEnabled">>): Promise<StudioSettings>;
+  getRuntimeStatus(pluginId?: string): Promise<RuntimeStatusDto>;
   verifyRuntime(input?: Record<string, unknown>, pluginId?: string): Promise<unknown>;
   restoreRuntime(pluginId?: string): Promise<unknown>;
 }
@@ -312,6 +323,7 @@ export function createHttpStudioTransport(): StudioTransport {
       method: "PATCH",
       body: JSON.stringify(settings),
     }),
+    getRuntimeStatus: (pluginId) => httpRequest<RuntimeStatusDto>(pluginApiPath(pluginId, "/runtime")),
     verifyRuntime: (input = {}, pluginId) => httpRequest<Record<string, unknown>>(pluginApiPath(pluginId, "/runtime/verify"), {
       method: "POST",
       body: JSON.stringify(input),
@@ -344,6 +356,7 @@ export function createElectronStudioTransport(bridge: DreamSkinStudioBridge): St
     installCli: () => call(() => bridge.installCli()),
     uninstallCli: () => call(() => bridge.uninstallCli()),
     updateSettings: (settings) => call(() => bridge.updateSettings(settings)),
+    getRuntimeStatus: (pluginId) => call(() => bridge.getRuntimeStatus(pluginId)),
     verifyRuntime: (input = {}, pluginId) => call(() => bridge.verifyRuntime(input, pluginId) as Promise<Record<string, unknown>>),
     restoreRuntime: (pluginId) => call(() => bridge.restoreRuntime(pluginId) as Promise<RuntimeRestoreResponse>),
   };
@@ -385,6 +398,7 @@ export const studioApi = {
   installCli: () => transport().installCli(),
   uninstallCli: () => transport().uninstallCli(),
   updateSettings: (settings: Partial<Pick<StudioSettings, "motionEnabled">>) => transport().updateSettings(settings),
+  getRuntimeStatus: (pluginId?: string) => transport().getRuntimeStatus(pluginId),
   verifyRuntime: (input: Record<string, unknown> = {}, pluginId?: string) => transport().verifyRuntime(input, pluginId),
   restoreRuntime: (pluginId?: string) => transport().restoreRuntime(pluginId),
 };

@@ -88,6 +88,8 @@ export class StudioBackend {
     targets,
     defaultPluginId = runtimeManager?.defaultPluginId || "dreamskin.trae",
     runtimeMutationsEnabled = true,
+    runtimeListCacheMs = 10_000,
+    now = Date.now,
   }) {
     this.tool = tool;
     this.runtimeManager = runtimeManager;
@@ -115,6 +117,9 @@ export class StudioBackend {
     this.themesRoot = defaultTarget.themesRoot;
     this.previewRoot = path.join(path.resolve(dataRoot), "previews");
     this.runtimeMutationsEnabled = runtimeMutationsEnabled;
+    this.runtimeListCacheMs = runtimeListCacheMs;
+    this.now = now;
+    this.runtimeListCache = new Map();
     this.registries = new Map();
     this.themeLifecycleQueue = Promise.resolve();
   }
@@ -202,6 +207,22 @@ export class StudioBackend {
     }
   }
 
+  async runtimeStatusForThemeList(pluginId = this.defaultPluginId) {
+    const cached = this.runtimeListCache.get(pluginId);
+    if (cached && cached.expiresAt > this.now()) return cached.value;
+
+    const pending = this.runtimeStatus({ pluginId });
+    this.runtimeListCache.set(pluginId, { expiresAt: Number.POSITIVE_INFINITY, value: pending });
+    const status = await pending;
+    if (this.runtimeListCache.get(pluginId)?.value === pending) {
+      this.runtimeListCache.set(pluginId, {
+        expiresAt: this.now() + this.runtimeListCacheMs,
+        value: status,
+      });
+    }
+    return status;
+  }
+
   async components(pluginId = this.defaultPluginId) {
     const target = this.target(pluginId);
     if (!this.registries.has(pluginId)) {
@@ -257,7 +278,7 @@ export class StudioBackend {
 
   async themes(pluginId = this.defaultPluginId) {
     const target = this.target(pluginId);
-    const status = await this.runtimeStatus({ pluginId });
+    const status = await this.runtimeStatusForThemeList(pluginId);
     return target.library.list({ activeThemeId: activeThemeId(status) });
   }
 
@@ -331,6 +352,7 @@ export class StudioBackend {
       const before = await target.library.read(id);
       await this.tool.validateTheme({ themeId: id }, pluginId);
       const runtime = await this.runtimeManager.apply(id, pluginId);
+      this.runtimeListCache.delete(pluginId);
       try {
         return {
           theme: await target.library.markApplied(id, before.revisionHash),
@@ -431,7 +453,11 @@ export class StudioBackend {
 
   restore(pluginId = this.defaultPluginId) {
     this.assertRuntimeMutationsEnabled(pluginId);
-    return this.themeLifecycleOperation(() => this.runtimeManager.restore(pluginId));
+    return this.themeLifecycleOperation(async () => {
+      const restored = await this.runtimeManager.restore(pluginId);
+      this.runtimeListCache.delete(pluginId);
+      return restored;
+    });
   }
 
   async close() {
